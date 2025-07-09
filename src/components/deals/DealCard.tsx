@@ -113,87 +113,61 @@ const DealCard = ({ deal, onRefresh }: DealCardProps) => {
       <Card 
         ref={setNodeRef}
         style={style}
-        className={`bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
-          isDragging ? 'opacity-50' : ''
-        } ${isDraggingDisabled ? 'cursor-not-allowed opacity-60' : ''}`}
+        className={`w-72 bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer rounded-lg ${
+          isDragging ? 'opacity-50 rotate-2' : ''
+        } ${isDraggingDisabled ? 'cursor-not-allowed opacity-60' : 'hover:border-primary/20'}`}
         onClick={() => setIsStagePanelOpen(true)}
         {...attributes}
         {...listeners}
       >
-        <CardHeader className="pb-3">
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
-              <CardTitle className="text-sm font-medium text-gray-900 mb-2">
+        <CardHeader className="pb-4 px-4 pt-4">
+          <div className="flex justify-between items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-base font-semibold text-foreground mb-3 line-clamp-2 leading-tight">
                 {deal.deal_name}
               </CardTitle>
               
-              {/* Company and Lead Info - Read-only data synced from Meetings */}
-              <div className="space-y-1">
-                {linkedLead?.company_name && (
-                  <div className="flex items-center text-xs text-gray-600">
-                    <Building className="h-3 w-3 mr-1" />
-                    <span className="font-medium">{linkedLead.company_name}</span>
+              {/* Essential Fields Only */}
+              <div className="space-y-2">
+                {linkedLead?.lead_name && (
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <User className="h-3.5 w-3.5 mr-2 text-primary/60" />
+                    <span className="font-medium truncate">{linkedLead.lead_name}</span>
                   </div>
                 )}
-                {linkedLead?.lead_name && (
-                  <div className="flex items-center text-xs text-gray-600">
-                    <User className="h-3 w-3 mr-1" />
-                    <span>{linkedLead.lead_name}</span>
+                {linkedLead?.company_name && (
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Building className="h-3.5 w-3.5 mr-2 text-primary/60" />
+                    <span className="font-medium truncate">{linkedLead.company_name}</span>
                   </div>
                 )}
                 {linkedLeadOwner && (
-                  <div className="text-xs text-gray-500">
-                    Owner: {linkedLeadOwner.full_name}
+                  <div className="text-sm text-muted-foreground">
+                    <span className="text-xs">Owner:</span> <span className="font-medium">{linkedLeadOwner.full_name}</span>
                   </div>
                 )}
               </div>
             </div>
             
-            {/* Stage completion indicator - no action buttons for Discussions */}
-            <div className="flex items-center gap-1">
+            {/* Completion Status */}
+            <div className="flex flex-col items-end gap-2">
+              <Badge variant="secondary" className={`${getStageColor(deal.stage)} text-xs font-medium px-2 py-1`}>
+                {deal.stage}
+              </Badge>
               {getCompletionIcon()}
             </div>
           </div>
         </CardHeader>
-        
-        <CardContent className="pt-0">
-          <div className="flex items-center justify-between mb-3">
-            <Badge className={getStageColor(deal.stage)}>
-              {deal.stage}
-            </Badge>
-          </div>
-          
-          <div className="space-y-2 text-xs text-gray-600">
-            {deal.amount && (
-              <div className="flex justify-between">
-                <span>Value:</span>
-                <span className="font-medium">{formatCurrency(deal.amount)}</span>
-              </div>
-            )}
-            
-            {deal.probability !== null && deal.probability !== undefined && (
-              <div className="flex justify-between">
-                <span>Probability:</span>
-                <span className="font-medium">{deal.probability}%</span>
-              </div>
-            )}
-            
-            {deal.closing_date && (
-              <div className="flex justify-between">
-                <span>Close Date:</span>
-                <span className="font-medium">
-                  {new Date(deal.closing_date).toLocaleDateString()}
-                </span>
-              </div>
-            )}
-          </div>
 
-          {isDraggingDisabled && (
-            <div className="mt-2 text-xs text-orange-600 font-medium">
-              Complete requirements to move
+        {isDraggingDisabled && (
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="bg-orange-50 border border-orange-200 rounded-md p-2">
+              <div className="text-xs text-orange-700 font-medium text-center">
+                Complete requirements to move
+              </div>
             </div>
-          )}
-        </CardContent>
+          </CardContent>
+        )}
       </Card>
 
       <StagePanelDialog

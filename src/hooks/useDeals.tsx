@@ -69,7 +69,20 @@ export const DEAL_STAGES = [
   'Dropped'
 ];
 
-// Stage completion requirements helper
+// Set default probability based on stage when creating deals
+export const getDefaultProbability = (stage: string): number => {
+  const defaultProbabilities: Record<string, number> = {
+    'Discussions': 10,
+    'Qualified': 20,
+    'RFQ': 30,
+    'Offered': 50,
+    'Won': 100,
+    'Lost': 0,
+    'Dropped': 0
+  };
+  
+  return defaultProbabilities[stage] || 10;
+};
 export const getStageRequirements = (stage: string): string[] => {
   const requirements: Record<string, string[]> = {
     'Discussions': [
