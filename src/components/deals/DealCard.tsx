@@ -127,25 +127,23 @@ const DealCard = ({ deal, onRefresh }: DealCardProps) => {
                 {deal.deal_name}
               </CardTitle>
               
-              {/* Company and Lead Info - Read-only data synced from Meetings */}
+              {/* Fixed visible fields: Company Name and Contact Owner */}
               <div className="space-y-1">
-                {linkedLead?.company_name && (
-                  <div className="flex items-center text-xs text-gray-600">
-                    <Building className="h-3 w-3 mr-1" />
-                    <span className="font-medium">{linkedLead.company_name}</span>
-                  </div>
-                )}
-                {linkedLead?.lead_name && (
-                  <div className="flex items-center text-xs text-gray-600">
-                    <User className="h-3 w-3 mr-1" />
-                    <span>{linkedLead.lead_name}</span>
-                  </div>
-                )}
-                {linkedLeadOwner && (
-                  <div className="text-xs text-gray-500">
-                    Owner: {linkedLeadOwner.full_name}
-                  </div>
-                )}
+                {/* Company Name - Always visible when available */}
+                <div className="flex items-center text-xs text-gray-600">
+                  <Building className="h-3 w-3 mr-1" />
+                  <span className="font-medium">
+                    {linkedLead?.company_name || 'No Company'}
+                  </span>
+                </div>
+                
+                {/* Contact Owner - Always visible (Display Name only) */}
+                <div className="flex items-center text-xs text-gray-600">
+                  <User className="h-3 w-3 mr-1" />
+                  <span>
+                    {linkedLeadOwner?.full_name || 'No Owner Assigned'}
+                  </span>
+                </div>
               </div>
             </div>
             
