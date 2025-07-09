@@ -1,35 +1,13 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
-interface Deal {
-  id: string;
-  deal_name: string;
-  description?: string;
-  related_lead_id?: string;
-}
-
-interface Lead {
-  id: string;
-  lead_name: string;
-  company_name?: string;
-  email?: string;
-  phone_no?: string;
-  position?: string;
-  contact_owner?: string;
-}
-
-interface LeadOwner {
-  id: string;
-  full_name: string;
-}
-
 interface DealInformationCardProps {
-  dealInfo: Deal;
-  linkedLead: Lead | null;
-  leadOwner: LeadOwner | null;
+  dealInfo: any;
+  linkedLead: any;
+  leadOwner: any;
   editableDealTitle: string;
   editableLeadOwner: string;
   dealDescription: string;
@@ -55,9 +33,8 @@ const DealInformationCard = ({
         <CardTitle>Deal Information</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* 1. Title - Editable */}
         <div>
-          <Label htmlFor="deal_title">Title</Label>
+          <Label htmlFor="deal_title">Deal Title</Label>
           <Input
             id="deal_title"
             value={editableDealTitle}
@@ -66,7 +43,18 @@ const DealInformationCard = ({
           />
         </div>
 
-        {/* 2. Company Name - Read-only */}
+        {linkedLead && (
+          <div>
+            <Label htmlFor="lead_name">Lead Name</Label>
+            <Input
+              id="lead_name"
+              value={linkedLead.lead_name || ''}
+              readOnly
+              className="bg-gray-50"
+            />
+          </div>
+        )}
+
         {linkedLead?.company_name && (
           <div>
             <Label htmlFor="company_name">Company Name</Label>
@@ -79,38 +67,25 @@ const DealInformationCard = ({
           </div>
         )}
 
-        {/* 3. Current Lead Name - Read-only */}
-        {linkedLead?.lead_name && (
+        {leadOwner && (
           <div>
-            <Label htmlFor="lead_name">Current Lead Name</Label>
+            <Label htmlFor="lead_owner">Lead Owner</Label>
             <Input
-              id="lead_name"
-              value={linkedLead.lead_name}
+              id="lead_owner"
+              value={leadOwner.full_name || ''}
               readOnly
               className="bg-gray-50"
             />
           </div>
         )}
 
-        {/* 4. Lead Owner - Editable */}
         <div>
-          <Label htmlFor="lead_owner">Lead Owner</Label>
-          <Input
-            id="lead_owner"
-            value={editableLeadOwner}
-            onChange={(e) => onLeadOwnerChange(e.target.value)}
-            placeholder="Enter lead owner name"
-          />
-        </div>
-
-        {/* 5. Description - Editable */}
-        <div>
-          <Label htmlFor="deal_description">Description</Label>
+          <Label htmlFor="deal_description">Deal Description</Label>
           <Textarea
             id="deal_description"
             value={dealDescription}
             onChange={(e) => onDescriptionChange(e.target.value)}
-            placeholder="Enter deal notes, requirements, or additional details..."
+            placeholder="Enter deal description..."
             rows={4}
           />
         </div>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { X, Plus, Link } from 'lucide-react';
+import { MAJOR_TIMEZONES, getUserTimezone } from '@/utils/timezones';
 
 interface AddMeetingFormProps {
   onSuccess: () => void;
@@ -24,7 +24,7 @@ const AddMeetingForm = ({ onSuccess, onCancel, initialLeadData }: AddMeetingForm
     start_time: '',
     duration: '1 hour' as '30 min' | '1 hour',
     location: 'Online' as 'Online' | 'In-Person',
-    timezone: 'Asia/Kolkata',
+    timezone: getUserTimezone(),
     participants: [] as string[],
     teams_link: '',
     description: ''
@@ -34,13 +34,6 @@ const AddMeetingForm = ({ onSuccess, onCancel, initialLeadData }: AddMeetingForm
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLinkingToDeal, setIsLinkingToDeal] = useState(false);
   const [createdMeetingId, setCreatedMeetingId] = useState<string | null>(null);
-
-  // Simplified timezone options as requested
-  const timezoneOptions = [
-    { value: 'Asia/Kolkata', label: 'IST (India) - UTC+05:30' },
-    { value: 'Europe/Berlin', label: 'GMT+2:00 (Germany) - UTC+02:00' },
-    { value: 'Europe/Paris', label: 'Central European Time (CET) - UTC+01:00' }
-  ];
 
   useEffect(() => {
     if (initialLeadData) {
@@ -428,8 +421,8 @@ const AddMeetingForm = ({ onSuccess, onCancel, initialLeadData }: AddMeetingForm
                 <SelectTrigger>
                   <SelectValue placeholder="Select timezone" />
                 </SelectTrigger>
-                <SelectContent>
-                  {timezoneOptions.map((option) => (
+                <SelectContent className="max-h-60">
+                  {MAJOR_TIMEZONES.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>

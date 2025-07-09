@@ -1,6 +1,7 @@
 
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MAJOR_TIMEZONES } from '@/utils/timezones';
 
 interface MeetingDetailsProps {
   formData: {
@@ -10,12 +11,6 @@ interface MeetingDetailsProps {
 }
 
 const MeetingDetails = ({ formData, onInputChange }: MeetingDetailsProps) => {
-  const timezoneOptions = [
-    { value: 'Asia/Kolkata', label: 'IST (India) - UTC+05:30' },
-    { value: 'Europe/Berlin', label: 'GMT+2:00 (Germany) - UTC+02:00' },
-    { value: 'Europe/Paris', label: 'Central European Time (CET) - UTC+01:00' }
-  ];
-
   return (
     <div>
       <Label htmlFor="timezone">Timezone</Label>
@@ -23,8 +18,8 @@ const MeetingDetails = ({ formData, onInputChange }: MeetingDetailsProps) => {
         <SelectTrigger>
           <SelectValue placeholder="Select timezone" />
         </SelectTrigger>
-        <SelectContent>
-          {timezoneOptions.map((option) => (
+        <SelectContent className="max-h-60">
+          {MAJOR_TIMEZONES.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}
             </SelectItem>

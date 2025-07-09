@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useTeamsMeeting } from '@/hooks/useTeamsMeeting';
+import { getUserTimezone } from '@/utils/timezones';
 
 interface Meeting {
   id: string;
@@ -53,7 +53,7 @@ export const useMeetingForm = (
     start_time: '',
     duration: '1 hour' as '30 min' | '1 hour',
     location: 'Online' as 'Online' | 'In-Person',
-    timezone: 'Asia/Kolkata',
+    timezone: getUserTimezone(),
     participants: [] as string[],
     teams_link: '',
     description: ''
@@ -138,7 +138,7 @@ export const useMeetingForm = (
         start_time: meeting.start_time || '',
         duration: (meeting.duration === '15 min' || meeting.duration === '2 hours') ? '1 hour' : meeting.duration as '30 min' | '1 hour',
         location: meeting.location || 'Online',
-        timezone: meeting.timezone || 'Asia/Kolkata',
+        timezone: meeting.timezone || getUserTimezone(),
         participants: meeting.participants || [],
         teams_link: meeting.teams_link || '',
         description: meeting.description || ''

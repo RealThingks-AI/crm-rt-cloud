@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { X, Plus } from 'lucide-react';
+import { MAJOR_TIMEZONES, getUserTimezone } from '@/utils/timezones';
 
 interface Meeting {
   id: string;
@@ -37,7 +37,7 @@ const EditMeetingForm = ({ meeting, onSuccess, onCancel }: EditMeetingFormProps)
     start_time: meeting.start_time || '',
     duration: meeting.duration || '1 hour' as '15 min' | '30 min' | '1 hour' | '2 hours',
     location: meeting.location || 'Online' as 'Online' | 'In-Person',
-    timezone: meeting.timezone || 'Asia/Kolkata',
+    timezone: meeting.timezone || getUserTimezone(),
     participants: meeting.participants || [],
     teams_link: meeting.teams_link || '',
     description: meeting.description || ''
@@ -45,13 +45,6 @@ const EditMeetingForm = ({ meeting, onSuccess, onCancel }: EditMeetingFormProps)
   
   const [participantInput, setParticipantInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Simplified timezone options as requested
-  const timezoneOptions = [
-    { value: 'Asia/Kolkata', label: 'IST (India) - UTC+05:30' },
-    { value: 'Europe/Berlin', label: 'GMT+2:00 (Germany) - UTC+02:00' },
-    { value: 'Europe/Paris', label: 'Central European Time (CET) - UTC+01:00' }
-  ];
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
@@ -348,8 +341,8 @@ const EditMeetingForm = ({ meeting, onSuccess, onCancel }: EditMeetingFormProps)
                 <SelectTrigger>
                   <SelectValue placeholder="Select timezone" />
                 </SelectTrigger>
-                <SelectContent>
-                  {timezoneOptions.map((option) => (
+                <SelectContent className="max-h-60">
+                  {MAJOR_TIMEZONES.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
