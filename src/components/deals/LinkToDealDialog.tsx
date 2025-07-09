@@ -134,13 +134,6 @@ const LinkToDealDialog = ({ open, onOpenChange, meetingId, meetingTitle, onSucce
         </DialogHeader>
 
         <div className="space-y-6">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h3 className="font-medium text-blue-900 mb-2">New Deal Creation</h3>
-            <p className="text-sm text-blue-700">
-              This will create a new deal in the "Discussions" stage and link it to your meeting. 
-              You can then progress through the pipeline stages as requirements are met.
-            </p>
-          </div>
 
           {/* Title Field */}
           <div>
@@ -204,32 +197,6 @@ const LinkToDealDialog = ({ open, onOpenChange, meetingId, meetingTitle, onSucce
             />
           </div>
 
-          {/* Pipeline Stage Information */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-medium text-gray-900 mb-2">Pipeline Process</h3>
-            <div className="space-y-2 text-sm text-gray-600">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span><strong>Discussions:</strong> Initial exploration and need identification</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <span><strong>Qualified:</strong> Requirements confirmed, NDA signed</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                <span><strong>RFQ:</strong> Request for quotation submitted</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <span><strong>Offered:</strong> Proposal sent and under negotiation</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span><strong>Won/Lost/Dropped:</strong> Final outcomes</span>
-              </div>
-            </div>
-          </div>
 
           {/* Actions */}
           <div className="flex justify-end space-x-2 pt-4">
