@@ -18,6 +18,7 @@ interface LinkToDealDialogProps {
 
 const LinkToDealDialog = ({ open, onOpenChange, meetingId, meetingTitle, onSuccess }: LinkToDealDialogProps) => {
   const [defaultLead, setDefaultLead] = useState<any>(null);
+  const [leadOwner, setLeadOwner] = useState<any>(null);
   const [dealTitle, setDealTitle] = useState(`Deal from ${meetingTitle}`);
   const [dealDescription, setDealDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -40,6 +41,19 @@ const LinkToDealDialog = ({ open, onOpenChange, meetingId, meetingTitle, onSucce
         if (leads) {
           setDefaultLead(leads);
           setDealTitle(`Deal with ${leads.lead_name || leads.company_name}`);
+          
+          // Fetch lead owner if exists
+          if (leads.contact_owner) {
+            const { data: owner, error: ownerError } = await supabase
+              .from('profiles')
+              .select('id, full_name')
+              .eq('id', leads.contact_owner)
+              .single();
+
+            if (!ownerError && owner) {
+              setLeadOwner(owner);
+            }
+          }
         }
       } catch (error) {
         console.error('Error in fetchDefaultLead:', error);
@@ -139,40 +153,42 @@ const LinkToDealDialog = ({ open, onOpenChange, meetingId, meetingTitle, onSucce
             />
           </div>
 
-          {/* Default Lead Information - Read Only */}
+          {/* Default Lead Information - Only Essential Fields */}
           {defaultLead && (
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-medium text-gray-900 mb-3">Default Lead Information</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="space-y-3">
                 <div>
-                  <strong>Lead Name:</strong> {defaultLead.lead_name || 'N/A'}
+                  <Label className="text-sm font-medium text-gray-700">Lead Name</Label>
+                  <Input
+                    value={defaultLead.lead_name || ''}
+                    readOnly
+                    className="bg-white"
+                  />
                 </div>
-                <div>
-                  <strong>Company:</strong> {defaultLead.company_name || 'N/A'}
-                </div>
-                <div>
-                  <strong>Position:</strong> {defaultLead.position || 'N/A'}
-                </div>
-                <div>
-                  <strong>Email:</strong> {defaultLead.email || 'N/A'}
-                </div>
-                <div>
-                  <strong>Phone:</strong> {defaultLead.phone_no || 'N/A'}
-                </div>
-                <div>
-                  <strong>Status:</strong> {defaultLead.lead_status || 'N/A'}
-                </div>
+                
+                {defaultLead.company_name && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Company Name</Label>
+                    <Input
+                      value={defaultLead.company_name}
+                      readOnly
+                      className="bg-white"
+                    />
+                  </div>
+                )}
+                
+                {leadOwner && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Lead Owner</Label>
+                    <Input
+                      value={leadOwner.full_name}
+                      readOnly
+                      className="bg-white"
+                    />
+                  </div>
+                )}
               </div>
-              {defaultLead.industry && (
-                <div className="mt-2 text-sm">
-                  <strong>Industry:</strong> {defaultLead.industry}
-                </div>
-              )}
-              {defaultLead.city && (
-                <div className="mt-2 text-sm">
-                  <strong>Location:</strong> {defaultLead.city}, {defaultLead.state}, {defaultLead.country}
-                </div>
-              )}
             </div>
           )}
 
