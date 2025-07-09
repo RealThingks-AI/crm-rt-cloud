@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,27 +47,25 @@ const DealCard = ({ deal, onRefresh }: DealCardProps) => {
           .from('leads')
           .select('lead_name, company_name, contact_owner')
           .eq('id', deal.related_lead_id)
-          .maybeSingle();
+          .single();
 
         if (leadError) {
           console.error('Error fetching lead:', leadError);
           return;
         }
 
-        if (lead) {
-          setLinkedLead(lead);
+        setLinkedLead(lead);
 
-          // Fetch lead owner profile if contact_owner exists
-          if (lead.contact_owner) {
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', lead.contact_owner)
-              .maybeSingle();
+        // Fetch lead owner profile if contact_owner exists
+        if (lead.contact_owner) {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', lead.contact_owner)
+            .single();
 
-            if (!profileError && profile) {
-              setLinkedLeadOwner(profile);
-            }
+          if (!profileError && profile) {
+            setLinkedLeadOwner(profile);
           }
         }
       } catch (error) {
@@ -101,70 +100,100 @@ const DealCard = ({ deal, onRefresh }: DealCardProps) => {
     }
   };
 
+  const formatCurrency = (amount?: number) => {
+    if (!amount) return 'N/A';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: deal.currency || 'USD'
+    }).format(amount);
+  };
+
   return (
     <>
       <Card 
         ref={setNodeRef}
         style={style}
-        className={`w-full bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer rounded-lg ${
-          isDragging ? 'opacity-50 rotate-1' : ''
-        } ${isDraggingDisabled ? 'cursor-not-allowed opacity-70' : 'hover:border-primary/30 hover:-translate-y-0.5'}`}
+        className={`bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+          isDragging ? 'opacity-50' : ''
+        } ${isDraggingDisabled ? 'cursor-not-allowed opacity-60' : ''}`}
         onClick={() => setIsStagePanelOpen(true)}
         {...attributes}
         {...listeners}
       >
-        <CardHeader className="p-4 pb-3">
-          <div className="space-y-3">
-            {/* Deal Title */}
-            <CardTitle className="text-sm font-semibold text-foreground leading-tight line-clamp-2 min-h-[2.5rem]">
-              {deal.deal_name}
-            </CardTitle>
-            
-            {/* Essential Information */}
-            <div className="space-y-2">
-              {linkedLead?.lead_name && (
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <User className="h-3.5 w-3.5 mr-2 text-blue-500 flex-shrink-0" />
-                  <span className="truncate font-medium">{linkedLead.lead_name}</span>
-                </div>
-              )}
+        <CardHeader className="pb-3">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <CardTitle className="text-sm font-medium text-gray-900 mb-2">
+                {deal.deal_name}
+              </CardTitle>
               
-              {linkedLead?.company_name && (
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Building className="h-3.5 w-3.5 mr-2 text-emerald-500 flex-shrink-0" />
-                  <span className="truncate font-medium">{linkedLead.company_name}</span>
-                </div>
-              )}
-              
-              {linkedLeadOwner && (
-                <div className="text-sm text-muted-foreground">
-                  <span className="text-xs opacity-75">Owner:</span> 
-                  <span className="font-medium ml-1">{linkedLeadOwner.full_name}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Stage Badge and Status */}
-            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-              <Badge variant="secondary" className={`${getStageColor(deal.stage)} text-xs font-medium px-2 py-1 border-0`}>
-                {deal.stage}
-              </Badge>
-              <div className="flex items-center">
-                {getCompletionIcon()}
+              {/* Company and Lead Info - Read-only data synced from Meetings */}
+              <div className="space-y-1">
+                {linkedLead?.company_name && (
+                  <div className="flex items-center text-xs text-gray-600">
+                    <Building className="h-3 w-3 mr-1" />
+                    <span className="font-medium">{linkedLead.company_name}</span>
+                  </div>
+                )}
+                {linkedLead?.lead_name && (
+                  <div className="flex items-center text-xs text-gray-600">
+                    <User className="h-3 w-3 mr-1" />
+                    <span>{linkedLead.lead_name}</span>
+                  </div>
+                )}
+                {linkedLeadOwner && (
+                  <div className="text-xs text-gray-500">
+                    Owner: {linkedLeadOwner.full_name}
+                  </div>
+                )}
               </div>
+            </div>
+            
+            {/* Stage completion indicator - no action buttons for Discussions */}
+            <div className="flex items-center gap-1">
+              {getCompletionIcon()}
             </div>
           </div>
         </CardHeader>
-
-        {isDraggingDisabled && (
-          <div className="px-4 pb-4">
-            <div className="bg-amber-50 border border-amber-200 rounded-md p-2">
-              <div className="text-xs text-amber-700 font-medium text-center">
-                Complete requirements to advance
-              </div>
-            </div>
+        
+        <CardContent className="pt-0">
+          <div className="flex items-center justify-between mb-3">
+            <Badge className={getStageColor(deal.stage)}>
+              {deal.stage}
+            </Badge>
           </div>
-        )}
+          
+          <div className="space-y-2 text-xs text-gray-600">
+            {deal.amount && (
+              <div className="flex justify-between">
+                <span>Value:</span>
+                <span className="font-medium">{formatCurrency(deal.amount)}</span>
+              </div>
+            )}
+            
+            {deal.probability !== null && deal.probability !== undefined && (
+              <div className="flex justify-between">
+                <span>Probability:</span>
+                <span className="font-medium">{deal.probability}%</span>
+              </div>
+            )}
+            
+            {deal.closing_date && (
+              <div className="flex justify-between">
+                <span>Close Date:</span>
+                <span className="font-medium">
+                  {new Date(deal.closing_date).toLocaleDateString()}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {isDraggingDisabled && (
+            <div className="mt-2 text-xs text-orange-600 font-medium">
+              Complete requirements to move
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       <StagePanelDialog

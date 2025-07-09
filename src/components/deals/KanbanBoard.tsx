@@ -123,7 +123,7 @@ const KanbanBoard = ({ deals, onRefresh }: KanbanBoardProps) => {
   return (
     <>
       <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="flex gap-4 min-h-[600px] w-full overflow-x-auto pb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 min-h-[600px] w-full overflow-x-auto">
           {DEAL_STAGES.map((stage) => (
             <KanbanColumn
               key={stage}
