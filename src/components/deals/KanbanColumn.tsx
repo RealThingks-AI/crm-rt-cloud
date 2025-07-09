@@ -65,54 +65,59 @@ const KanbanColumn = ({ stage, deals, onRefresh }: KanbanColumnProps) => {
   const progressPercentage = getStageProgress(deals);
 
   return (
-    <Card className={`h-fit min-h-[500px] bg-white border-2 border-gray-100 shadow-lg hover:shadow-xl transition-all duration-200 ${isOver ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'hover:border-gray-200'}`}>
-      <CardHeader className="pb-4 px-4 pt-4 border-b border-gray-100">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
-            <CardTitle className="text-base font-semibold text-foreground">{stage}</CardTitle>
+    <div className="flex flex-col h-full min-w-[300px]">
+      <Card className={`flex flex-col h-full bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 ${isOver ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'hover:border-gray-300'}`}>
+        <CardHeader className="flex-shrink-0 p-4 border-b border-gray-100 bg-gray-50/50">
+          <div className="flex items-center justify-between mb-2">
+            <CardTitle className="text-sm font-semibold text-foreground">{stage}</CardTitle>
             <Badge variant="outline" className={`${getStageColor(stage)} text-xs font-medium px-2 py-1 border-0`}>
               {deals.length}
             </Badge>
           </div>
-        </div>
-        <p className="text-sm text-muted-foreground mb-3">{getStageDescription(stage)}</p>
-        
-        {totalValue > 0 && (
-          <p className="text-sm font-semibold text-foreground">
-            {new Intl.NumberFormat('en-US', {
-              style: 'currency',
-              currency: 'USD',
-              notation: 'compact'
-            }).format(totalValue)}
-          </p>
-        )}
-        
-        {/* Progress indicator for non-final stages */}
-        {!['Won', 'Lost', 'Dropped'].includes(stage) && deals.length > 0 && (
-          <div className="space-y-2 mt-3">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Ready to advance</span>
-              <span className="font-medium">{progressPercentage}%</span>
+          
+          <p className="text-xs text-muted-foreground mb-3">{getStageDescription(stage)}</p>
+          
+          {totalValue > 0 && (
+            <p className="text-sm font-semibold text-foreground">
+              {new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                notation: 'compact'
+              }).format(totalValue)}
+            </p>
+          )}
+          
+          {/* Progress indicator for non-final stages */}
+          {!['Won', 'Lost', 'Dropped'].includes(stage) && deals.length > 0 && (
+            <div className="space-y-1 mt-3">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Ready to advance</span>
+                <span className="font-medium">{progressPercentage}%</span>
+              </div>
+              <Progress value={progressPercentage} className="h-1.5 bg-gray-200" />
             </div>
-            <Progress value={progressPercentage} className="h-2 bg-gray-100" />
-          </div>
-        )}
-      </CardHeader>
-      <CardContent
-        ref={setNodeRef}
-        className="space-y-4 min-h-[400px] p-4 bg-gray-50/30"
-      >
-        {deals.map((deal) => (
-          <DealCard key={deal.id} deal={deal} onRefresh={onRefresh} />
-        ))}
-        {deals.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <div className="text-4xl mb-2">📋</div>
-            <p className="text-sm">No deals in this stage</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </CardHeader>
+        
+        <CardContent
+          ref={setNodeRef}
+          className="flex-1 p-4 space-y-3 overflow-y-auto min-h-[400px] bg-gray-50/20"
+        >
+          {deals.map((deal) => (
+            <DealCard key={deal.id} deal={deal} onRefresh={onRefresh} />
+          ))}
+          
+          {deals.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full text-center py-8">
+              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                <div className="text-2xl text-gray-400">📋</div>
+              </div>
+              <p className="text-sm text-muted-foreground">No deals in this stage</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
