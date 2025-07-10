@@ -199,7 +199,36 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
         throw new Error('CSV file must have at least a header row and one data row');
       }
 
-      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+      // Parse CSV properly handling quoted fields
+      const parseCSVLine = (line: string): string[] => {
+        const result: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          
+          if (char === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+              // Handle escaped quotes
+              current += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        
+        result.push(current.trim());
+        return result;
+      };
+
+      const headers = parseCSVLine(lines[0]);
       const rows = lines.slice(1);
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -208,76 +237,108 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
         throw new Error('User not authenticated');
       }
 
-      const dealsToImport = rows.map(row => {
-        const values = row.split(',').map(v => v.replace(/"/g, '').trim());
-        const dealData: any = {
-          deal_name: values[0] || 'Imported Deal',
-          stage: values[1] || 'Discussions',
-          amount: values[2] ? parseFloat(values[2]) : null,
-          currency: values[3] || 'USD',
-          probability: values[4] ? parseInt(values[4]) : null,
-          closing_date: values[5] || null,
-          description: values[6] || null,
-          modified_at: values[7] || new Date().toISOString(),
+      const dealsToImport = rows.map((row, index) => {
+        try {
+          const values = parseCSVLine(row);
           
-          // Discussions stage fields
-          customer_need_identified: values[8]?.toLowerCase() === 'yes',
-          need_summary: values[9] || null,
-          decision_maker_present: values[10]?.toLowerCase() === 'yes',
-          customer_agreed_on_need: values[11] || null,
-          discussion_notes: values[12] || null,
+          // Helper functions for data parsing
+          const parseBoolean = (value: string) => {
+            if (!value || value.toLowerCase() === 'no' || value === '0' || value === 'false') return false;
+            if (value.toLowerCase() === 'yes' || value === '1' || value === 'true') return true;
+            return false;
+          };
           
-          // Qualified stage fields
-          nda_signed: values[13]?.toLowerCase() === 'yes',
-          budget_confirmed: values[14] || null,
-          supplier_portal_access: values[15] || null,
-          expected_deal_timeline_start: values[16] || null,
-          expected_deal_timeline_end: values[17] || null,
-          budget_holder: values[18] || null,
-          decision_makers: values[19] || null,
-          timeline: values[20] || null,
-          supplier_portal_required: values[21]?.toLowerCase() === 'yes',
+          const parseNumber = (value: string) => {
+            if (!value || value.trim() === '') return null;
+            const num = parseFloat(value);
+            return isNaN(num) ? null : num;
+          };
           
-          // RFQ stage fields
-          rfq_value: values[22] ? parseFloat(values[22]) : null,
-          rfq_document_url: values[23] || null,
-          rfq_document_link: values[24] || null,
-          product_service_scope: values[25] || null,
-          rfq_confirmation_note: values[26] || null,
+          const parseInt = (value: string) => {
+            if (!value || value.trim() === '') return null;
+            const num = Number.parseInt(value);
+            return isNaN(num) ? null : num;
+          };
           
-          // Offered stage fields
-          proposal_sent_date: values[27] || null,
-          negotiation_status: values[28] || null,
-          decision_expected_date: values[29] || null,
-          offer_sent_date: values[30] || null,
-          revised_offer_notes: values[31] || null,
-          negotiation_notes: values[32] || null,
-          
-          // Final stage fields
-          win_reason: values[33] || null,
-          loss_reason: values[34] || null,
-          lost_to: values[35] || null,
-          drop_reason: values[36] || null,
-          drop_summary: values[37] || null,
-          learning_summary: values[38] || null,
-          
-          // Execution fields
-          execution_started: values[39]?.toLowerCase() === 'yes',
-          begin_execution_date: values[40] || null,
-          confirmation_note: values[41] || null,
-          
-          // General fields
-          internal_notes: values[42] || null,
-          last_activity_time: values[43] || new Date().toISOString(),
-          related_lead_id: values[44] || null,
-          related_meeting_id: values[45] || null,
-          created_at: values[46] || new Date().toISOString(),
-          
-          created_by: user.id,
-          modified_by: user.id
-        };
+          const parseDate = (value: string) => {
+            if (!value || value.trim() === '') return null;
+            // Check if it's a valid date format
+            const date = new Date(value);
+            return isNaN(date.getTime()) ? null : value;
+          };
 
-        return dealData;
+          const dealData: any = {
+            deal_name: values[0] || 'Imported Deal',
+            stage: values[1] || 'Discussions',
+            amount: parseNumber(values[2]),
+            currency: values[3] || 'USD',
+            probability: parseInt(values[4]),
+            closing_date: parseDate(values[5]),
+            description: values[6] || null,
+            modified_at: parseDate(values[7]) || new Date().toISOString(),
+            
+            // Discussions stage fields
+            customer_need_identified: parseBoolean(values[8]),
+            need_summary: values[9] || null,
+            decision_maker_present: parseBoolean(values[10]),
+            customer_agreed_on_need: values[11] || null,
+            discussion_notes: values[12] || null,
+            
+            // Qualified stage fields
+            nda_signed: parseBoolean(values[13]),
+            budget_confirmed: values[14] || null,
+            supplier_portal_access: values[15] || null,
+            expected_deal_timeline_start: parseDate(values[16]),
+            expected_deal_timeline_end: parseDate(values[17]),
+            budget_holder: values[18] || null,
+            decision_makers: values[19] || null,
+            timeline: values[20] || null,
+            supplier_portal_required: parseBoolean(values[21]),
+            
+            // RFQ stage fields
+            rfq_value: parseNumber(values[22]),
+            rfq_document_url: values[23] || null,
+            rfq_document_link: values[24] || null,
+            product_service_scope: values[25] || null,
+            rfq_confirmation_note: values[26] || null,
+            
+            // Offered stage fields
+            proposal_sent_date: parseDate(values[27]),
+            negotiation_status: values[28] || null,
+            decision_expected_date: parseDate(values[29]),
+            offer_sent_date: parseDate(values[30]),
+            revised_offer_notes: values[31] || null,
+            negotiation_notes: values[32] || null,
+            
+            // Final stage fields
+            win_reason: values[33] || null,
+            loss_reason: values[34] || null,
+            lost_to: values[35] || null,
+            drop_reason: values[36] || null,
+            drop_summary: values[37] || null,
+            learning_summary: values[38] || null,
+            
+            // Execution fields
+            execution_started: parseBoolean(values[39]),
+            begin_execution_date: parseDate(values[40]),
+            confirmation_note: values[41] || null,
+            
+            // General fields
+            internal_notes: values[42] || null,
+            last_activity_time: parseDate(values[43]) || new Date().toISOString(),
+            related_lead_id: values[44] || null,
+            related_meeting_id: values[45] || null,
+            created_at: parseDate(values[46]) || new Date().toISOString(),
+            
+            created_by: user.id,
+            modified_by: user.id
+          };
+
+          return dealData;
+        } catch (rowError) {
+          console.error(`Error parsing row ${index + 1}:`, rowError);
+          throw new Error(`Error parsing row ${index + 1}: ${rowError.message}`);
+        }
       });
 
       const { error } = await supabase
