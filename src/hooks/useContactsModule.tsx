@@ -54,21 +54,46 @@ export const useContactsModule = () => {
         if (contact.modified_by) userIds.add(contact.modified_by);
       });
 
-      // Fetch profiles for all unique user IDs
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .in('id', Array.from(userIds));
-
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
-      }
-
-      // Create a map of user ID to full name
+      // Fetch user data from Supabase Auth admin API
       const userMap = new Map<string, string>();
-      if (profilesData) {
-        profilesData.forEach(profile => {
-          userMap.set(profile.id, profile.full_name);
+      
+      try {
+        const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
+        
+        if (usersError) {
+          console.error('Error fetching auth users:', usersError);
+        } else if (users) {
+          users.forEach((user: any) => {
+            if (userIds.has(user.id)) {
+              // Get display name from user metadata or format from email
+              let displayName = user.user_metadata?.full_name || user.user_metadata?.name;
+              
+              if (!displayName && user.email) {
+                // Convert email to display name (e.g., peter.jakobsson@company.com -> Peter Jakobsson)
+                const emailName = user.email.split('@')[0];
+                displayName = emailName
+                  .split('.')
+                  .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+                  .join(' ');
+              }
+              
+              userMap.set(user.id, displayName || 'Unknown User');
+            }
+          });
+        }
+      } catch (authError) {
+        console.error('Error accessing auth admin API:', authError);
+        // Fallback: create display names from email addresses stored in the contact data
+        contactsData.forEach(contact => {
+          if (contact.contact_owner && !userMap.has(contact.contact_owner)) {
+            userMap.set(contact.contact_owner, 'Unknown User');
+          }
+          if (contact.created_by && !userMap.has(contact.created_by)) {
+            userMap.set(contact.created_by, 'Unknown User');
+          }
+          if (contact.modified_by && !userMap.has(contact.modified_by)) {
+            userMap.set(contact.modified_by, 'Unknown User');
+          }
         });
       }
       
