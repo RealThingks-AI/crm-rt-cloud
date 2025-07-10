@@ -22,125 +22,108 @@ const LinkToDealDialog = ({ open, onOpenChange, meetingId, meetingTitle, onSucce
   const [dealTitle, setDealTitle] = useState(`Deal from ${meetingTitle}`);
   const [dealDescription, setDealDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [meetingData, setMeetingData] = useState<any>(null);
 
-  // Fetch meeting and related lead information
-  useEffect(() => {
-    const fetchMeetingAndLead = async () => {
-      if (!open || !meetingId) return;
+  // Consolidated data fetching function
+  const fetchAllData = async () => {
+    if (!open || !meetingId) return;
 
-      try {
-        console.log('Fetching meeting data for ID:', meetingId);
-        
-        // First fetch the meeting data
-        const { data: meeting, error: meetingError } = await supabase
-          .from('meetings')
-          .select('*')
-          .eq('id', meetingId)
-          .single();
+    setIsLoading(true);
+    
+    try {
+      console.log('Fetching all data for meeting ID:', meetingId);
+      
+      // Fetch meeting data first
+      const { data: meeting, error: meetingError } = await supabase
+        .from('meetings')
+        .select('*')
+        .eq('id', meetingId)
+        .maybeSingle();
 
-        if (meetingError) {
-          console.error('Error fetching meeting:', meetingError);
-          // If we can't fetch the meeting, try to get a default lead
-          await fetchDefaultLead();
-          return;
-        }
-
-        console.log('Fetched meeting:', meeting);
+      let selectedLead = null;
+      let owner = null;
+      
+      if (!meetingError && meeting) {
         setMeetingData(meeting);
-
-        // Try to find a lead related to this meeting by checking participants email
-        let relatedLead = null;
+        
+        // Try to find related lead by participant email
         if (meeting.participants && meeting.participants.length > 0) {
           for (const participant of meeting.participants) {
-            const { data: lead, error } = await supabase
+            const { data: lead } = await supabase
               .from('leads')
               .select('*')
               .eq('email', participant)
               .maybeSingle();
 
-            if (!error && lead) {
-              relatedLead = lead;
+            if (lead) {
+              selectedLead = lead;
               console.log('Found related lead by email:', lead);
               break;
             }
           }
         }
-
-        // If no related lead found, get the first available lead as fallback
-        if (!relatedLead) {
-          console.log('No related lead found, fetching default lead');
-          await fetchDefaultLead();
-        } else {
-          setDefaultLead(relatedLead);
-          setDealTitle(`Deal with ${relatedLead.lead_name || relatedLead.company_name || 'Lead'}`);
-          
-          // Fetch lead owner if exists
-          if (relatedLead.contact_owner) {
-            await fetchLeadOwner(relatedLead.contact_owner);
-          }
-        }
-      } catch (error) {
-        console.error('Error in fetchMeetingAndLead:', error);
-        await fetchDefaultLead();
       }
-    };
 
-    const fetchDefaultLead = async () => {
-      try {
-        console.log('Fetching default lead as fallback');
-        const { data: leads, error } = await supabase
+      // If no related lead found, get first available lead
+      if (!selectedLead) {
+        console.log('No related lead found, fetching default lead');
+        const { data: defaultLeadData } = await supabase
           .from('leads')
           .select('*')
           .limit(1)
           .maybeSingle();
-
-        if (error) {
-          console.error('Error fetching default lead:', error);
-          return;
-        }
-
-        if (leads) {
-          setDefaultLead(leads);
-          setDealTitle(`Deal with ${leads.lead_name || leads.company_name || 'Lead'}`);
           
-          // Fetch lead owner if exists
-          if (leads.contact_owner) {
-            await fetchLeadOwner(leads.contact_owner);
-          }
-        }
-      } catch (error) {
-        console.error('Error in fetchDefaultLead:', error);
+        selectedLead = defaultLeadData;
       }
-    };
 
-    const fetchLeadOwner = async (contactOwnerId: string) => {
-      try {
-        const { data, error } = await supabase.functions.invoke('get-user-display-names', {
-          body: { userIds: [contactOwnerId] }
-        });
-
-        if (error) {
-          console.error('Error fetching user display name:', error);
-        } else if (data?.userDisplayNames?.[contactOwnerId]) {
-          setLeadOwner({
-            id: contactOwnerId,
-            full_name: data.userDisplayNames[contactOwnerId]
+      // Fetch lead owner if lead exists and has contact_owner
+      if (selectedLead?.contact_owner) {
+        try {
+          const { data, error } = await supabase.functions.invoke('get-user-display-names', {
+            body: { userIds: [selectedLead.contact_owner] }
           });
-        }
-      } catch (functionError) {
-        console.error('Error calling get-user-display-names function:', functionError);
-      }
-    };
 
+          if (!error && data?.userDisplayNames?.[selectedLead.contact_owner]) {
+            owner = {
+              id: selectedLead.contact_owner,
+              full_name: data.userDisplayNames[selectedLead.contact_owner]
+            };
+          }
+        } catch (error) {
+          console.error('Error fetching lead owner:', error);
+        }
+      }
+
+      // Set all data at once to prevent multiple re-renders
+      const newDealTitle = selectedLead 
+        ? `Deal with ${selectedLead.lead_name || selectedLead.company_name || 'Lead'}`
+        : `Deal from ${meetingTitle}`;
+        
+      setDefaultLead(selectedLead);
+      setLeadOwner(owner);
+      setDealTitle(newDealTitle);
+      setDealDescription('');
+      
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Reset and fetch data when dialog opens
+  useEffect(() => {
     if (open) {
-      // Reset state when dialog opens
+      // Reset all state immediately
       setDefaultLead(null);
       setLeadOwner(null);
+      setMeetingData(null);
       setDealTitle(`Deal from ${meetingTitle}`);
       setDealDescription('');
       
-      fetchMeetingAndLead();
+      // Fetch data
+      fetchAllData();
     }
   }, [open, meetingId, meetingTitle]);
 
@@ -226,7 +209,13 @@ const LinkToDealDialog = ({ open, onOpenChange, meetingId, meetingTitle, onSucce
           <DialogTitle>Link Meeting to Deals Pipeline</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-2 text-gray-600">Loading meeting data...</span>
+          </div>
+        ) : (
+          <div className="space-y-6">
 
           {/* Title Field */}
           <div>
@@ -305,18 +294,19 @@ const LinkToDealDialog = ({ open, onOpenChange, meetingId, meetingTitle, onSucce
               type="button" 
               variant="outline" 
               onClick={() => onOpenChange(false)}
-              disabled={isCreating}
+              disabled={isCreating || isLoading}
             >
               Cancel
             </Button>
             <Button 
               onClick={handleCreateDeal}
-              disabled={isCreating || !defaultLead}
+              disabled={isCreating || isLoading || !defaultLead}
             >
               {isCreating ? 'Creating Deal...' : 'Create Deal'}
             </Button>
           </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );
