@@ -123,7 +123,7 @@ const KanbanBoard = ({ deals, onRefresh }: KanbanBoardProps) => {
   return (
     <>
       <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 min-h-[600px] w-full overflow-x-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 lg:gap-6 min-h-[600px] w-full">
           {DEAL_STAGES.map((stage) => (
             <KanbanColumn
               key={stage}
@@ -136,7 +136,7 @@ const KanbanBoard = ({ deals, onRefresh }: KanbanBoardProps) => {
         
         <DragOverlay>
           {activeDeal ? (
-            <Card className="rotate-3 opacity-80">
+            <Card className="rotate-2 opacity-90 shadow-xl border-2 border-blue-300 bg-white">
               <DealCard deal={activeDeal} onRefresh={onRefresh} />
             </Card>
           ) : null}

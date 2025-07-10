@@ -14,15 +14,28 @@ interface KanbanColumnProps {
 
 const getStageColor = (stage: string) => {
   const colors: Record<string, string> = {
-    'Discussions': 'bg-blue-100 text-blue-800',
-    'Qualified': 'bg-yellow-100 text-yellow-800',
-    'RFQ': 'bg-orange-100 text-orange-800',
-    'Offered': 'bg-purple-100 text-purple-800',
-    'Won': 'bg-green-100 text-green-800',
-    'Lost': 'bg-red-100 text-red-800',
-    'Dropped': 'bg-gray-100 text-gray-600',
+    'Discussions': 'bg-blue-50 border-blue-200',
+    'Qualified': 'bg-amber-50 border-amber-200',
+    'RFQ': 'bg-orange-50 border-orange-200',
+    'Offered': 'bg-purple-50 border-purple-200',
+    'Won': 'bg-emerald-50 border-emerald-200',
+    'Lost': 'bg-red-50 border-red-200',
+    'Dropped': 'bg-gray-50 border-gray-200',
   };
-  return colors[stage] || 'bg-gray-100 text-gray-800';
+  return colors[stage] || 'bg-gray-50 border-gray-200';
+};
+
+const getStageBadgeColor = (stage: string) => {
+  const colors: Record<string, string> = {
+    'Discussions': 'bg-blue-100 text-blue-700 border-blue-200',
+    'Qualified': 'bg-amber-100 text-amber-700 border-amber-200',
+    'RFQ': 'bg-orange-100 text-orange-700 border-orange-200',
+    'Offered': 'bg-purple-100 text-purple-700 border-purple-200',
+    'Won': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    'Lost': 'bg-red-100 text-red-700 border-red-200',
+    'Dropped': 'bg-gray-100 text-gray-700 border-gray-200',
+  };
+  return colors[stage] || 'bg-gray-100 text-gray-700 border-gray-200';
 };
 
 const getStageDescription = (stage: string) => {
@@ -65,44 +78,58 @@ const KanbanColumn = ({ stage, deals, onRefresh }: KanbanColumnProps) => {
   const progressPercentage = getStageProgress(deals);
 
   return (
-    <Card className={`h-fit min-h-[500px] ${isOver ? 'ring-2 ring-blue-500' : ''}`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-sm font-medium">{stage}</CardTitle>
+    <div className={`rounded-xl border-2 border-dashed transition-colors ${
+      isOver ? 'border-blue-400 bg-blue-50' : 'border-transparent'
+    } ${getStageColor(stage)}`}>
+      <Card className="shadow-sm border-0 bg-transparent">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between mb-2">
+            <CardTitle className="text-base font-bold text-gray-800 tracking-tight">
+              {stage}
+            </CardTitle>
+            <Badge 
+              variant="secondary" 
+              className={`${getStageBadgeColor(stage)} font-semibold px-2.5 py-1 rounded-full border`}
+            >
+              {deals.length}
+            </Badge>
           </div>
-          <Badge variant="secondary" className={getStageColor(stage)}>
-            {deals.length}
-          </Badge>
-        </div>
-        <p className="text-xs text-gray-500">{getStageDescription(stage)}</p>
-        
-        {totalValue > 0 && (
-          <p className="text-xs font-medium text-gray-700">
-            ${totalValue.toLocaleString()}
-          </p>
-        )}
-        
-        {/* Progress indicator for non-final stages */}
-        {!['Won', 'Lost', 'Dropped'].includes(stage) && deals.length > 0 && (
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>Ready to advance</span>
-              <span>{progressPercentage}%</span>
+          <p className="text-sm text-gray-600 leading-relaxed">{getStageDescription(stage)}</p>
+          
+          {totalValue > 0 && (
+            <div className="mt-3 p-2 bg-white/50 rounded-lg border border-white/20">
+              <p className="text-sm font-semibold text-gray-700">
+                Total: ${totalValue.toLocaleString()}
+              </p>
             </div>
-            <Progress value={progressPercentage} className="h-1" />
-          </div>
-        )}
-      </CardHeader>
-      <CardContent
-        ref={setNodeRef}
-        className="space-y-3 min-h-[400px] p-3"
-      >
-        {deals.map((deal) => (
-          <DealCard key={deal.id} deal={deal} onRefresh={onRefresh} />
-        ))}
-      </CardContent>
-    </Card>
+          )}
+          
+          {/* Progress indicator for non-final stages */}
+          {!['Won', 'Lost', 'Dropped'].includes(stage) && deals.length > 0 && (
+            <div className="mt-3 space-y-2">
+              <div className="flex justify-between text-xs font-medium text-gray-600">
+                <span>Ready to advance</span>
+                <span>{progressPercentage}%</span>
+              </div>
+              <Progress value={progressPercentage} className="h-2 bg-white/30" />
+            </div>
+          )}
+        </CardHeader>
+        <CardContent
+          ref={setNodeRef}
+          className="space-y-4 min-h-[420px] px-4 pb-4"
+        >
+          {deals.map((deal) => (
+            <DealCard key={deal.id} deal={deal} onRefresh={onRefresh} />
+          ))}
+          {deals.length === 0 && (
+            <div className="flex items-center justify-center h-32 text-gray-400 text-sm">
+              No deals in this stage
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
