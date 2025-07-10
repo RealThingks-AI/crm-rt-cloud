@@ -186,9 +186,12 @@ const AddContactForm = ({ onSuccess, onCancel }: AddContactFormProps) => {
           />
 
           <div className="col-span-2">
-            <div className="text-sm text-gray-600 mb-2">
-              Contact Owner: {profileLoading ? 'Loading...' : displayName || user?.email || 'Not logged in'}
-            </div>
+            <FormLabel>Contact Owner</FormLabel>
+            <Input 
+              value={profileLoading ? 'Loading...' : displayName || user?.email || 'Not logged in'} 
+              readOnly 
+              className="bg-muted"
+            />
           </div>
 
           <FormField
