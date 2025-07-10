@@ -14,14 +14,68 @@ interface DealsListViewProps {
 }
 
 const DEFAULT_COLUMNS: DealColumn[] = [
+  // Basic fields
   { key: 'deal_name', label: 'Deal Title', required: true, visible: true },
-  { key: 'company_name', label: 'Company', required: true, visible: true },
-  { key: 'contact_owner', label: 'Contact Owner', required: false, visible: true },
   { key: 'stage', label: 'Stage', required: false, visible: true },
+  { key: 'amount', label: 'Value', required: false, visible: true },
   { key: 'probability', label: 'Probability', required: false, visible: true },
   { key: 'closing_date', label: 'Close Date', required: false, visible: true },
-  { key: 'amount', label: 'Value', required: false, visible: true },
+  { key: 'currency', label: 'Currency', required: false, visible: false },
+  { key: 'description', label: 'Description', required: false, visible: false },
   { key: 'modified_at', label: 'Last Updated', required: false, visible: true },
+  
+  // Discussions stage fields
+  { key: 'customer_need_identified', label: 'Customer Need Identified', required: false, visible: false },
+  { key: 'need_summary', label: 'Need Summary', required: false, visible: false },
+  { key: 'decision_maker_present', label: 'Decision Maker Present', required: false, visible: false },
+  { key: 'customer_agreed_on_need', label: 'Customer Agreed on Need', required: false, visible: false },
+  { key: 'discussion_notes', label: 'Discussion Notes', required: false, visible: false },
+  
+  // Qualified stage fields
+  { key: 'nda_signed', label: 'NDA Signed', required: false, visible: false },
+  { key: 'budget_confirmed', label: 'Budget Confirmed', required: false, visible: false },
+  { key: 'supplier_portal_access', label: 'Supplier Portal Access', required: false, visible: false },
+  { key: 'expected_deal_timeline_start', label: 'Timeline Start', required: false, visible: false },
+  { key: 'expected_deal_timeline_end', label: 'Timeline End', required: false, visible: false },
+  { key: 'budget_holder', label: 'Budget Holder', required: false, visible: false },
+  { key: 'decision_makers', label: 'Decision Makers', required: false, visible: false },
+  { key: 'timeline', label: 'Timeline Notes', required: false, visible: false },
+  { key: 'supplier_portal_required', label: 'Supplier Portal Required', required: false, visible: false },
+  
+  // RFQ stage fields
+  { key: 'rfq_value', label: 'RFQ Value', required: false, visible: false },
+  { key: 'rfq_document_url', label: 'RFQ Document URL', required: false, visible: false },
+  { key: 'rfq_document_link', label: 'RFQ Document Link', required: false, visible: false },
+  { key: 'product_service_scope', label: 'Product/Service Scope', required: false, visible: false },
+  { key: 'rfq_confirmation_note', label: 'RFQ Confirmation Note', required: false, visible: false },
+  
+  // Offered stage fields
+  { key: 'proposal_sent_date', label: 'Proposal Sent Date', required: false, visible: false },
+  { key: 'negotiation_status', label: 'Negotiation Status', required: false, visible: false },
+  { key: 'decision_expected_date', label: 'Decision Expected Date', required: false, visible: false },
+  { key: 'offer_sent_date', label: 'Offer Sent Date', required: false, visible: false },
+  { key: 'revised_offer_notes', label: 'Revised Offer Notes', required: false, visible: false },
+  { key: 'negotiation_notes', label: 'Negotiation Notes', required: false, visible: false },
+  
+  // Final stage fields
+  { key: 'win_reason', label: 'Win Reason', required: false, visible: false },
+  { key: 'loss_reason', label: 'Loss Reason', required: false, visible: false },
+  { key: 'lost_to', label: 'Lost To', required: false, visible: false },
+  { key: 'drop_reason', label: 'Drop Reason', required: false, visible: false },
+  { key: 'drop_summary', label: 'Drop Summary', required: false, visible: false },
+  { key: 'learning_summary', label: 'Learning Summary', required: false, visible: false },
+  
+  // Execution fields
+  { key: 'execution_started', label: 'Execution Started', required: false, visible: false },
+  { key: 'begin_execution_date', label: 'Begin Execution Date', required: false, visible: false },
+  { key: 'confirmation_note', label: 'Confirmation Note', required: false, visible: false },
+  
+  // General fields
+  { key: 'internal_notes', label: 'Internal Notes', required: false, visible: false },
+  { key: 'last_activity_time', label: 'Last Activity Time', required: false, visible: false },
+  { key: 'related_lead_id', label: 'Related Lead ID', required: false, visible: false },
+  { key: 'related_meeting_id', label: 'Related Meeting ID', required: false, visible: false },
+  { key: 'created_at', label: 'Created At', required: false, visible: false },
 ];
 
 const DealsListView = ({ deals, onEdit, onDelete }: DealsListViewProps) => {
@@ -79,15 +133,61 @@ const DealsListView = ({ deals, onEdit, onDelete }: DealsListViewProps) => {
       case 'probability':
         return value ? `${value}%` : '0%';
       case 'amount':
+      case 'rfq_value':
         return value ? `$${Number(value).toLocaleString()}` : '-';
       case 'closing_date':
+      case 'expected_deal_timeline_start':
+      case 'expected_deal_timeline_end':
+      case 'proposal_sent_date':
+      case 'decision_expected_date':
+      case 'offer_sent_date':
+      case 'begin_execution_date':
         return value ? format(new Date(value as string), 'MMM d, yyyy') : '-';
       case 'modified_at':
-        return value ? format(new Date(value as string), 'MMM d, yyyy') : '-';
-      case 'company_name':
-        return 'Company Name'; // This would need to be fetched from related lead
-      case 'contact_owner':
-        return 'Contact Owner'; // This would need to be fetched from related lead owner
+      case 'created_at':
+      case 'last_activity_time':
+        return value ? format(new Date(value as string), 'MMM d, yyyy HH:mm') : '-';
+      case 'customer_need_identified':
+      case 'decision_maker_present':
+      case 'nda_signed':
+      case 'supplier_portal_required':
+      case 'execution_started':
+        return value === true ? 'Yes' : value === false ? 'No' : '-';
+      case 'customer_agreed_on_need':
+      case 'budget_confirmed':
+      case 'supplier_portal_access':
+      case 'negotiation_status':
+      case 'loss_reason':
+        return value || '-';
+      case 'rfq_document_url':
+      case 'rfq_document_link':
+        return value ? (
+          <a 
+            href={value as string} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-blue-600 hover:underline text-xs"
+            onClick={(e) => e.stopPropagation()}
+          >
+            View Document
+          </a>
+        ) : '-';
+      case 'description':
+      case 'need_summary':
+      case 'discussion_notes':
+      case 'rfq_confirmation_note':
+      case 'revised_offer_notes':
+      case 'negotiation_notes':
+      case 'internal_notes':
+      case 'drop_summary':
+      case 'learning_summary':
+      case 'confirmation_note':
+      case 'product_service_scope':
+        return value ? (
+          <div className="max-w-xs truncate" title={value as string}>
+            {value as string}
+          </div>
+        ) : '-';
       default:
         return value as string || '-';
     }
