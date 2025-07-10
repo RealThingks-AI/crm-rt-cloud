@@ -113,55 +113,51 @@ const DealCard = ({ deal, onRefresh }: DealCardProps) => {
       <Card 
         ref={setNodeRef}
         style={style}
-        className={`w-64 bg-white border border-gray-200 cursor-pointer ${
+        className={`w-full max-w-72 bg-white border border-gray-200 cursor-pointer ${
           isDragging ? 'opacity-50' : ''
         } ${isDraggingDisabled ? 'cursor-not-allowed opacity-70' : 'hover:border-gray-400'}`}
         onClick={() => setIsStagePanelOpen(true)}
         {...attributes}
         {...listeners}
       >
-        <CardHeader className="p-4 pb-0">
-          <div className="flex justify-between items-start gap-3">
-            <div className="flex-1 min-w-0">
-              <CardTitle className="text-sm font-semibold text-gray-900 mb-3 leading-tight">
-                {deal.deal_name}
-              </CardTitle>
-              
-              {/* Company and Owner Info */}
-              <div className="space-y-2 text-left">
-                <div className="flex items-center text-xs text-gray-600">
-                  <Building className="h-3 w-3 mr-2 text-gray-500 flex-shrink-0" />
-                  <span className="truncate">
-                    {linkedLead?.company_name || 'No Company'}
-                  </span>
-                </div>
-                
-                <div className="flex items-center text-xs text-gray-600">
-                  <User className="h-3 w-3 mr-2 text-gray-500 flex-shrink-0" />
-                  <span className="truncate">
-                    {linkedLeadOwner?.full_name || 'No Owner'}
-                  </span>
-                </div>
-              </div>
-            </div>
-            
-            {/* Completion Status */}
+        <CardHeader className="p-3 pb-2">
+          <div className="flex justify-between items-start gap-2 mb-3">
+            <CardTitle className="text-sm font-semibold text-gray-900 leading-tight flex-1">
+              {deal.deal_name}
+            </CardTitle>
             <div className="flex-shrink-0">
               {getCompletionIcon()}
             </div>
           </div>
+          
+          {/* Company and Owner Info */}
+          <div className="space-y-1.5">
+            <div className="flex items-center text-xs text-gray-600">
+              <Building className="h-3 w-3 mr-2 text-gray-500 flex-shrink-0" />
+              <span className="truncate">
+                {linkedLead?.company_name || 'No Company'}
+              </span>
+            </div>
+            
+            <div className="flex items-center text-xs text-gray-600">
+              <User className="h-3 w-3 mr-2 text-gray-500 flex-shrink-0" />
+              <span className="truncate">
+                {linkedLeadOwner?.full_name || 'No Owner'}
+              </span>
+            </div>
+          </div>
         </CardHeader>
         
-        <CardContent className="p-4 pt-3 space-y-3">
+        <CardContent className="p-3 pt-0">
           {/* Stage Badge */}
-          <div className="text-left">
+          <div className="mb-3">
             <Badge variant="secondary" className="text-xs font-medium">
               {deal.stage}
             </Badge>
           </div>
           
           {/* Deal Metrics */}
-          <div className="space-y-2 text-left">
+          <div className="space-y-1.5">
             {deal.amount && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center text-xs text-gray-600">
