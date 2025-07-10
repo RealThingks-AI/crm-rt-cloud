@@ -37,24 +37,27 @@ const Index = () => {
     e.preventDefault();
     setLoading(true);
     
+    // Handle remember me functionality BEFORE signing in
+    if (rememberMe) {
+      localStorage.setItem('rememberedEmail', email);
+      localStorage.setItem('rememberMe', 'true');
+    } else {
+      localStorage.removeItem('rememberedEmail');
+      localStorage.removeItem('rememberMe');
+    }
+    
     const { error } = await signIn(email, password, rememberMe);
     
     if (error) {
+      // Clear remember me preference if sign in failed
+      localStorage.removeItem('rememberedEmail');
+      localStorage.removeItem('rememberMe');
       toast({
         variant: "destructive",
         title: "Error signing in",
         description: error.message,
       });
     } else {
-      // Handle remember me functionality
-      if (rememberMe) {
-        localStorage.setItem('rememberedEmail', email);
-        localStorage.setItem('rememberMe', 'true');
-      } else {
-        localStorage.removeItem('rememberedEmail');
-        localStorage.removeItem('rememberMe');
-      }
-
       toast({
         title: "Welcome back!",
         description: "You have successfully signed in.",
