@@ -60,31 +60,43 @@ export const useLeads = () => {
       if (leadsError) throw leadsError;
       
       if (leadsData && leadsData.length > 0) {
-        // Get unique contact_owner IDs
-        const ownerIds = [...new Set(leadsData.map(lead => lead.contact_owner).filter(Boolean))];
+        // Get unique user IDs from leads (contact_owner, created_by, modified_by)
+        const userIds = new Set<string>();
+        leadsData.forEach(lead => {
+          if (lead.contact_owner) userIds.add(lead.contact_owner);
+          if (lead.created_by) userIds.add(lead.created_by);
+          if (lead.modified_by) userIds.add(lead.modified_by);
+        });
+
+        // Fetch user display names using edge function
+        const userMap = new Map<string, string>();
         
-        // Fetch owner profiles
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .in('id', ownerIds);
+        try {
+          const { data, error } = await supabase.functions.invoke('get-user-display-names', {
+            body: { userIds: Array.from(userIds) }
+          });
 
-        if (profilesError) {
-          console.warn('Error fetching profiles:', profilesError);
-        }
-
-        // Create a map of owner ID to full name
-        const ownerMap = new Map();
-        if (profilesData) {
-          profilesData.forEach(profile => {
-            ownerMap.set(profile.id, profile.full_name);
+          if (error) {
+            console.error('Error fetching user display names:', error);
+          } else if (data?.userDisplayNames) {
+            Object.entries(data.userDisplayNames).forEach(([userId, displayName]) => {
+              userMap.set(userId, displayName as string);
+            });
+          }
+        } catch (functionError) {
+          console.error('Error calling get-user-display-names function:', functionError);
+          // Fallback: create placeholder names
+          userIds.forEach(userId => {
+            userMap.set(userId, 'Unknown User');
           });
         }
 
-        // Transform leads to include lead_owner_name
+        // Transform leads to include proper display names
         const transformedLeads = leadsData.map(lead => ({
           ...lead,
-          lead_owner_name: lead.contact_owner ? ownerMap.get(lead.contact_owner) || 'Unknown User' : 'No Owner'
+          lead_owner_name: lead.contact_owner ? 
+                          (userMap.get(lead.contact_owner) || 'Unknown User') : 
+                          'No Owner'
         }));
         
         setLeads(transformedLeads);
