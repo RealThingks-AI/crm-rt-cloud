@@ -113,31 +113,31 @@ const DealCard = ({ deal, onRefresh }: DealCardProps) => {
       <Card 
         ref={setNodeRef}
         style={style}
-        className={`bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group ${
-          isDragging ? 'opacity-50 rotate-2' : ''
-        } ${isDraggingDisabled ? 'cursor-not-allowed opacity-70' : 'hover:border-gray-300'}`}
+        className={`w-64 bg-white border border-gray-200 cursor-pointer ${
+          isDragging ? 'opacity-50' : ''
+        } ${isDraggingDisabled ? 'cursor-not-allowed opacity-70' : 'hover:border-gray-400'}`}
         onClick={() => setIsStagePanelOpen(true)}
         {...attributes}
         {...listeners}
       >
-        <CardHeader className="pb-3">
+        <CardHeader className="p-4 pb-0">
           <div className="flex justify-between items-start gap-3">
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-sm font-semibold text-gray-900 mb-3 leading-tight line-clamp-2">
+              <CardTitle className="text-sm font-semibold text-gray-900 mb-3 leading-tight">
                 {deal.deal_name}
               </CardTitle>
               
               {/* Company and Owner Info */}
-              <div className="space-y-2">
-                <div className="flex items-center text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded-md">
-                  <Building className="h-3 w-3 mr-1.5 text-gray-500 flex-shrink-0" />
-                  <span className="font-medium truncate">
+              <div className="space-y-2 text-left">
+                <div className="flex items-center text-xs text-gray-600">
+                  <Building className="h-3 w-3 mr-2 text-gray-500 flex-shrink-0" />
+                  <span className="truncate">
                     {linkedLead?.company_name || 'No Company'}
                   </span>
                 </div>
                 
-                <div className="flex items-center text-xs text-gray-600 bg-blue-50 px-2 py-1 rounded-md">
-                  <User className="h-3 w-3 mr-1.5 text-blue-500 flex-shrink-0" />
+                <div className="flex items-center text-xs text-gray-600">
+                  <User className="h-3 w-3 mr-2 text-gray-500 flex-shrink-0" />
                   <span className="truncate">
                     {linkedLeadOwner?.full_name || 'No Owner'}
                   </span>
@@ -152,47 +152,47 @@ const DealCard = ({ deal, onRefresh }: DealCardProps) => {
           </div>
         </CardHeader>
         
-        <CardContent className="pt-0 space-y-3">
+        <CardContent className="p-4 pt-3 space-y-3">
           {/* Stage Badge */}
-          <div className="flex justify-center">
-            <Badge className={`${getStageColor(deal.stage)} text-xs font-medium px-3 py-1 rounded-full`}>
+          <div className="text-left">
+            <Badge variant="secondary" className="text-xs font-medium">
               {deal.stage}
             </Badge>
           </div>
           
           {/* Deal Metrics */}
-          <div className="space-y-2.5">
+          <div className="space-y-2 text-left">
             {deal.amount && (
-              <div className="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-100">
-                <div className="flex items-center text-xs text-green-700">
-                  <DollarSign className="h-3 w-3 mr-1.5" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center text-xs text-gray-600">
+                  <DollarSign className="h-3 w-3 mr-2 text-gray-500" />
                   <span>Value</span>
                 </div>
-                <span className="text-xs font-semibold text-green-800">
+                <span className="text-xs font-medium text-gray-900">
                   {formatCurrency(deal.amount)}
                 </span>
               </div>
             )}
             
             {deal.probability !== null && deal.probability !== undefined && (
-              <div className="flex items-center justify-between p-2 bg-purple-50 rounded-lg border border-purple-100">
-                <div className="flex items-center text-xs text-purple-700">
-                  <Percent className="h-3 w-3 mr-1.5" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center text-xs text-gray-600">
+                  <Percent className="h-3 w-3 mr-2 text-gray-500" />
                   <span>Probability</span>
                 </div>
-                <span className="text-xs font-semibold text-purple-800">
+                <span className="text-xs font-medium text-gray-900">
                   {deal.probability}%
                 </span>
               </div>
             )}
             
             {deal.closing_date && (
-              <div className="flex items-center justify-between p-2 bg-orange-50 rounded-lg border border-orange-100">
-                <div className="flex items-center text-xs text-orange-700">
-                  <Calendar className="h-3 w-3 mr-1.5" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center text-xs text-gray-600">
+                  <Calendar className="h-3 w-3 mr-2 text-gray-500" />
                   <span>Close Date</span>
                 </div>
-                <span className="text-xs font-semibold text-orange-800">
+                <span className="text-xs font-medium text-gray-900">
                   {new Date(deal.closing_date).toLocaleDateString()}
                 </span>
               </div>
@@ -200,8 +200,8 @@ const DealCard = ({ deal, onRefresh }: DealCardProps) => {
           </div>
 
           {isDraggingDisabled && (
-            <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
-              <div className="text-xs text-amber-700 font-medium text-center">
+            <div className="mt-3 p-2 border border-gray-200 text-center">
+              <div className="text-xs text-gray-600">
                 Complete requirements to move
               </div>
             </div>
