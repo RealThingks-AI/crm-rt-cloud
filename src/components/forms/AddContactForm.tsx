@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 const formSchema = z.object({
   contact_name: z.string().min(1, 'Contact name is required'),
@@ -42,6 +43,7 @@ const AddContactForm = ({ onSuccess, onCancel }: AddContactFormProps) => {
   const [showCustomSource, setShowCustomSource] = useState(false);
   const [showCustomIndustry, setShowCustomIndustry] = useState(false);
   const { user } = useAuth();
+  const { displayName, loading: profileLoading } = useUserProfile();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -185,7 +187,7 @@ const AddContactForm = ({ onSuccess, onCancel }: AddContactFormProps) => {
 
           <div className="col-span-2">
             <div className="text-sm text-gray-600 mb-2">
-              Contact Owner: {user?.email || 'Not logged in'}
+              Contact Owner: {profileLoading ? 'Loading...' : displayName || user?.email || 'Not logged in'}
             </div>
           </div>
 
