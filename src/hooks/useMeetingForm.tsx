@@ -51,7 +51,7 @@ export const useMeetingForm = (
     meeting_title: '',
     date: '',
     start_time: '',
-    duration: '1 hour' as '30 min' | '1 hour',
+    duration: '30 min' as '30 min' | '1 hour',
     location: 'Online' as 'Online' | 'In-Person',
     timezone: getUserTimezone(),
     participants: [] as string[],
