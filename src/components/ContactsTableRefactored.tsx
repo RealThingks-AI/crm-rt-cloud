@@ -96,17 +96,12 @@ const ContactsTableRefactored = ({
     
     if (columnKey === 'contact_name') {
       return (
-        <div className="space-y-1">
-          <button
-            onClick={() => onEditContact(contact)}
-            className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-left"
-          >
-            {value || '-'}
-          </button>
-          <div className="text-xs text-gray-500">
-            Created by: {contact.created_by_name || 'Unknown User'}
-          </div>
-        </div>
+        <button
+          onClick={() => onEditContact(contact)}
+          className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-left"
+        >
+          {value || '-'}
+        </button>
       );
     }
     
