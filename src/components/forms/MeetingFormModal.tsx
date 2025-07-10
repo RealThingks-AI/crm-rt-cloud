@@ -55,14 +55,16 @@ const MeetingFormModal = ({ meeting, onSuccess, onCancel, initialLeadData, dealI
   } = useMeetingForm(meeting, dealId, initialLeadData);
 
   const handleLinkToDeals = () => {
-    if (!meeting) {
+    if (!meeting?.id) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Please save the meeting first before linking to deals.",
+        description: "Please save the meeting first before linking to deals. Meeting ID is required.",
       });
       return;
     }
+    
+    console.log('Opening Link to Deals dialog for meeting:', meeting.id, meeting.meeting_title);
     setIsLinkDialogOpen(true);
   };
 
@@ -147,12 +149,13 @@ const MeetingFormModal = ({ meeting, onSuccess, onCancel, initialLeadData, dealI
         open={isLinkDialogOpen}
         onOpenChange={setIsLinkDialogOpen}
         meetingId={meeting?.id || ''}
-        meetingTitle={formData.meeting_title}
+        meetingTitle={formData.meeting_title || meeting?.meeting_title || 'Untitled Meeting'}
         onSuccess={() => {
           toast({
             title: "Success",
             description: "Deal has been created and linked to this meeting.",
           });
+          onSuccess(); // Refresh the parent component
         }}
       />
     </>

@@ -22,16 +22,78 @@ const LinkToDealDialog = ({ open, onOpenChange, meetingId, meetingTitle, onSucce
   const [dealTitle, setDealTitle] = useState(`Deal from ${meetingTitle}`);
   const [dealDescription, setDealDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [meetingData, setMeetingData] = useState<any>(null);
 
-  // Fetch the first available lead as default
+  // Fetch meeting and related lead information
   useEffect(() => {
+    const fetchMeetingAndLead = async () => {
+      if (!open || !meetingId) return;
+
+      try {
+        console.log('Fetching meeting data for ID:', meetingId);
+        
+        // First fetch the meeting data
+        const { data: meeting, error: meetingError } = await supabase
+          .from('meetings')
+          .select('*')
+          .eq('id', meetingId)
+          .single();
+
+        if (meetingError) {
+          console.error('Error fetching meeting:', meetingError);
+          // If we can't fetch the meeting, try to get a default lead
+          await fetchDefaultLead();
+          return;
+        }
+
+        console.log('Fetched meeting:', meeting);
+        setMeetingData(meeting);
+
+        // Try to find a lead related to this meeting by checking participants email
+        let relatedLead = null;
+        if (meeting.participants && meeting.participants.length > 0) {
+          for (const participant of meeting.participants) {
+            const { data: lead, error } = await supabase
+              .from('leads')
+              .select('*')
+              .eq('email', participant)
+              .maybeSingle();
+
+            if (!error && lead) {
+              relatedLead = lead;
+              console.log('Found related lead by email:', lead);
+              break;
+            }
+          }
+        }
+
+        // If no related lead found, get the first available lead as fallback
+        if (!relatedLead) {
+          console.log('No related lead found, fetching default lead');
+          await fetchDefaultLead();
+        } else {
+          setDefaultLead(relatedLead);
+          setDealTitle(`Deal with ${relatedLead.lead_name || relatedLead.company_name || 'Lead'}`);
+          
+          // Fetch lead owner if exists
+          if (relatedLead.contact_owner) {
+            await fetchLeadOwner(relatedLead.contact_owner);
+          }
+        }
+      } catch (error) {
+        console.error('Error in fetchMeetingAndLead:', error);
+        await fetchDefaultLead();
+      }
+    };
+
     const fetchDefaultLead = async () => {
       try {
+        console.log('Fetching default lead as fallback');
         const { data: leads, error } = await supabase
           .from('leads')
           .select('*')
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error('Error fetching default lead:', error);
@@ -40,26 +102,11 @@ const LinkToDealDialog = ({ open, onOpenChange, meetingId, meetingTitle, onSucce
 
         if (leads) {
           setDefaultLead(leads);
-          setDealTitle(`Deal with ${leads.lead_name || leads.company_name}`);
+          setDealTitle(`Deal with ${leads.lead_name || leads.company_name || 'Lead'}`);
           
           // Fetch lead owner if exists
           if (leads.contact_owner) {
-            try {
-              const { data, error } = await supabase.functions.invoke('get-user-display-names', {
-                body: { userIds: [leads.contact_owner] }
-              });
-
-              if (error) {
-                console.error('Error fetching user display name:', error);
-              } else if (data?.userDisplayNames?.[leads.contact_owner]) {
-                setLeadOwner({
-                  id: leads.contact_owner,
-                  full_name: data.userDisplayNames[leads.contact_owner]
-                });
-              }
-            } catch (functionError) {
-              console.error('Error calling get-user-display-names function:', functionError);
-            }
+            await fetchLeadOwner(leads.contact_owner);
           }
         }
       } catch (error) {
@@ -67,17 +114,51 @@ const LinkToDealDialog = ({ open, onOpenChange, meetingId, meetingTitle, onSucce
       }
     };
 
+    const fetchLeadOwner = async (contactOwnerId: string) => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-user-display-names', {
+          body: { userIds: [contactOwnerId] }
+        });
+
+        if (error) {
+          console.error('Error fetching user display name:', error);
+        } else if (data?.userDisplayNames?.[contactOwnerId]) {
+          setLeadOwner({
+            id: contactOwnerId,
+            full_name: data.userDisplayNames[contactOwnerId]
+          });
+        }
+      } catch (functionError) {
+        console.error('Error calling get-user-display-names function:', functionError);
+      }
+    };
+
     if (open) {
-      fetchDefaultLead();
+      // Reset state when dialog opens
+      setDefaultLead(null);
+      setLeadOwner(null);
+      setDealTitle(`Deal from ${meetingTitle}`);
+      setDealDescription('');
+      
+      fetchMeetingAndLead();
     }
-  }, [open]);
+  }, [open, meetingId, meetingTitle]);
 
   const handleCreateDeal = async () => {
     if (!defaultLead) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No default lead available to create deal.",
+        description: "No lead available to create deal. Please create a lead first.",
+      });
+      return;
+    }
+
+    if (!meetingId) {
+      toast({
+        variant: "destructive",
+        title: "Error", 
+        description: "Meeting ID is required to create deal.",
       });
       return;
     }
@@ -101,22 +182,27 @@ const LinkToDealDialog = ({ open, onOpenChange, meetingId, meetingTitle, onSucce
         stage: 'Discussions',
         related_meeting_id: meetingId,
         related_lead_id: defaultLead.id,
-        description: dealDescription,
+        description: dealDescription || `Deal created from meeting: ${meetingTitle}`,
         created_by: user.id,
         // Initialize with default values for stage progression
         probability: 10, // Default probability for Discussions stage
         currency: 'USD'
       };
 
+      console.log('Creating deal with data:', dealData);
+
       const { error } = await supabase
         .from('deals')
         .insert(dealData);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating deal:', error);
+        throw error;
+      }
 
       toast({
         title: "Deal created successfully",
-        description: `Meeting has been linked to a new deal: ${dealTitle}`,
+        description: `Meeting "${meetingTitle}" has been linked to deal: ${dealTitle}`,
       });
 
       onSuccess();
@@ -154,9 +240,11 @@ const LinkToDealDialog = ({ open, onOpenChange, meetingId, meetingTitle, onSucce
           </div>
 
           {/* Default Lead Information - Only Essential Fields */}
-          {defaultLead && (
+          {defaultLead ? (
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-medium text-gray-900 mb-3">Default Lead Information</h3>
+              <h3 className="font-medium text-gray-900 mb-3">
+                {meetingData ? 'Related Lead Information' : 'Default Lead Information'}
+              </h3>
               <div className="space-y-3">
                 <div>
                   <Label className="text-sm font-medium text-gray-700">Lead Name</Label>
@@ -189,6 +277,12 @@ const LinkToDealDialog = ({ open, onOpenChange, meetingId, meetingTitle, onSucce
                   </div>
                 )}
               </div>
+            </div>
+          ) : (
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <p className="text-sm text-yellow-700">
+                No leads available. Please create a lead first before linking to deals pipeline.
+              </p>
             </div>
           )}
 
