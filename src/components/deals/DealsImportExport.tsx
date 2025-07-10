@@ -36,7 +36,7 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
       return;
     }
 
-    // Define the columns to export
+    // Define all available columns from the list view for export
     const headers = [
       'Deal Name',
       'Stage',
@@ -45,29 +45,63 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
       'Probability',
       'Closing Date',
       'Description',
+      'Modified At',
+      
+      // Discussions stage fields
       'Customer Need Identified',
       'Need Summary',
       'Decision Maker Present',
       'Customer Agreed on Need',
+      'Discussion Notes',
+      
+      // Qualified stage fields
       'NDA Signed',
       'Budget Confirmed',
       'Supplier Portal Access',
-      'Expected Timeline Start',
-      'Expected Timeline End',
+      'Timeline Start',
+      'Timeline End',
+      'Budget Holder',
+      'Decision Makers',
+      'Timeline Notes',
+      'Supplier Portal Required',
+      
+      // RFQ stage fields
       'RFQ Value',
       'RFQ Document URL',
+      'RFQ Document Link',
       'Product Service Scope',
+      'RFQ Confirmation Note',
+      
+      // Offered stage fields
       'Proposal Sent Date',
       'Negotiation Status',
       'Decision Expected Date',
+      'Offer Sent Date',
+      'Revised Offer Notes',
+      'Negotiation Notes',
+      
+      // Final stage fields
       'Win Reason',
       'Loss Reason',
+      'Lost To',
       'Drop Reason',
-      'Created At',
-      'Last Activity'
+      'Drop Summary',
+      'Learning Summary',
+      
+      // Execution fields
+      'Execution Started',
+      'Begin Execution Date',
+      'Confirmation Note',
+      
+      // General fields
+      'Internal Notes',
+      'Last Activity Time',
+      'Related Lead ID',
+      'Related Meeting ID',
+      'Created At'
     ];
 
-    // Convert deals to CSV rows
+    // Convert deals to CSV rows with all available fields
     const csvRows = dealsToExport.map(deal => [
       deal.deal_name || '',
       deal.stage || '',
@@ -76,26 +110,60 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
       deal.probability?.toString() || '',
       deal.closing_date || '',
       deal.description || '',
+      deal.modified_at || '',
+      
+      // Discussions stage fields
       deal.customer_need_identified ? 'Yes' : 'No',
       deal.need_summary || '',
       deal.decision_maker_present ? 'Yes' : 'No',
       deal.customer_agreed_on_need || '',
+      deal.discussion_notes || '',
+      
+      // Qualified stage fields
       deal.nda_signed ? 'Yes' : 'No',
       deal.budget_confirmed || '',
       deal.supplier_portal_access || '',
       deal.expected_deal_timeline_start || '',
       deal.expected_deal_timeline_end || '',
+      deal.budget_holder || '',
+      deal.decision_makers || '',
+      deal.timeline || '',
+      deal.supplier_portal_required ? 'Yes' : 'No',
+      
+      // RFQ stage fields
       deal.rfq_value?.toString() || '',
       deal.rfq_document_url || '',
+      deal.rfq_document_link || '',
       deal.product_service_scope || '',
+      deal.rfq_confirmation_note || '',
+      
+      // Offered stage fields
       deal.proposal_sent_date || '',
       deal.negotiation_status || '',
       deal.decision_expected_date || '',
+      deal.offer_sent_date || '',
+      deal.revised_offer_notes || '',
+      deal.negotiation_notes || '',
+      
+      // Final stage fields
       deal.win_reason || '',
       deal.loss_reason || '',
+      deal.lost_to || '',
       deal.drop_reason || '',
-      deal.created_at || '',
-      deal.last_activity_time || ''
+      deal.drop_summary || '',
+      deal.learning_summary || '',
+      
+      // Execution fields
+      deal.execution_started ? 'Yes' : 'No',
+      deal.begin_execution_date || '',
+      deal.confirmation_note || '',
+      
+      // General fields
+      deal.internal_notes || '',
+      deal.last_activity_time || '',
+      deal.related_lead_id || '',
+      deal.related_meeting_id || '',
+      deal.created_at || ''
     ]);
 
     // Create CSV content
@@ -150,24 +218,61 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
           probability: values[4] ? parseInt(values[4]) : null,
           closing_date: values[5] || null,
           description: values[6] || null,
-          customer_need_identified: values[7]?.toLowerCase() === 'yes',
-          need_summary: values[8] || null,
-          decision_maker_present: values[9]?.toLowerCase() === 'yes',
-          customer_agreed_on_need: values[10] || null,
-          nda_signed: values[11]?.toLowerCase() === 'yes',
-          budget_confirmed: values[12] || null,
-          supplier_portal_access: values[13] || null,
-          expected_deal_timeline_start: values[14] || null,
-          expected_deal_timeline_end: values[15] || null,
-          rfq_value: values[16] ? parseFloat(values[16]) : null,
-          rfq_document_url: values[17] || null,
-          product_service_scope: values[18] || null,
-          proposal_sent_date: values[19] || null,
-          negotiation_status: values[20] || null,
-          decision_expected_date: values[21] || null,
-          win_reason: values[22] || null,
-          loss_reason: values[23] || null,
-          drop_reason: values[24] || null,
+          modified_at: values[7] || new Date().toISOString(),
+          
+          // Discussions stage fields
+          customer_need_identified: values[8]?.toLowerCase() === 'yes',
+          need_summary: values[9] || null,
+          decision_maker_present: values[10]?.toLowerCase() === 'yes',
+          customer_agreed_on_need: values[11] || null,
+          discussion_notes: values[12] || null,
+          
+          // Qualified stage fields
+          nda_signed: values[13]?.toLowerCase() === 'yes',
+          budget_confirmed: values[14] || null,
+          supplier_portal_access: values[15] || null,
+          expected_deal_timeline_start: values[16] || null,
+          expected_deal_timeline_end: values[17] || null,
+          budget_holder: values[18] || null,
+          decision_makers: values[19] || null,
+          timeline: values[20] || null,
+          supplier_portal_required: values[21]?.toLowerCase() === 'yes',
+          
+          // RFQ stage fields
+          rfq_value: values[22] ? parseFloat(values[22]) : null,
+          rfq_document_url: values[23] || null,
+          rfq_document_link: values[24] || null,
+          product_service_scope: values[25] || null,
+          rfq_confirmation_note: values[26] || null,
+          
+          // Offered stage fields
+          proposal_sent_date: values[27] || null,
+          negotiation_status: values[28] || null,
+          decision_expected_date: values[29] || null,
+          offer_sent_date: values[30] || null,
+          revised_offer_notes: values[31] || null,
+          negotiation_notes: values[32] || null,
+          
+          // Final stage fields
+          win_reason: values[33] || null,
+          loss_reason: values[34] || null,
+          lost_to: values[35] || null,
+          drop_reason: values[36] || null,
+          drop_summary: values[37] || null,
+          learning_summary: values[38] || null,
+          
+          // Execution fields
+          execution_started: values[39]?.toLowerCase() === 'yes',
+          begin_execution_date: values[40] || null,
+          confirmation_note: values[41] || null,
+          
+          // General fields
+          internal_notes: values[42] || null,
+          last_activity_time: values[43] || new Date().toISOString(),
+          related_lead_id: values[44] || null,
+          related_meeting_id: values[45] || null,
+          created_at: values[46] || new Date().toISOString(),
+          
           created_by: user.id,
           modified_by: user.id
         };
