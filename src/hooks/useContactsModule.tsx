@@ -54,46 +54,26 @@ export const useContactsModule = () => {
         if (contact.modified_by) userIds.add(contact.modified_by);
       });
 
-      // Fetch user data from Supabase Auth admin API
+      // Fetch user display names using edge function
       const userMap = new Map<string, string>();
       
       try {
-        const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
-        
-        if (usersError) {
-          console.error('Error fetching auth users:', usersError);
-        } else if (users) {
-          users.forEach((user: any) => {
-            if (userIds.has(user.id)) {
-              // Get display name from user metadata or format from email
-              let displayName = user.user_metadata?.full_name || user.user_metadata?.name;
-              
-              if (!displayName && user.email) {
-                // Convert email to display name (e.g., peter.jakobsson@company.com -> Peter Jakobsson)
-                const emailName = user.email.split('@')[0];
-                displayName = emailName
-                  .split('.')
-                  .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-                  .join(' ');
-              }
-              
-              userMap.set(user.id, displayName || 'Unknown User');
-            }
+        const { data, error } = await supabase.functions.invoke('get-user-display-names', {
+          body: { userIds: Array.from(userIds) }
+        });
+
+        if (error) {
+          console.error('Error fetching user display names:', error);
+        } else if (data?.userDisplayNames) {
+          Object.entries(data.userDisplayNames).forEach(([userId, displayName]) => {
+            userMap.set(userId, displayName as string);
           });
         }
-      } catch (authError) {
-        console.error('Error accessing auth admin API:', authError);
-        // Fallback: create display names from email addresses stored in the contact data
-        contactsData.forEach(contact => {
-          if (contact.contact_owner && !userMap.has(contact.contact_owner)) {
-            userMap.set(contact.contact_owner, 'Unknown User');
-          }
-          if (contact.created_by && !userMap.has(contact.created_by)) {
-            userMap.set(contact.created_by, 'Unknown User');
-          }
-          if (contact.modified_by && !userMap.has(contact.modified_by)) {
-            userMap.set(contact.modified_by, 'Unknown User');
-          }
+      } catch (functionError) {
+        console.error('Error calling get-user-display-names function:', functionError);
+        // Fallback: create placeholder names
+        userIds.forEach(userId => {
+          userMap.set(userId, 'Unknown User');
         });
       }
       
