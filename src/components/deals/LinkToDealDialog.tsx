@@ -44,14 +44,21 @@ const LinkToDealDialog = ({ open, onOpenChange, meetingId, meetingTitle, onSucce
           
           // Fetch lead owner if exists
           if (leads.contact_owner) {
-            const { data: owner, error: ownerError } = await supabase
-              .from('profiles')
-              .select('id, full_name')
-              .eq('id', leads.contact_owner)
-              .single();
+            try {
+              const { data, error } = await supabase.functions.invoke('get-user-display-names', {
+                body: { userIds: [leads.contact_owner] }
+              });
 
-            if (!ownerError && owner) {
-              setLeadOwner(owner);
+              if (error) {
+                console.error('Error fetching user display name:', error);
+              } else if (data?.userDisplayNames?.[leads.contact_owner]) {
+                setLeadOwner({
+                  id: leads.contact_owner,
+                  full_name: data.userDisplayNames[leads.contact_owner]
+                });
+              }
+            } catch (functionError) {
+              console.error('Error calling get-user-display-names function:', functionError);
             }
           }
         }
