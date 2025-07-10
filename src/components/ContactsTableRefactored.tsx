@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowUpDown, ArrowUp, ArrowDown, Edit, Trash2, Plus, Users, ArrowRight } from 'lucide-react';
-import { formatUserDisplayName } from '@/utils/userDisplayName';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -104,9 +103,9 @@ const ContactsTableRefactored = ({
           >
             {value || '-'}
           </button>
-           <div className="text-xs text-gray-500">
-             Created by: {formatUserDisplayName(contact.created_by_name)}
-           </div>
+          <div className="text-xs text-gray-500">
+            Created by: {contact.created_by_name || 'Unknown User'}
+          </div>
         </div>
       );
     }
@@ -120,7 +119,7 @@ const ContactsTableRefactored = ({
     }
     
     if (columnKey === 'contact_owner') {
-      return formatUserDisplayName(contact.contact_owner_name);
+      return contact.contact_owner_name || 'Unknown User';
     }
     
     if (columnKey === 'annual_revenue' && value) {

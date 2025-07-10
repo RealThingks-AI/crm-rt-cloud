@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Plus } from 'lucide-react';
 import ContactsTableActions from '@/components/ContactsTableActions';
 import { ContactColumn } from '@/components/ContactColumnCustomizer';
-import { formatUserDisplayName } from '@/utils/userDisplayName';
 
 interface Contact {
   id: string;
@@ -80,9 +79,9 @@ const ContactsTableWithActions = ({
           >
             {value as string || '-'}
           </button>
-           <div className="text-xs text-gray-500">
-             Created by: {formatUserDisplayName(contact.created_by_name)}
-           </div>
+          <div className="text-xs text-gray-500">
+            Created by: {contact.created_by_name || 'Unknown User'}
+          </div>
         </div>
       );
     }
@@ -95,9 +94,9 @@ const ContactsTableWithActions = ({
       );
     }
     
-     if (column.key === 'contact_owner') {
-       return formatUserDisplayName(contact.contact_owner_name);
-     }
+    if (column.key === 'contact_owner') {
+      return contact.contact_owner_name || 'Unknown User';
+    }
     
     if (column.key === 'annual_revenue' && value) {
       return `$${(value as number).toLocaleString()}`;

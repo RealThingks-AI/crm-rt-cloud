@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import GenericTable from '@/components/GenericTable';
 import { LeadColumn } from '@/components/LeadColumnCustomizer';
-import { formatUserDisplayName } from '@/utils/userDisplayName';
 
 interface Lead {
   id: string;
@@ -94,7 +93,7 @@ const LeadsTableRefactored = ({
     }
     
     if (columnKey === 'lead_owner_name') {
-      return formatUserDisplayName(lead.contact_owner);
+      return value || 'Unknown User';
     }
     
     return value || '-';
