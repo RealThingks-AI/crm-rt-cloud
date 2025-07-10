@@ -72,18 +72,12 @@ export const useContactsModule = () => {
         });
       }
       
-      // Transform the contacts data to include display names
+      // Transform the contacts data to include display names using the global utility
       const transformedContacts = contactsData.map(contact => ({
         ...contact,
-        contact_owner_name: contact.contact_owner ? 
-                           (userMap.get(contact.contact_owner) || 'Unknown User') : 
-                           'Unknown User',
-        created_by_name: contact.created_by ? 
-                        (userMap.get(contact.created_by) || 'Unknown User') : 
-                        'Unknown User',
-        modified_by_name: contact.modified_by ? 
-                         (userMap.get(contact.modified_by) || 'Unknown User') : 
-                         'Unknown User'
+        contact_owner_name: userMap.get(contact.contact_owner) || contact.contact_owner || 'Unknown User',
+        created_by_name: userMap.get(contact.created_by) || contact.created_by || 'Unknown User',
+        modified_by_name: userMap.get(contact.modified_by) || contact.modified_by || 'Unknown User'
       })) as Contact[];
       
       setContacts(transformedContacts);

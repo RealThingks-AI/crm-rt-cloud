@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { formatUserDisplayName } from '@/utils/userDisplayName';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -93,9 +94,9 @@ const ContactsTable = ({
           >
             {value || '-'}
           </button>
-          <div className="text-xs text-gray-500">
-            Created by: {contact.created_by_name || 'Unknown User'}
-          </div>
+           <div className="text-xs text-gray-500">
+             Created by: {formatUserDisplayName(contact.created_by_name)}
+           </div>
         </div>
       );
     }
@@ -109,7 +110,7 @@ const ContactsTable = ({
     }
     
     if (columnKey === 'contact_owner') {
-      return contact.contact_owner_name || 'Unknown User';
+      return formatUserDisplayName(contact.contact_owner_name);
     }
     
     if (columnKey === 'annual_revenue' && value) {

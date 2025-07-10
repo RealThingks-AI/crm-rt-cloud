@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import GenericTable from '@/components/GenericTable';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { formatUserDisplayName } from '@/utils/userDisplayName';
 
 interface MeetingColumn {
   key: string;
@@ -134,7 +135,7 @@ const MeetingsTableRefactored = ({
         value = meeting.updated_at ? new Date(meeting.updated_at).toLocaleString() : '-';
         break;
       case 'created_by':
-        value = meeting.created_by;
+        return formatUserDisplayName(meeting.created_by);
         break;
       default:
         // For any other column, try to access it safely

@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { Activity, Calendar, HandCoins, Users } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { formatUserDisplayName } from '@/utils/userDisplayName';
 
 interface FeedItem {
   id: string;
@@ -25,82 +26,98 @@ const Feeds = () => {
     try {
       const feeds: FeedItem[] = [];
 
-      // Fetch recent contacts
+      // Fetch recent contacts with user profiles
       const { data: contacts } = await supabase
         .from('contacts')
-        .select('id, contact_name, created_time, created_by')
+        .select(`
+          id, contact_name, created_time, created_by,
+          profiles!contacts_created_by_fkey(full_name, "Email ID")
+        `)
         .order('created_time', { ascending: false })
         .limit(5);
 
       if (contacts) {
         contacts.forEach(contact => {
+          const userEmail = (contact as any).profiles?.["Email ID"] || contact.created_by;
           feeds.push({
             id: `contact-${contact.id}`,
             type: 'contact',
             title: 'New Contact Added',
             description: `${contact.contact_name} was added to the system`,
             timestamp: contact.created_time,
-            user: 'System'
+            user: formatUserDisplayName(userEmail)
           });
         });
       }
 
-      // Fetch recent leads
+      // Fetch recent leads with user profiles
       const { data: leads } = await supabase
         .from('leads')
-        .select('id, lead_name, created_time, created_by')
+        .select(`
+          id, lead_name, created_time, created_by,
+          profiles!leads_created_by_fkey(full_name, "Email ID")
+        `)
         .order('created_time', { ascending: false })
         .limit(5);
 
       if (leads) {
         leads.forEach(lead => {
+          const userEmail = (lead as any).profiles?.["Email ID"] || lead.created_by;
           feeds.push({
             id: `lead-${lead.id}`,
             type: 'lead',
             title: 'New Lead Generated',
             description: `${lead.lead_name} was added as a lead`,
             timestamp: lead.created_time,
-            user: 'System'
+            user: formatUserDisplayName(userEmail)
           });
         });
       }
 
-      // Fetch recent deals
+      // Fetch recent deals with user profiles
       const { data: deals } = await supabase
         .from('deals')
-        .select('id, deal_name, stage, created_at, created_by')
+        .select(`
+          id, deal_name, stage, created_at, created_by,
+          profiles!deals_created_by_fkey(full_name, "Email ID")
+        `)
         .order('created_at', { ascending: false })
         .limit(5);
 
       if (deals) {
         deals.forEach(deal => {
+          const userEmail = (deal as any).profiles?.["Email ID"] || deal.created_by;
           feeds.push({
             id: `deal-${deal.id}`,
             type: 'deal',
             title: 'Deal Updated',
             description: `${deal.deal_name} moved to ${deal.stage} stage`,
             timestamp: deal.created_at,
-            user: 'Current User'
+            user: formatUserDisplayName(userEmail)
           });
         });
       }
 
-      // Fetch recent meetings - using correct column names
+      // Fetch recent meetings with user profiles
       const { data: meetings } = await supabase
         .from('meetings')
-        .select('id, meeting_title, start_time, created_at, created_by')
+        .select(`
+          id, meeting_title, start_time, created_at, created_by,
+          profiles!meetings_created_by_fkey(full_name, "Email ID")
+        `)
         .order('created_at', { ascending: false })
         .limit(5);
 
       if (meetings) {
         meetings.forEach(meeting => {
+          const userEmail = (meeting as any).profiles?.["Email ID"] || meeting.created_by;
           feeds.push({
             id: `meeting-${meeting.id}`,
             type: 'meeting',
             title: 'Meeting Scheduled',
             description: `${meeting.meeting_title} scheduled for ${new Date(meeting.start_time).toLocaleDateString()}`,
             timestamp: meeting.created_at,
-            user: 'Current User'
+            user: formatUserDisplayName(userEmail)
           });
         });
       }
