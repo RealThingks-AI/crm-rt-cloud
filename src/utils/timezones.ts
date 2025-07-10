@@ -59,26 +59,39 @@ export const MAJOR_TIMEZONES: TimezoneOption[] = [
 export const getUserTimezone = (): string => {
   try {
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    console.log('Detected user timezone:', userTimezone);
     
     // Check if user's timezone matches any of our major timezones
     const matchingTimezone = MAJOR_TIMEZONES.find(tz => tz.value === userTimezone);
     
     if (matchingTimezone) {
+      console.log('Found exact match:', matchingTimezone);
       return userTimezone;
     }
     
-    // If no exact match, try to find a similar one based on offset
+    // If no exact match, try to find a similar one based on offset and location
     const now = new Date();
     const userOffset = -now.getTimezoneOffset() / 60;
+    console.log('User offset in hours:', userOffset);
+    
+    // For India, specifically look for IST if offset matches
+    if (userOffset === 5.5) {
+      const istTimezone = MAJOR_TIMEZONES.find(tz => tz.value === 'Asia/Kolkata');
+      if (istTimezone) {
+        console.log('Setting timezone to IST for +5:30 offset');
+        return istTimezone.value;
+      }
+    }
     
     // Find timezone with closest offset
     const closestTimezone = MAJOR_TIMEZONES.reduce((closest, tz) => {
-      const tzOffset = parseFloat(tz.offset.replace(':', '.'));
-      const currentOffset = parseFloat(closest.offset.replace(':', '.'));
+      const tzOffset = parseFloat(tz.offset.replace(':', '.').replace('+', ''));
+      const currentOffset = parseFloat(closest.offset.replace(':', '.').replace('+', ''));
       
       return Math.abs(tzOffset - userOffset) < Math.abs(currentOffset - userOffset) ? tz : closest;
     });
     
+    console.log('Selected closest timezone:', closestTimezone);
     return closestTimezone.value;
   } catch (error) {
     console.error('Error detecting user timezone:', error);
