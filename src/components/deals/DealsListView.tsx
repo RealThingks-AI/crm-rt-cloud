@@ -145,14 +145,22 @@ const DealsListView = ({ deals, onEdit, onDelete }: DealsListViewProps) => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => onEdit(deal)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onEdit(deal);
+                      }}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => onDelete(deal.id)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onDelete(deal.id);
+                      }}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

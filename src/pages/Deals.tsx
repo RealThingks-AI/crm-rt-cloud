@@ -3,17 +3,76 @@ import { useState } from 'react';
 import { Plus, LayoutGrid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 import KanbanBoard from '@/components/deals/KanbanBoard';
 import DealsListView from '@/components/deals/DealsListView';
 import DealsStats from '@/components/deals/DealsStats';
 import AddDealDialog from '@/components/deals/AddDealDialog';
+import EditDealDialog from '@/components/deals/EditDealDialog';
 import DealsImportExport from '@/components/deals/DealsImportExport';
-import { useDeals } from '@/hooks/useDeals';
+import { useDeals, type Deal } from '@/hooks/useDeals';
 
 const Deals = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [dealToDelete, setDealToDelete] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [isDeleting, setIsDeleting] = useState(false);
   const { deals, loading, refetchDeals } = useDeals();
+
+  const handleEditDeal = (deal: Deal) => {
+    console.log('Edit deal:', deal);
+    setSelectedDeal(deal);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDeleteDeal = (dealId: string) => {
+    console.log('Delete deal:', dealId);
+    setDealToDelete(dealId);
+  };
+
+  const confirmDelete = async () => {
+    if (!dealToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('deals')
+        .delete()
+        .eq('id', dealToDelete);
+
+      if (error) throw error;
+
+      toast({
+        title: "Deal deleted",
+        description: "Deal has been successfully deleted.",
+      });
+      
+      refetchDeals();
+    } catch (error: any) {
+      console.error('Error deleting deal:', error);
+      toast({
+        variant: "destructive",
+        title: "Error deleting deal",
+        description: error.message,
+      });
+    } finally {
+      setIsDeleting(false);
+      setDealToDelete(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -80,14 +139,8 @@ const Deals = () => {
       ) : (
         <DealsListView 
           deals={deals} 
-          onEdit={(deal) => {
-            // TODO: Implement edit functionality
-            console.log('Edit deal:', deal);
-          }}
-          onDelete={(dealId) => {
-            // TODO: Implement delete functionality
-            console.log('Delete deal:', dealId);
-          }}
+          onEdit={handleEditDeal}
+          onDelete={handleDeleteDeal}
         />
       )}
 
@@ -100,6 +153,45 @@ const Deals = () => {
           setIsAddDialogOpen(false);
         }}
       />
+
+      {/* Edit Deal Dialog */}
+      {selectedDeal && (
+        <EditDealDialog
+          deal={selectedDeal}
+          open={isEditDialogOpen}
+          onOpenChange={(open) => {
+            setIsEditDialogOpen(open);
+            if (!open) setSelectedDeal(null);
+          }}
+          onSuccess={() => {
+            refetchDeals();
+            setIsEditDialogOpen(false);
+            setSelectedDeal(null);
+          }}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!dealToDelete} onOpenChange={() => setDealToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Deal</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this deal? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
