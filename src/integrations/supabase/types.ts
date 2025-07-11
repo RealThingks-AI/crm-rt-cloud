@@ -536,6 +536,33 @@ export type Database = {
         }
         Relationships: []
       }
+      roles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          permissions: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          permissions?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          permissions?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           email: string
@@ -574,6 +601,7 @@ export type Database = {
           created_at: string | null
           id: string
           role: Database["public"]["Enums"]["user_role"]
+          role_id: string
           updated_at: string | null
           user_id: string
         }
@@ -581,6 +609,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["user_role"]
+          role_id: string
           updated_at?: string | null
           user_id: string
         }
@@ -588,10 +617,18 @@ export type Database = {
           created_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["user_role"]
+          role_id?: string
           updated_at?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_roles_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_roles_user_id_fkey"
             columns: ["user_id"]
