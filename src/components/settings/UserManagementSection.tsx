@@ -247,6 +247,23 @@ const UserManagementSection = () => {
     }
   };
 
+  const handleSyncUsers = async () => {
+    try {
+      await callUserAdminFunction('syncUsers');
+      toast({
+        title: "Sync completed",
+        description: "User data synced with Supabase Auth",
+      });
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: "Sync failed",
+        description: error.message || "Failed to sync users",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDeleteUser = (userId: string) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       deleteUserMutation.mutate(userId);
@@ -339,6 +356,10 @@ const UserManagementSection = () => {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleSyncUsers}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Sync with Auth
+            </Button>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
