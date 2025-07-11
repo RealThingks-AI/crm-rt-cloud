@@ -81,14 +81,14 @@ const MeetingsCardView = ({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {meetings.map((meeting) => (
         <Card 
           key={meeting.id} 
-          className="hover:shadow-md transition-shadow cursor-pointer" 
+          className="hover:shadow-md transition-shadow cursor-pointer h-80 w-full flex flex-col" 
           onClick={() => onEditMeeting(meeting)}
         >
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 flex-shrink-0">
             <div className="flex items-start justify-between">
               <div className="flex items-start space-x-2 flex-1">
                 <Checkbox
@@ -131,17 +131,17 @@ const MeetingsCardView = ({
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-2 pt-0">
+          <CardContent className="space-y-2 pt-0 flex-1 flex flex-col overflow-hidden">
             {/* Date and Time */}
             <div className="flex items-center space-x-2 text-xs text-gray-600">
-              <Calendar className="h-3 w-3" />
-              <span>{formatDateTime(meeting.date, meeting.start_time)}</span>
+              <Calendar className="h-3 w-3 flex-shrink-0" />
+              <span className="truncate">{formatDateTime(meeting.date, meeting.start_time)}</span>
             </div>
 
             {/* Duration and Location */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-1">
-                <Clock className="h-3 w-3 text-gray-600" />
+                <Clock className="h-3 w-3 text-gray-600 flex-shrink-0" />
                 <Badge variant="secondary" className={`${getDurationColor(meeting.duration)} text-xs px-1 py-0.5`}>
                   {meeting.duration}
                 </Badge>
@@ -152,25 +152,35 @@ const MeetingsCardView = ({
               </div>
             </div>
 
-            {/* Organizer */}
+            {/* Organizer - Show Display Name */}
             {meeting.organizer_name && (
               <div className="flex items-center space-x-1 text-xs text-gray-600">
-                <User className="h-3 w-3" />
+                <User className="h-3 w-3 flex-shrink-0" />
                 <span className="font-medium truncate">{meeting.organizer_name}</span>
               </div>
             )}
 
-            {/* Participants */}
+            {/* Participants - Always show all participants */}
             {meeting.participants && meeting.participants.length > 0 && (
-              <div className="flex items-center space-x-1 text-xs text-gray-600">
-                <Users className="h-3 w-3" />
-                <span>{meeting.participants.length} participant{meeting.participants.length !== 1 ? 's' : ''}</span>
+              <div className="flex-1 min-h-0">
+                <div className="flex items-center space-x-1 text-xs font-medium text-gray-700 mb-1">
+                  <Users className="h-3 w-3 flex-shrink-0" />
+                  <span>Participants ({meeting.participants.length})</span>
+                </div>
+                <div className="space-y-1 overflow-y-auto max-h-20">
+                  {meeting.participants.map((participant, index) => (
+                    <div key={index} className="text-xs text-gray-600 flex items-center space-x-1">
+                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0"></div>
+                      <span className="truncate">{participant}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
             {/* Teams Link */}
             {meeting.teams_link && (
-              <div className="pt-1">
+              <div className="pt-1 mt-auto">
                 <Button
                   variant="outline"
                   size="sm"
