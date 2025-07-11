@@ -2,6 +2,7 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useCurrentUserRole } from '@/hooks/useCurrentUserRole';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { Button } from '@/components/ui/button';
 import { 
   Home, 
@@ -21,6 +22,7 @@ import { useState } from 'react';
 const Layout = () => {
   const { signOut } = useAuth();
   const { isAdmin, role, isLoading } = useCurrentUserRole();
+  const { displayName, loading: profileLoading } = useUserProfile();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -93,19 +95,30 @@ const Layout = () => {
             })}
           </nav>
           
-          <div className="p-4 border-t">
+          <div className="p-4 border-t space-y-3">
+            {/* Display Name */}
+            {!profileLoading && displayName && (
+              <div className="px-3 py-2 text-sm text-gray-700 bg-gray-50 rounded-md">
+                <div className="font-medium">{displayName}</div>
+              </div>
+            )}
+            
+            {/* Admin Badge */}
             {!isLoading && isAdmin && (
-              <div className="mb-3 flex items-center px-3 py-2 text-xs bg-green-100 text-green-800 rounded-md">
+              <div className="flex items-center px-3 py-2 text-xs bg-green-100 text-green-800 rounded-md">
                 <Shield className="mr-2 h-3 w-3" />
                 Admin Access
               </div>
             )}
+            
+            {/* Sign Out Button */}
             <Button
               variant="outline"
+              size="sm"
               className="w-full justify-start"
               onClick={handleSignOut}
             >
-              <LogOut className="mr-3 h-4 w-4" />
+              <LogOut className="mr-2 h-3 w-3" />
               Sign Out
             </Button>
           </div>
