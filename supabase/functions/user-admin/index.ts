@@ -182,18 +182,35 @@ serve(async (req) => {
         
         console.log('Deleting user:', userId);
         
-        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+        try {
+          const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
-        if (deleteError) {
-          console.error('Error deleting user:', deleteError);
-          throw deleteError;
+          if (deleteError) {
+            console.error('Error deleting user:', deleteError);
+            return new Response(JSON.stringify({ 
+              error: `Failed to delete user: ${deleteError.message}`,
+              details: deleteError
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+
+          console.log('User deleted successfully');
+
+          return new Response(JSON.stringify({ success: true }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        } catch (error) {
+          console.error('Unexpected error during user deletion:', error);
+          return new Response(JSON.stringify({ 
+            error: `Unexpected error: ${error.message}`,
+            details: error
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
         }
-
-        console.log('User deleted successfully');
-
-        return new Response(JSON.stringify({ success: true }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
       }
 
       case 'changeRole': {
