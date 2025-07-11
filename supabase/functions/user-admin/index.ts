@@ -204,19 +204,25 @@ serve(async (req) => {
         // Get current user metadata
         const { data: currentUserData, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
         if (getUserError) {
+          console.error('Error getting user:', getUserError);
           throw getUserError;
         }
 
+        console.log('Current user data:', JSON.stringify(currentUserData.user, null, 2));
+
         const currentMetadata = currentUserData.user?.user_metadata || {};
+        const updatedMetadata = {
+          ...currentMetadata,
+          role: role
+        };
+        
+        console.log('Updating user metadata to:', JSON.stringify(updatedMetadata, null, 2));
         
         // Update user role in user_metadata
         const { data: updatedUser, error: roleUpdateError } = await supabaseAdmin.auth.admin.updateUserById(
           userId,
           {
-            user_metadata: {
-              ...currentMetadata,
-              role: role
-            }
+            user_metadata: updatedMetadata
           }
         );
 
@@ -225,7 +231,7 @@ serve(async (req) => {
           throw roleUpdateError;
         }
 
-        console.log('Role change completed successfully');
+        console.log('Role change completed successfully. Updated user:', JSON.stringify(updatedUser.user, null, 2));
 
         return new Response(JSON.stringify({ success: true, user: updatedUser.user }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
