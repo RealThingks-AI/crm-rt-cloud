@@ -16,17 +16,18 @@ export const useCurrentUserRole = () => {
       }
 
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-
+        // Get the current user's metadata which contains the role
+        const { data: { user: currentUser }, error } = await supabase.auth.getUser();
+        
         if (error) {
-          console.error('Error fetching user role:', error);
+          console.error('Error fetching current user:', error);
           setRole('member');
+        } else if (currentUser) {
+          // Check role from user_metadata
+          const userRole = currentUser.user_metadata?.role || 'member';
+          setRole(userRole);
         } else {
-          setRole(data?.role || 'member');
+          setRole('member');
         }
       } catch (error) {
         console.error('Error fetching user role:', error);

@@ -9,19 +9,21 @@ const corsHeaders = {
 interface DatabaseUser {
   id: string;
   email: string;
-  email_confirmed_at: string | null;
   phone: string | null;
+  email_confirmed_at: string | null;
   phone_confirmed_at: string | null;
   created_at: string;
   updated_at: string;
   last_sign_in_at: string | null;
   app_metadata: any;
   user_metadata: any;
-  aud: string;
-  role?: string;
+  role: string;
+  display_name: string;
 }
 
 serve(async (req) => {
+  console.log('User-admin function called');
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -46,7 +48,7 @@ serve(async (req) => {
       }
     );
 
-    // Get current user from auth header
+    // Get current user from auth header for permission checking
     const token = authHeader.replace('Bearer ', '');
     const { data: currentUser, error: userError } = await supabaseAdmin.auth.getUser(token);
     
@@ -65,9 +67,9 @@ serve(async (req) => {
 
     switch (action) {
       case 'listUsers': {
-        console.log('Listing users...');
+        console.log('Listing all users from auth.users...');
         
-        // Get users from auth.users
+        // Get users from auth.users with pagination
         const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
         
         if (listError) {
@@ -77,19 +79,22 @@ serve(async (req) => {
 
         console.log(`Found ${users.users?.length || 0} users`);
         
-        // Return users in the expected format
+        // Format users to include role from user_metadata
         const formattedUsers: DatabaseUser[] = users.users?.map(user => ({
           id: user.id,
           email: user.email || '',
-          email_confirmed_at: user.email_confirmed_at,
           phone: user.phone,
+          email_confirmed_at: user.email_confirmed_at,
           phone_confirmed_at: user.phone_confirmed_at,
           created_at: user.created_at,
           updated_at: user.updated_at,
           last_sign_in_at: user.last_sign_in_at,
           app_metadata: user.app_metadata,
           user_metadata: user.user_metadata,
-          aud: user.aud
+          role: user.user_metadata?.role || 'member',
+          display_name: user.user_metadata?.display_name || 
+                       user.user_metadata?.full_name || 
+                       user.email?.split('@')[0] || 'User'
         })) || [];
 
         return new Response(JSON.stringify(formattedUsers), {
@@ -106,9 +111,12 @@ serve(async (req) => {
           email,
           password,
           user_metadata: {
-            display_name: displayName,
+            display_name: displayName || email.split('@')[0],
+            full_name: displayName || email.split('@')[0],
+            role: role,
             email_verified: true
-          }
+          },
+          email_confirm: true
         });
 
         if (createError) {
@@ -116,41 +124,43 @@ serve(async (req) => {
           throw createError;
         }
 
-        // Create profile record with the specified role
-        if (newUser.user) {
-          const { error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .insert({
-              id: newUser.user.id,
-              full_name: displayName || email.split('@')[0],
-              'Email ID': email,
-              role: role
-            });
-
-          if (profileError) {
-            console.error('Error creating profile:', profileError);
-            // Don't throw here, as the user was created successfully
-            // The profile creation might fail due to trigger conflicts
-          }
-        }
-
         console.log('User created successfully:', newUser.user?.email);
 
-        return new Response(JSON.stringify({ success: true, user: newUser.user }), {
+        return new Response(JSON.stringify({ 
+          success: true, 
+          user: {
+            ...newUser.user,
+            role: role,
+            display_name: displayName || email.split('@')[0]
+          }
+        }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
       case 'updateUser': {
-        const { userId, displayName } = body;
+        const { userId, displayName, role } = body;
         
-        console.log('Updating user:', userId);
+        console.log('Updating user:', userId, 'displayName:', displayName, 'role:', role);
+        
+        // Get current user metadata
+        const { data: currentUserData, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (getUserError) {
+          throw getUserError;
+        }
+
+        const currentMetadata = currentUserData.user?.user_metadata || {};
         
         const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
           userId,
           {
             user_metadata: {
-              display_name: displayName
+              ...currentMetadata,
+              ...(displayName && { 
+                display_name: displayName, 
+                full_name: displayName 
+              }),
+              ...(role && { role: role })
             }
           }
         );
@@ -191,11 +201,24 @@ serve(async (req) => {
         
         console.log('Changing user role:', userId, 'to', role);
         
-        // Update user role in profiles table
-        const { error: roleUpdateError } = await supabaseAdmin
-          .from('profiles')
-          .update({ role: role })
-          .eq('id', userId);
+        // Get current user metadata
+        const { data: currentUserData, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (getUserError) {
+          throw getUserError;
+        }
+
+        const currentMetadata = currentUserData.user?.user_metadata || {};
+        
+        // Update user role in user_metadata
+        const { data: updatedUser, error: roleUpdateError } = await supabaseAdmin.auth.admin.updateUserById(
+          userId,
+          {
+            user_metadata: {
+              ...currentMetadata,
+              role: role
+            }
+          }
+        );
 
         if (roleUpdateError) {
           console.error('Error updating user role:', roleUpdateError);
@@ -204,7 +227,44 @@ serve(async (req) => {
 
         console.log('Role change completed successfully');
 
-        return new Response(JSON.stringify({ success: true }), {
+        return new Response(JSON.stringify({ success: true, user: updatedUser.user }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      case 'syncUsers': {
+        console.log('Syncing users - fetching latest from auth.users');
+        
+        // This endpoint can be used for real-time polling
+        const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+        
+        if (listError) {
+          console.error('Error syncing users:', listError);
+          throw listError;
+        }
+
+        const formattedUsers: DatabaseUser[] = users.users?.map(user => ({
+          id: user.id,
+          email: user.email || '',
+          phone: user.phone,
+          email_confirmed_at: user.email_confirmed_at,
+          phone_confirmed_at: user.phone_confirmed_at,
+          created_at: user.created_at,
+          updated_at: user.updated_at,
+          last_sign_in_at: user.last_sign_in_at,
+          app_metadata: user.app_metadata,
+          user_metadata: user.user_metadata,
+          role: user.user_metadata?.role || 'member',
+          display_name: user.user_metadata?.display_name || 
+                       user.user_metadata?.full_name || 
+                       user.email?.split('@')[0] || 'User'
+        })) || [];
+
+        return new Response(JSON.stringify({ 
+          success: true, 
+          users: formattedUsers,
+          lastSync: new Date().toISOString()
+        }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }

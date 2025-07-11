@@ -122,17 +122,15 @@ const UserManagementSection = () => {
   // Ensure users is always an array
   const users = Array.isArray(usersResponse) ? usersResponse : [];
 
-  // Fetch user profiles to get roles and display names
-  const { data: profiles = [] } = useQuery({
-    queryKey: ['user-profiles'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, role');
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Add real-time sync with polling every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('Auto-syncing users from auth.users...');
+      refetch();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [refetch]);
 
   // Create user mutation
   const createUserMutation = useMutation({
@@ -286,13 +284,15 @@ const UserManagementSection = () => {
   };
 
   const getUserRole = (userId: string) => {
-    const profile = profiles.find(p => p.id === userId);
-    return profile?.role || 'member';
+    const user = users.find(u => u.id === userId);
+    return user?.user_metadata?.role || user?.role || 'member';
   };
 
   const getDisplayName = (user: AuthUser) => {
-    const profile = profiles.find(p => p.id === user.id);
-    return profile?.full_name || user.user_metadata?.display_name || user.email || 'N/A';
+    return user.user_metadata?.display_name || 
+           user.user_metadata?.full_name || 
+           user.email?.split('@')[0] || 
+           'N/A';
   };
 
   const formatDate = (dateString: string | null) => {
