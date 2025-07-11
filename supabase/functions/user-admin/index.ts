@@ -36,10 +36,23 @@ serve(async (req) => {
       throw new Error('No authorization header');
     }
 
+    // Log environment variables to verify project connection
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    
+    console.log('Supabase URL:', supabaseUrl);
+    console.log('Service Role Key prefix:', serviceRoleKey.substring(0, 20) + '...');
+    
+    // Verify we're connecting to the correct project (npvldkoyvrxsuonuilbx)
+    if (!supabaseUrl.includes('npvldkoyvrxsuonuilbx')) {
+      console.error('WRONG PROJECT! Expected npvldkoyvrxsuonuilbx but got:', supabaseUrl);
+      throw new Error(`Wrong Supabase project. Expected npvldkoyvrxsuonuilbx but connecting to: ${supabaseUrl}`);
+    }
+
     // Create Supabase admin client
     const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      supabaseUrl,
+      serviceRoleKey,
       {
         auth: {
           autoRefreshToken: false,
