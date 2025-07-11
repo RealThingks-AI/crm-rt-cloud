@@ -95,32 +95,23 @@ const Layout = () => {
             })}
           </nav>
           
-          <div className="p-4 border-t space-y-3">
-            {/* Display Name */}
-            {!profileLoading && displayName && (
-              <div className="px-3 py-2 text-sm text-gray-700 bg-gray-50 rounded-md">
-                <div className="font-medium">{displayName}</div>
+          <div className="p-4 border-t">
+            <div className="flex items-center justify-between">
+              {/* Display Name */}
+              <div className="text-sm font-medium text-gray-700">
+                {!profileLoading && displayName ? displayName : 'User'}
               </div>
-            )}
-            
-            {/* Admin Badge */}
-            {!isLoading && isAdmin && (
-              <div className="flex items-center px-3 py-2 text-xs bg-green-100 text-green-800 rounded-md">
-                <Shield className="mr-2 h-3 w-3" />
-                Admin Access
-              </div>
-            )}
-            
-            {/* Sign Out Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full justify-start"
-              onClick={handleSignOut}
-            >
-              <LogOut className="mr-2 h-3 w-3" />
-              Sign Out
-            </Button>
+              
+              {/* Sign Out Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSignOut}
+                className="h-8 px-3"
+              >
+                <LogOut className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
