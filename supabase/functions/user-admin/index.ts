@@ -193,32 +193,63 @@ serve(async (req) => {
       case 'deleteUser': {
         const { userId } = body;
         
-        console.log('Deleting user:', userId);
+        console.log('=== DELETE USER DEBUG START ===');
+        console.log('Deleting user ID:', userId);
+        console.log('Supabase URL being used:', supabaseUrl);
+        console.log('Current time:', new Date().toISOString());
         
         try {
+          // First, try to get the user to verify it exists
+          console.log('Step 1: Checking if user exists...');
+          const { data: userData, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
+          
+          if (getUserError) {
+            console.error('Error getting user before delete:', getUserError);
+            return new Response(JSON.stringify({ 
+              error: `User not found or access denied: ${getUserError.message}`,
+              details: getUserError,
+              step: 'getUserById'
+            }), {
+              status: 404,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+          
+          console.log('Step 2: User found, attempting deletion...');
+          console.log('User to delete:', userData.user?.email);
+          
           const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
           if (deleteError) {
             console.error('Error deleting user:', deleteError);
             return new Response(JSON.stringify({ 
               error: `Failed to delete user: ${deleteError.message}`,
-              details: deleteError
+              details: deleteError,
+              step: 'deleteUser'
             }), {
               status: 400,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
           }
 
-          console.log('User deleted successfully');
+          console.log('Step 3: User deleted successfully');
+          console.log('=== DELETE USER DEBUG END ===');
 
           return new Response(JSON.stringify({ success: true }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         } catch (error) {
-          console.error('Unexpected error during user deletion:', error);
+          console.error('=== UNEXPECTED ERROR DURING USER DELETION ===');
+          console.error('Error type:', typeof error);
+          console.error('Error message:', error.message);
+          console.error('Error stack:', error.stack);
+          console.error('Full error object:', error);
+          console.log('=== DELETE USER DEBUG END ===');
+          
           return new Response(JSON.stringify({ 
             error: `Unexpected error: ${error.message}`,
-            details: error
+            details: error,
+            step: 'unexpected'
           }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
