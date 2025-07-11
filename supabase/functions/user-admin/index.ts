@@ -100,7 +100,7 @@ serve(async (req) => {
       case 'createUser': {
         const { email, password, displayName, role = 'member' } = body;
         
-        console.log('Creating user:', email);
+        console.log('Creating user:', email, 'with role:', role);
         
         const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
           email,
@@ -114,6 +114,24 @@ serve(async (req) => {
         if (createError) {
           console.error('Error creating user:', createError);
           throw createError;
+        }
+
+        // Create profile record with the specified role
+        if (newUser.user) {
+          const { error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .insert({
+              id: newUser.user.id,
+              full_name: displayName || email.split('@')[0],
+              'Email ID': email,
+              role: role
+            });
+
+          if (profileError) {
+            console.error('Error creating profile:', profileError);
+            // Don't throw here, as the user was created successfully
+            // The profile creation might fail due to trigger conflicts
+          }
         }
 
         console.log('User created successfully:', newUser.user?.email);
@@ -173,9 +191,18 @@ serve(async (req) => {
         
         console.log('Changing user role:', userId, 'to', role);
         
-        // For now, just return success since we don't have role management in the clean schema
-        // This can be extended later when role management is needed
-        console.log('Role change completed (no-op in current schema)');
+        // Update user role in profiles table
+        const { error: roleUpdateError } = await supabaseAdmin
+          .from('profiles')
+          .update({ role: role })
+          .eq('id', userId);
+
+        if (roleUpdateError) {
+          console.error('Error updating user role:', roleUpdateError);
+          throw roleUpdateError;
+        }
+
+        console.log('Role change completed successfully');
 
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }

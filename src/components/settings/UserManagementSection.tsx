@@ -122,13 +122,13 @@ const UserManagementSection = () => {
   // Ensure users is always an array
   const users = Array.isArray(usersResponse) ? usersResponse : [];
 
-  // Fetch user profiles to get roles
+  // Fetch user profiles to get roles and display names
   const { data: profiles = [] } = useQuery({
     queryKey: ['user-profiles'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name');
+        .select('id, full_name, role');
       if (error) throw error;
       return data;
     },
@@ -286,12 +286,13 @@ const UserManagementSection = () => {
   };
 
   const getUserRole = (userId: string) => {
-    // For now, return 'member' as default since role column doesn't exist yet
-    return 'member';
+    const profile = profiles.find(p => p.id === userId);
+    return profile?.role || 'member';
   };
 
   const getDisplayName = (user: AuthUser) => {
-    return user.user_metadata?.display_name || user.email || 'N/A';
+    const profile = profiles.find(p => p.id === user.id);
+    return profile?.full_name || user.user_metadata?.display_name || user.email || 'N/A';
   };
 
   const formatDate = (dateString: string | null) => {
