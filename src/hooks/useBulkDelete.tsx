@@ -37,6 +37,20 @@ export const useBulkDelete = ({ tableName, onRefresh, clearSelection }: UseBulkD
 
         if (error) {
           console.error(`Supabase delete error for batch in ${tableName}:`, error);
+          
+          // For specific foreign key errors, provide more helpful messages
+          if (error.code === '23503') {
+            const errorMsg = error.message.includes('deals') 
+              ? 'Cannot delete lead(s) - they are referenced by existing deals. Please update or delete the related deals first.'
+              : 'Cannot delete - record(s) are referenced by other data.';
+            
+            toast({
+              variant: "destructive", 
+              title: "Delete failed",
+              description: errorMsg,
+            });
+          }
+          
           hasError = true;
           // Continue with other batches instead of throwing
         } else {
