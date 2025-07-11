@@ -81,19 +81,24 @@ const MeetingsCardView = ({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {meetings.map((meeting) => (
-        <Card key={meeting.id} className="hover:shadow-md transition-shadow">
-          <CardHeader className="pb-3">
+        <Card 
+          key={meeting.id} 
+          className="hover:shadow-md transition-shadow cursor-pointer" 
+          onClick={() => onEditMeeting(meeting)}
+        >
+          <CardHeader className="pb-2">
             <div className="flex items-start justify-between">
-              <div className="flex items-start space-x-3 flex-1">
+              <div className="flex items-start space-x-2 flex-1">
                 <Checkbox
                   checked={selectedItems.includes(meeting.id)}
                   onCheckedChange={() => onToggleSelect(meeting.id)}
+                  onClick={(e) => e.stopPropagation()}
                   className="mt-1"
                 />
                 <div className="flex-1 min-w-0">
-                  <CardTitle className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+                  <CardTitle className="text-sm font-semibold text-gray-900 mb-1 line-clamp-2">
                     {meeting.meeting_title}
                   </CardTitle>
                 </div>
@@ -102,98 +107,81 @@ const MeetingsCardView = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onEditMeeting(meeting)}
-                  className="h-8 w-8 p-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditMeeting(meeting);
+                  }}
+                  className="h-6 w-6 p-0"
                 >
-                  <Edit className="h-4 w-4" />
+                  <Edit className="h-3 w-3" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onDeleteMeeting(meeting.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteMeeting(meeting.id);
+                  }}
                   disabled={isDeleting}
-                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                  className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-2 pt-0">
             {/* Date and Time */}
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <Calendar className="h-4 w-4" />
+            <div className="flex items-center space-x-2 text-xs text-gray-600">
+              <Calendar className="h-3 w-3" />
               <span>{formatDateTime(meeting.date, meeting.start_time)}</span>
             </div>
 
-            {/* Duration */}
-            <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-gray-600" />
-              <Badge variant="secondary" className={getDurationColor(meeting.duration)}>
-                {meeting.duration}
-              </Badge>
+            {/* Duration and Location */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-1">
+                <Clock className="h-3 w-3 text-gray-600" />
+                <Badge variant="secondary" className={`${getDurationColor(meeting.duration)} text-xs px-1 py-0.5`}>
+                  {meeting.duration}
+                </Badge>
+              </div>
+              <div className="flex items-center space-x-1 text-xs text-gray-600">
+                {getLocationIcon(meeting.location)}
+                <span>{meeting.location}</span>
+              </div>
             </div>
 
-            {/* Location */}
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              {getLocationIcon(meeting.location)}
-              <span>{meeting.location}</span>
-              {meeting.timezone && (
-                <span className="text-xs text-gray-500">({meeting.timezone})</span>
-              )}
-            </div>
-
-            
             {/* Organizer */}
             {meeting.organizer_name && (
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <User className="h-4 w-4" />
-                <div className="flex flex-col">
-                  <span className="font-medium">{meeting.organizer_name}</span>
-                  {meeting.organizer_email && (
-                    <span className="text-xs text-gray-500">{meeting.organizer_email}</span>
-                  )}
-                </div>
+              <div className="flex items-center space-x-1 text-xs text-gray-600">
+                <User className="h-3 w-3" />
+                <span className="font-medium truncate">{meeting.organizer_name}</span>
               </div>
             )}
 
             {/* Participants */}
             {meeting.participants && meeting.participants.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2 text-sm font-medium text-gray-700">
-                  <Users className="h-4 w-4" />
-                  <span>Participants ({meeting.participants.length})</span>
-                </div>
-                <div className="pl-6 space-y-1">
-                  {meeting.participants.map((participant, index) => (
-                    <div key={index} className="text-sm text-gray-600 flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
-                      <span className="truncate">{participant}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Description */}
-            {meeting.description && (
-              <div className="text-sm text-gray-600 line-clamp-2">
-                {meeting.description}
+              <div className="flex items-center space-x-1 text-xs text-gray-600">
+                <Users className="h-3 w-3" />
+                <span>{meeting.participants.length} participant{meeting.participants.length !== 1 ? 's' : ''}</span>
               </div>
             )}
 
             {/* Teams Link */}
             {meeting.teams_link && (
-              <div className="pt-2">
+              <div className="pt-1">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.open(meeting.teams_link, '_blank')}
-                  className="w-full"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(meeting.teams_link, '_blank');
+                  }}
+                  className="w-full h-6 text-xs"
                 >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Join Meeting
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Join
                 </Button>
               </div>
             )}

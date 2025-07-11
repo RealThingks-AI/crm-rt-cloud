@@ -49,7 +49,8 @@ export const useMeetings = () => {
       const { data: meetingsData, error: meetingsError } = await supabase
         .from('meetings')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('date', { ascending: true })
+        .order('start_time', { ascending: true });
 
       if (meetingsError) {
         console.error('Error fetching meetings:', meetingsError);
