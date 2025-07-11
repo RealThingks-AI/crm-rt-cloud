@@ -90,6 +90,7 @@ const ConvertToLeadForm = ({ contact, onSuccess, onCancel }: ConvertToLeadFormPr
   // Fetch user profile to get display name
   useEffect(() => {
     const fetchUserProfile = async () => {
+      console.log('Fetching user profile, user:', user);
       if (user) {
         try {
           const { data: profile, error } = await supabase
@@ -98,16 +99,26 @@ const ConvertToLeadForm = ({ contact, onSuccess, onCancel }: ConvertToLeadFormPr
             .eq('id', user.id)
             .maybeSingle();
 
+          console.log('Profile data:', profile, 'Error:', error);
+          
           const displayName = profile?.full_name || user.email || 'Current User';
+          console.log('Setting Lead Owner to:', displayName);
           setUserProfile(displayName);
           form.setValue('lead_owner', displayName);
+          
+          // Force form to re-render
+          form.trigger('lead_owner');
         } catch (error) {
           console.error('Error fetching user profile:', error);
           // Fallback to email if profile fetch fails
           const displayName = user.email || 'Current User';
+          console.log('Fallback: Setting Lead Owner to:', displayName);
           setUserProfile(displayName);
           form.setValue('lead_owner', displayName);
+          form.trigger('lead_owner');
         }
+      } else {
+        console.log('No user found');
       }
     };
 
