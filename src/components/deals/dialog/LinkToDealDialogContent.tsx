@@ -68,8 +68,6 @@ export const LinkToDealDialogContent = ({
         </div>
       ) : (
         <div className="space-y-6">
-          <DebugInfoPanel debugInfo={debugInfo} />
-
           <DealTitleField value={dealTitle} onChange={setDealTitle} />
 
           <LeadInformationSection 
