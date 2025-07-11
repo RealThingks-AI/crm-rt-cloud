@@ -93,26 +93,40 @@ const ConvertToLeadForm = ({ contact, onSuccess, onCancel }: ConvertToLeadFormPr
       console.log('Fetching user profile, user:', user);
       if (user) {
         try {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', user.id)
-            .maybeSingle();
+          // Use the same edge function as other components for consistency
+          const { data, error } = await supabase.functions.invoke('get-user-display-names', {
+            body: { userIds: [user.id] }
+          });
 
-          console.log('Profile data:', profile, 'Error:', error);
+          console.log('Edge function response:', data, 'Error:', error);
           
-          const displayName = profile?.full_name || user.email || 'Current User';
-          console.log('Setting Lead Owner to:', displayName);
-          setUserProfile(displayName);
-          form.setValue('lead_owner', displayName);
+          if (error) {
+            console.error('Error fetching user display names:', error);
+            // Fallback to email
+            const displayName = user.email || 'Current User';
+            console.log('Fallback: Setting Lead Owner to:', displayName);
+            setUserProfile(displayName);
+            form.setValue('lead_owner', displayName);
+          } else if (data?.userDisplayNames) {
+            const displayName = data.userDisplayNames[user.id] || user.email || 'Current User';
+            console.log('Setting Lead Owner to:', displayName);
+            setUserProfile(displayName);
+            form.setValue('lead_owner', displayName);
+          } else {
+            // Final fallback
+            const displayName = user.email || 'Current User';
+            console.log('Final fallback: Setting Lead Owner to:', displayName);
+            setUserProfile(displayName);
+            form.setValue('lead_owner', displayName);
+          }
           
           // Force form to re-render
           form.trigger('lead_owner');
         } catch (error) {
-          console.error('Error fetching user profile:', error);
-          // Fallback to email if profile fetch fails
+          console.error('Error calling edge function:', error);
+          // Fallback to email if edge function fails
           const displayName = user.email || 'Current User';
-          console.log('Fallback: Setting Lead Owner to:', displayName);
+          console.log('Exception fallback: Setting Lead Owner to:', displayName);
           setUserProfile(displayName);
           form.setValue('lead_owner', displayName);
           form.trigger('lead_owner');
