@@ -1,6 +1,7 @@
 
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useCurrentUserRole } from '@/hooks/useCurrentUserRole';
 import { Button } from '@/components/ui/button';
 import { 
   Home, 
@@ -12,12 +13,14 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  Shield
 } from 'lucide-react';
 import { useState } from 'react';
 
 const Layout = () => {
   const { signOut } = useAuth();
+  const { isAdmin, role, isLoading } = useCurrentUserRole();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -91,6 +94,12 @@ const Layout = () => {
           </nav>
           
           <div className="p-4 border-t">
+            {!isLoading && isAdmin && (
+              <div className="mb-3 flex items-center px-3 py-2 text-xs bg-green-100 text-green-800 rounded-md">
+                <Shield className="mr-2 h-3 w-3" />
+                Admin Access
+              </div>
+            )}
             <Button
               variant="outline"
               className="w-full justify-start"
