@@ -91,14 +91,20 @@ const ConvertToLeadForm = ({ contact, onSuccess, onCancel }: ConvertToLeadFormPr
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (user) {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', user.id)
-          .single();
+        try {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', user.id)
+            .maybeSingle();
 
-        if (profile && !error) {
-          const displayName = profile.full_name || 'Current User';
+          const displayName = profile?.full_name || user.email || 'Current User';
+          setUserProfile(displayName);
+          form.setValue('lead_owner', displayName);
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+          // Fallback to email if profile fetch fails
+          const displayName = user.email || 'Current User';
           setUserProfile(displayName);
           form.setValue('lead_owner', displayName);
         }
