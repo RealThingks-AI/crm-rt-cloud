@@ -42,7 +42,7 @@ export const LeadInformationSection = ({ dealId, relatedLeadId }: LeadInformatio
         }
 
         // Fetch lead owner profile if contact_owner exists
-        let leadOwnerName = 'No Owner';
+        let leadOwnerName = '';
         if (lead.contact_owner) {
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
@@ -152,7 +152,7 @@ export const LeadInformationSection = ({ dealId, relatedLeadId }: LeadInformatio
             <div className="flex items-center gap-2">
               <Users className="h-3 w-3 text-gray-500" />
               <Input
-                value={leadInfo.lead_owner === 'No Owner' ? '' : (leadInfo.lead_owner || '')}
+                value={leadInfo.lead_owner || ''}
                 readOnly
                 className="bg-gray-50 text-sm"
               />
