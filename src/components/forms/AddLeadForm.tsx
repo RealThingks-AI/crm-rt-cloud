@@ -68,24 +68,35 @@ const AddLeadForm = ({ onSuccess, onCancel, initialData, isEditing = false, lead
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (user) {
-        const { data: profile, error } = await supabase
+        // First try to get display name from auth user metadata
+        const authDisplayName = user.user_metadata?.full_name || user.user_metadata?.name;
+        
+        // Then try to get from profiles table
+        const { data: profile } = await supabase
           .from('profiles')
-          .select('full_name, "Email ID"')
+          .select('full_name')
           .eq('id', user.id)
           .maybeSingle();
 
-        const displayName = profile?.full_name || profile?.["Email ID"] || user.email || 'Current User';
+        // Use auth metadata first, then profile, then extract name from email
+        const emailName = user.email ? user.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';
+        const displayName = authDisplayName || profile?.full_name || emailName || 'Current User';
+        
         setUserProfile(displayName);
         
         if (isEditing && initialData?.contact_owner) {
           // For editing, fetch the existing owner's name
-          const { data: ownerProfile, error: ownerError } = await supabase
+          const { data: ownerUser } = await supabase.auth.admin.getUserById(initialData.contact_owner);
+          const { data: ownerProfile } = await supabase
             .from('profiles')
-            .select('full_name, "Email ID"')
+            .select('full_name')
             .eq('id', initialData.contact_owner)
             .maybeSingle();
           
-          const ownerDisplayName = ownerProfile?.full_name || ownerProfile?.["Email ID"] || 'Unknown User';
+          const ownerAuthName = ownerUser.user?.user_metadata?.full_name || ownerUser.user?.user_metadata?.name;
+          const ownerEmailName = ownerUser.user?.email ? ownerUser.user.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';
+          const ownerDisplayName = ownerAuthName || ownerProfile?.full_name || ownerEmailName || 'Unknown User';
+          
           setFormData(prev => ({ ...prev, lead_owner: ownerDisplayName }));
         } else {
           // For new leads, use current user
