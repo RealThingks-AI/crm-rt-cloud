@@ -84,7 +84,13 @@ export const useTeamsMeeting = () => {
       // If updating and there's an existing meeting ID, delete the old meeting first
       if (isEditing && existingMeetingId) {
         console.log('Deleting existing Teams meeting before creating new one...');
-        await deleteTeamsLink(existingMeetingId);
+        try {
+          await deleteTeamsLink(existingMeetingId);
+          console.log('Old Teams meeting deletion completed, proceeding with new meeting creation...');
+        } catch (error) {
+          console.warn('Error deleting old Teams meeting, but proceeding with new meeting creation:', error);
+          // Don't block new meeting creation if deletion fails
+        }
       }
 
       const startDateTime = new Date(`${date}T${start_time}:00`);
