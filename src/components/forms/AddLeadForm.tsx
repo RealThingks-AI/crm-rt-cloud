@@ -70,29 +70,26 @@ const AddLeadForm = ({ onSuccess, onCancel, initialData, isEditing = false, lead
       if (user) {
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('full_name')
+          .select('full_name, "Email ID"')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
-        if (profile && !error) {
-          const displayName = profile.full_name || 'Current User';
-          setUserProfile(displayName);
+        const displayName = profile?.full_name || profile?.["Email ID"] || user.email || 'Current User';
+        setUserProfile(displayName);
+        
+        if (isEditing && initialData?.contact_owner) {
+          // For editing, fetch the existing owner's name
+          const { data: ownerProfile, error: ownerError } = await supabase
+            .from('profiles')
+            .select('full_name, "Email ID"')
+            .eq('id', initialData.contact_owner)
+            .maybeSingle();
           
-          if (isEditing && initialData?.contact_owner) {
-            // For editing, fetch the existing owner's name
-            const { data: ownerProfile, error: ownerError } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', initialData.contact_owner)
-              .single();
-            
-            if (ownerProfile && !ownerError) {
-              setFormData(prev => ({ ...prev, lead_owner: ownerProfile.full_name || 'Unknown User' }));
-            }
-          } else {
-            // For new leads, use current user
-            setFormData(prev => ({ ...prev, lead_owner: displayName }));
-          }
+          const ownerDisplayName = ownerProfile?.full_name || ownerProfile?.["Email ID"] || 'Unknown User';
+          setFormData(prev => ({ ...prev, lead_owner: ownerDisplayName }));
+        } else {
+          // For new leads, use current user
+          setFormData(prev => ({ ...prev, lead_owner: displayName }));
         }
       }
     };
