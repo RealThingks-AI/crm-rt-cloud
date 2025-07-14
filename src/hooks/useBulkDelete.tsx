@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useTeamsMeeting } from '@/hooks/useTeamsMeeting';
 
 interface UseBulkDeleteProps {
   tableName: string;
@@ -11,6 +12,7 @@ interface UseBulkDeleteProps {
 
 export const useBulkDelete = ({ tableName, onRefresh, clearSelection }: UseBulkDeleteProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
+  const { deleteTeamsLink } = useTeamsMeeting();
 
   const handleBulkDelete = async (ids: string[]) => {
     if (ids.length === 0) return;
@@ -19,9 +21,11 @@ export const useBulkDelete = ({ tableName, onRefresh, clearSelection }: UseBulkD
     try {
       console.log(`Attempting to delete ${ids.length} records from ${tableName}:`, ids);
       
-      // Special handling for leads - need to handle related deals first
+      // Special handling for different table types
       if (tableName === 'leads') {
         await handleLeadsDeletion(ids);
+      } else if (tableName === 'meetings') {
+        await handleMeetingsDeletion(ids);
       } else {
         await handleRegularDeletion(ids);
       }
@@ -63,6 +67,58 @@ export const useBulkDelete = ({ tableName, onRefresh, clearSelection }: UseBulkD
 
     // If no related deals, proceed with regular deletion
     await handleRegularDeletion(leadIds);
+  };
+
+  const handleMeetingsDeletion = async (meetingIds: string[]) => {
+    // First, get the meetings to check for Teams links
+    const { data: meetings, error: meetingsError } = await supabase
+      .from('meetings')
+      .select('id, teams_link')
+      .in('id', meetingIds);
+
+    if (meetingsError) {
+      throw new Error(`Failed to get meeting details: ${meetingsError.message}`);
+    }
+
+    // Delete Teams meetings first
+    if (meetings) {
+      for (const meeting of meetings) {
+        if (meeting.teams_link) {
+          console.log('Deleting Teams meeting for meeting ID:', meeting.id);
+          await deleteTeamsLink(meeting.teams_link);
+        }
+      }
+    }
+
+    // Find all deals that reference these meetings
+    const { data: relatedDeals, error: dealsError } = await supabase
+      .from('deals')
+      .select('id, deal_name, related_meeting_id')
+      .in('related_meeting_id', meetingIds);
+
+    if (dealsError) {
+      throw new Error(`Failed to check for related deals: ${dealsError.message}`);
+    }
+
+    if (relatedDeals && relatedDeals.length > 0) {
+      // Unlink deals from meetings before deletion
+      const { error: unlinkError } = await supabase
+        .from('deals')
+        .update({ related_meeting_id: null })
+        .in('related_meeting_id', meetingIds);
+
+      if (unlinkError) {
+        throw new Error(`Failed to unlink deals: ${unlinkError.message}`);
+      }
+
+      toast({
+        title: "Deals unlinked",
+        description: `${relatedDeals.length} deal(s) have been unlinked from the meetings.`,
+      });
+    }
+
+    // Now proceed with meeting deletion from CRM
+    await handleRegularDeletion(meetingIds);
   };
 
   const handleRegularDeletion = async (ids: string[]) => {
@@ -133,6 +189,20 @@ export const useBulkDelete = ({ tableName, onRefresh, clearSelection }: UseBulkD
   };
 
   const handleSingleDelete = async (id: string) => {
+    // For meetings, handle Teams deletion for single delete too
+    if (tableName === 'meetings') {
+      const { data: meeting, error: meetingError } = await supabase
+        .from('meetings')
+        .select('teams_link')
+        .eq('id', id)
+        .single();
+
+      if (!meetingError && meeting?.teams_link) {
+        console.log('Deleting Teams meeting for single meeting ID:', id);
+        await deleteTeamsLink(meeting.teams_link);
+      }
+    }
+    
     return handleBulkDelete([id]);
   };
 

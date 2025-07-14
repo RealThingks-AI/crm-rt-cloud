@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import DealsColumnCustomizer, { type DealColumn } from './DealsColumnCustomizer';
 import type { Deal } from '@/hooks/useDeals';
 import { isFieldVisibleForDeal } from '@/hooks/useDeals';
+import { useStageBasedVisibility } from '@/hooks/useStageBasedVisibility';
 
 interface DealsListViewProps {
   deals: Deal[];
@@ -88,9 +89,17 @@ const DealsListView = ({ deals, onEdit, onDelete }: DealsListViewProps) => {
   const visibleColumns = useMemo(() => {
     const baseVisibleColumns = columns.filter(col => col.visible);
     
-    // For each deal, check if at least one deal can show each column
+    // For each deal, check if at least one deal can show each column based on stage visibility
     const filteredColumns = baseVisibleColumns.filter(col => 
-      deals.some(deal => isFieldVisibleForDeal(deal, col.key))
+      deals.some(deal => {
+        // Use stage-based visibility logic for each deal
+        const isBasicField = ['deal_name', 'stage', 'amount', 'probability', 'closing_date', 'currency', 'description', 'modified_at', 'created_at', 'internal_notes'].includes(col.key);
+        
+        if (isBasicField) return true;
+        
+        // Check if field is visible based on deal's current stage and progression
+        return isFieldVisibleForDeal(deal, col.key);
+      })
     );
     
     return filteredColumns;
@@ -243,14 +252,20 @@ const DealsListView = ({ deals, onEdit, onDelete }: DealsListViewProps) => {
           <TableBody>
             {sortedDeals.map((deal) => (
               <TableRow key={deal.id}>
-                 {visibleColumns.map((column) => (
-                   <TableCell key={column.key}>
-                     {isFieldVisibleForDeal(deal, column.key) 
-                       ? formatCellValue(deal, column.key) 
-                       : '-'
-                     }
-                   </TableCell>
-                 ))}
+                 {visibleColumns.map((column) => {
+                   // Check if this specific field should be visible for this specific deal
+                   const isBasicField = ['deal_name', 'stage', 'amount', 'probability', 'closing_date', 'currency', 'description', 'modified_at', 'created_at', 'internal_notes'].includes(column.key);
+                   const shouldShowField = isBasicField || isFieldVisibleForDeal(deal, column.key);
+                   
+                   return (
+                     <TableCell key={column.key}>
+                       {shouldShowField 
+                         ? formatCellValue(deal, column.key) 
+                         : '-'
+                       }
+                     </TableCell>
+                   );
+                 })}
                 <TableCell className="text-right">
                   <div className="flex items-center gap-2 justify-end">
                     <Button

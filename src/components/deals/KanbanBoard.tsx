@@ -12,9 +12,11 @@ import { toast } from '@/hooks/use-toast';
 interface KanbanBoardProps {
   deals: Deal[];
   onRefresh: () => void;
+  onEditDeal?: (deal: Deal) => void;
+  onDeleteDeal?: (dealId: string) => void;
 }
 
-const KanbanBoard = ({ deals, onRefresh }: KanbanBoardProps) => {
+const KanbanBoard = ({ deals, onRefresh, onEditDeal, onDeleteDeal }: KanbanBoardProps) => {
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
   const [stageDialog, setStageDialog] = useState<{
     open: boolean;
@@ -134,6 +136,8 @@ const KanbanBoard = ({ deals, onRefresh }: KanbanBoardProps) => {
               stage={stage}
               deals={getDealsForStage(stage)}
               onRefresh={onRefresh}
+              onEditDeal={onEditDeal}
+              onDeleteDeal={onDeleteDeal}
             />
           ))}
         </div>
@@ -141,7 +145,7 @@ const KanbanBoard = ({ deals, onRefresh }: KanbanBoardProps) => {
         <DragOverlay>
           {activeDeal ? (
             <Card className="rotate-2 opacity-90 shadow-xl border-2 border-blue-300 bg-white">
-              <DealCard deal={activeDeal} onRefresh={onRefresh} />
+              <DealCard deal={activeDeal} onRefresh={onRefresh} onEdit={onEditDeal} />
             </Card>
           ) : null}
         </DragOverlay>

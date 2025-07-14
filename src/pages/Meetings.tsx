@@ -4,12 +4,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Search, Settings, ChevronLeft, ChevronRight, Grid3X3, List } from 'lucide-react';
+import { Plus, Search, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useMeetings } from '@/hooks/useMeetings';
 import MeetingFormModal from '@/components/forms/MeetingFormModal';
-import MeetingsCardView from '@/components/MeetingsCardView';
 import MeetingsTableRefactored from '@/components/MeetingsTableRefactored';
+import MeetingColumnCustomizer from '@/components/MeetingColumnCustomizer';
 import ActionsDropdown from '@/components/ActionsDropdown';
 import { useBulkActions } from '@/hooks/useBulkActions';
 import { useImportExport } from '@/hooks/useImportExport';
@@ -19,6 +19,7 @@ interface MeetingColumn {
   key: string;
   label: string;
   visible: boolean;
+  required?: boolean;
 }
 
 interface Meeting {
@@ -35,6 +36,8 @@ interface Meeting {
   created_at: string;
   updated_at: string;
   created_by: string;
+  organizer_name?: string;
+  organizer_email?: string;
 }
 
 const Meetings = () => {
@@ -44,7 +47,7 @@ const Meetings = () => {
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
-  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+  // Removed viewMode state - using list view only
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -161,7 +164,15 @@ const Meetings = () => {
           <h1 className="text-3xl font-bold text-gray-900">Meetings</h1>
           <p className="text-gray-600 mt-2">Schedule and manage your meetings ({totalCount} total)</p>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex items-center space-x-3">
+          <MeetingColumnCustomizer 
+            columns={columns} 
+            onColumnsChange={setColumns}
+          />
+          <Button onClick={handleAddMeeting}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Meeting
+          </Button>
           <ActionsDropdown
             onImport={handleImport}
             onExportAll={() => handleExportAll(meetings, 'meetings')}
@@ -174,10 +185,6 @@ const Meetings = () => {
             selectedItems={selectedItems}
             moduleName="Meetings"
           />
-          <Button onClick={handleAddMeeting}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Meeting
-          </Button>
         </div>
       </div>
 
@@ -193,58 +200,18 @@ const Meetings = () => {
           />
         </div>
         
-        <div className="flex items-center space-x-2">
-          <div className="flex border rounded-lg">
-            <Button
-              variant={viewMode === 'card' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('card')}
-              className="rounded-r-none"
-            >
-              <Grid3X3 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('list')}
-              className="rounded-l-none"
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowColumnCustomizer(true)}
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
 
-      {viewMode === 'card' ? (
-        <MeetingsCardView
-          meetings={paginatedMeetings}
-          onEditMeeting={handleEditMeeting}
-          onDeleteMeeting={handleSingleDelete}
-          onAddMeeting={handleAddMeeting}
-          selectedItems={selectedItems}
-          onToggleSelect={toggleSelectItem}
-          isDeleting={isDeleting}
-        />
-      ) : (
-        <MeetingsTableRefactored
-          meetings={paginatedMeetings}
-          visibleColumns={visibleColumns}
-          onEditMeeting={handleEditMeeting}
-          onDeleteMeeting={handleSingleDelete}
-          onAddMeeting={handleAddMeeting}
-          selectedItems={selectedItems}
-          onToggleSelect={toggleSelectItem}
-          isDeleting={isDeleting}
-        />
-      )}
+      <MeetingsTableRefactored
+        meetings={paginatedMeetings}
+        visibleColumns={visibleColumns}
+        onEditMeeting={handleEditMeeting}
+        onDeleteMeeting={handleSingleDelete}
+        onAddMeeting={handleAddMeeting}
+        selectedItems={selectedItems}
+        onToggleSelect={toggleSelectItem}
+        isDeleting={isDeleting}
+      />
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-6">

@@ -653,21 +653,6 @@ const StagePanelDialog = ({ open, onOpenChange, deal, onSuccess }: StagePanelDia
     const hasTimelineStart = formData.expected_deal_timeline_start && formData.expected_deal_timeline_start.trim().length > 0;
     const hasTimelineEnd = formData.expected_deal_timeline_end && formData.expected_deal_timeline_end.trim().length > 0;
     
-    console.log('Qualified completion check:', {
-      hasNdaSigned,
-      hasBudgetConfirmed,
-      hasSupplierPortalAccess,
-      hasTimelineStart,
-      hasTimelineEnd,
-      formData: {
-        nda_signed: formData.nda_signed,
-        budget_confirmed: formData.budget_confirmed,
-        supplier_portal_access: formData.supplier_portal_access,
-        expected_deal_timeline_start: formData.expected_deal_timeline_start,
-        expected_deal_timeline_end: formData.expected_deal_timeline_end
-      }
-    });
-    
     return hasNdaSigned && hasBudgetConfirmed && hasSupplierPortalAccess && hasTimelineStart && hasTimelineEnd;
   };
 

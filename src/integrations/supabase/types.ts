@@ -92,6 +92,36 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_preferences: {
+        Row: {
+          card_order: Json | null
+          created_at: string | null
+          id: string
+          layout_view: string | null
+          updated_at: string | null
+          user_id: string
+          visible_widgets: Json | null
+        }
+        Insert: {
+          card_order?: Json | null
+          created_at?: string | null
+          id?: string
+          layout_view?: string | null
+          updated_at?: string | null
+          user_id: string
+          visible_widgets?: Json | null
+        }
+        Update: {
+          card_order?: Json | null
+          created_at?: string | null
+          id?: string
+          layout_view?: string | null
+          updated_at?: string | null
+          user_id?: string
+          visible_widgets?: Json | null
+        }
+        Relationships: []
+      }
       deals: {
         Row: {
           amount: number | null
@@ -281,6 +311,50 @@ export type Database = {
         }
         Relationships: []
       }
+      meeting_outcomes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          interested_in_deal: boolean
+          meeting_id: string
+          next_steps: string | null
+          outcome_type: string
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interested_in_deal?: boolean
+          meeting_id: string
+          next_steps?: string | null
+          outcome_type: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interested_in_deal?: boolean
+          meeting_id?: string
+          next_steps?: string | null
+          outcome_type?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_outcomes_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meetings: {
         Row: {
           created_at: string | null
@@ -290,6 +364,7 @@ export type Database = {
           duration: string | null
           id: string
           location: string | null
+          meeting_id: string | null
           meeting_title: string
           participants: string[] | null
           start_time: string
@@ -305,6 +380,7 @@ export type Database = {
           duration?: string | null
           id?: string
           location?: string | null
+          meeting_id?: string | null
           meeting_title: string
           participants?: string[] | null
           start_time: string
@@ -320,6 +396,7 @@ export type Database = {
           duration?: string | null
           id?: string
           location?: string | null
+          meeting_id?: string | null
           meeting_title?: string
           participants?: string[] | null
           start_time?: string

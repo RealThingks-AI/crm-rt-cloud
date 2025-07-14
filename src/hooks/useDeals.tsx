@@ -210,13 +210,8 @@ export const getHighestStageReached = (deal: Deal): string => {
 
 // Helper function to determine visible stages for a set of deals
 export const getVisibleStages = (deals: Deal[]): string[] => {
-  if (deals.length === 0) return DEAL_STAGES;
-  
-  const highestStageIndex = Math.max(
-    ...deals.map(deal => getStageIndex(getHighestStageReached(deal)))
-  );
-  
-  return DEAL_STAGES.slice(0, highestStageIndex + 1);
+  // Always return all 7 stages to ensure full pipeline visibility
+  return DEAL_STAGES;
 };
 
 // Helper function to determine if a field should be visible for a deal
