@@ -77,7 +77,6 @@ export const getStageRequirements = (stage: string): string[] => {
       'Meeting description or linked lead',
       'Customer need identified',
       'Need summary documented',
-      'Decision maker present confirmed',
       'Customer agreement on need status'
     ],
     'Qualified': [
@@ -140,7 +139,6 @@ export const canMoveToStage = (deal: Deal, targetStage: string): boolean => {
       return !!(hasBasicLeadInfo() &&
                 deal.customer_need_identified === true && 
                 deal.need_summary && deal.need_summary.trim().length > 0 && 
-                deal.decision_maker_present === true && 
                 deal.customer_agreed_on_need && ['Yes', 'No', 'Partial'].includes(deal.customer_agreed_on_need));
     case 'Qualified':
       return !!(hasBasicLeadInfo() &&
@@ -185,7 +183,6 @@ export const getStageCompletionStatus = (deal: Deal): 'complete' | 'partial' | '
       let discussionsCount = checkBasicRequirements();
       if (deal.customer_need_identified === true) discussionsCount++;
       if (deal.need_summary && deal.need_summary.trim().length > 0) discussionsCount++;
-      if (deal.decision_maker_present === true) discussionsCount++;
       if (deal.customer_agreed_on_need && ['Yes', 'No', 'Partial'].includes(deal.customer_agreed_on_need)) discussionsCount++;
       completedCount = discussionsCount;
       break;
