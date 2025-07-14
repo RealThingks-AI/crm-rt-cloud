@@ -51,12 +51,8 @@ export const LeadInformationSection = ({ dealId, relatedLeadId }: LeadInformatio
             .single();
 
           if (!profileError && profile) {
-            // Use full_name if available and different from email, otherwise format email
-            if (profile.full_name && profile.full_name !== profile["Email ID"]) {
-              leadOwnerName = profile.full_name;
-            } else if (profile["Email ID"]) {
-              leadOwnerName = profile["Email ID"].split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            }
+            // Use full_name if available, otherwise use email
+            leadOwnerName = profile.full_name || profile["Email ID"] || '';
           }
         }
 
