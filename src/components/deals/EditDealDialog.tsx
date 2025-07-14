@@ -111,7 +111,7 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
   };
 
   const handleDelete = () => {
-    if (onDelete && window.confirm('Are you sure you want to delete this deal? This action cannot be undone.')) {
+    if (onDelete) {
       onDelete(deal.id);
       onOpenChange(false);
     }
