@@ -146,6 +146,18 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
       need_summary: formData.need_summary,
       decision_maker_present: formData.decision_maker_present,
       customer_agreed_on_need: formData.customer_agreed_on_need as 'Yes' | 'No' | 'Partial',
+      // Include all stage-specific fields for proper validation
+      nda_signed: formData.nda_signed,
+      budget_confirmed: formData.budget_confirmed as 'Yes' | 'No' | 'Estimate Only' | undefined,
+      supplier_portal_access: formData.supplier_portal_access as 'Invited' | 'Approved' | 'Not Invited' | undefined,
+      expected_deal_timeline_start: formData.expected_deal_timeline_start,
+      expected_deal_timeline_end: formData.expected_deal_timeline_end,
+      rfq_value: formData.rfq_value ? parseFloat(formData.rfq_value) : deal.rfq_value,
+      rfq_document_url: formData.rfq_document_url,
+      product_service_scope: formData.product_service_scope,
+      proposal_sent_date: formData.proposal_sent_date,
+      negotiation_status: formData.negotiation_status as 'Ongoing' | 'Finalized' | 'Rejected' | undefined,
+      decision_expected_date: formData.decision_expected_date,
     };
     
     return canMoveToStage(tempDeal, nextStage);
@@ -334,8 +346,8 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
                   !getNextStage() 
                     ? "Deal is in final stage" 
                     : !canMoveToNextStage() 
-                      ? "Complete required fields in current stage to move forward" 
-                      : ""
+                      ? "Complete required fields to move forward: Deal Name, Probability (%), Description/Lead Link, and all stage-specific fields" 
+                      : `Move to ${getNextStage()}`
                 }
               >
                 {loading 
