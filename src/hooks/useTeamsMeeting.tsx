@@ -115,17 +115,17 @@ export const useTeamsMeeting = () => {
         timeZone: timezone
       });
 
-      // Always create a new meeting (since we deleted the old one if it existed)
-      const { data, error } = await supabase.functions.invoke('create-teams-meeting', {
+      // Always create a new meeting using the improved edge function
+      const { data, error } = await supabase.functions.invoke('manage-teams-meeting', {
         body: {
           subject: meeting_title,
           startTime: startTimeISO,
           endTime: endTimeISO,
-          attendees: participants,
+          participants: participants, // Let the edge function handle email conversion
           location,
           timeZone: timezone,
-          isUpdate: false, // Always create new meeting for clean state
-          existingTeamsLink: null
+          isUpdate: isEditing,
+          existingMeetingId: existingMeetingId
         }
       });
 
