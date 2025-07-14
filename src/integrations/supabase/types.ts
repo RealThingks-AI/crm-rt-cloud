@@ -140,6 +140,7 @@ export type Database = {
           expected_deal_timeline_end: string | null
           expected_deal_timeline_start: string | null
           id: string
+          internal_notes: string | null
           loss_reason: string | null
           modified_at: string | null
           modified_by: string | null
@@ -174,6 +175,7 @@ export type Database = {
           expected_deal_timeline_end?: string | null
           expected_deal_timeline_start?: string | null
           id?: string
+          internal_notes?: string | null
           loss_reason?: string | null
           modified_at?: string | null
           modified_by?: string | null
@@ -208,6 +210,7 @@ export type Database = {
           expected_deal_timeline_end?: string | null
           expected_deal_timeline_start?: string | null
           id?: string
+          internal_notes?: string | null
           loss_reason?: string | null
           modified_at?: string | null
           modified_by?: string | null
