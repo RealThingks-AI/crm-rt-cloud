@@ -83,6 +83,9 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
         win_reason: formData.win_reason || null,
         loss_reason: formData.loss_reason || null,
         drop_reason: formData.drop_reason || null,
+        
+        // General
+        internal_notes: formData.internal_notes || null,
       };
 
       const { error } = await supabase
@@ -190,6 +193,9 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
         win_reason: formData.win_reason || null,
         loss_reason: formData.loss_reason || null,
         drop_reason: formData.drop_reason || null,
+        
+        // General
+        internal_notes: formData.internal_notes || null,
       };
 
       const { error } = await supabase

@@ -162,7 +162,7 @@ export const LeadInformationSection = ({ dealId, relatedLeadId }: LeadInformatio
           <div className="space-y-2">
             <Label className="text-xs text-gray-600">Email</Label>
             <Input
-              value={leadInfo.email || 'No Email'}
+              value={leadInfo.email || ''}
               readOnly
               className="bg-gray-50 text-sm"
             />
