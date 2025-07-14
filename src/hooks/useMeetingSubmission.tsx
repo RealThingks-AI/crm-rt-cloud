@@ -83,17 +83,28 @@ export const useMeetingSubmission = () => {
         
         if (formData.participants.length > 0) {
           try {
-            const { data: leadsData, error: leadsError } = await supabase
-              .from('leads')
-              .select('id, email')
-              .in('id', formData.participants);
+            // Check if participants are already emails or UUIDs
+            const isUUIDs = formData.participants.every(p => 
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p)
+            );
             
-            if (leadsError) {
-              console.error('Error fetching lead emails for Teams meeting:', leadsError);
+            if (isUUIDs) {
+              // Fetch emails from leads table using UUIDs
+              const { data: leadsData, error: leadsError } = await supabase
+                .from('leads')
+                .select('id, email')
+                .in('id', formData.participants);
+              
+              if (leadsError) {
+                console.error('Error fetching lead emails for Teams meeting:', leadsError);
+              } else {
+                participantEmails = (leadsData || [])
+                  .map(lead => lead.email)
+                  .filter(Boolean); // Remove any null/empty emails
+              }
             } else {
-              participantEmails = (leadsData || [])
-                .map(lead => lead.email)
-                .filter(Boolean); // Remove any null/empty emails
+              // Participants are already emails
+              participantEmails = formData.participants.filter(Boolean);
             }
           } catch (error) {
             console.error('Error converting participants to emails:', error);
