@@ -149,6 +149,8 @@ export const LinkToDealDialogContent = ({
             
             // Get lead owner's display name from profiles
             if (leadRecord.contact_owner) {
+              console.log('Looking up lead owner profile for ID:', leadRecord.contact_owner);
+              
               const { data: ownerProfile, error: ownerError } = await supabase
                 .from('profiles')
                 .select('full_name, "Email ID"')
@@ -159,22 +161,31 @@ export const LinkToDealDialogContent = ({
               
               if (ownerProfile?.full_name && ownerProfile.full_name !== ownerProfile["Email ID"]) {
                 leadOwnerName = ownerProfile.full_name;
+                console.log('Set lead owner from profile full_name:', leadOwnerName);
               } else if (ownerProfile?.["Email ID"]) {
                 leadOwnerName = ownerProfile["Email ID"].split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                console.log('Set lead owner from profile email:', leadOwnerName);
               } else {
-                // Fallback: If profile lookup fails, try to get user email from auth.users via edge function
+                // Fallback: Try edge function to get user display name
                 console.log('Profile lookup failed, trying edge function for user display names');
                 try {
-                  const { data: displayNames } = await supabase.functions.invoke('get-user-display-names', {
+                  const { data: displayNames, error: edgeError } = await supabase.functions.invoke('get-user-display-names', {
                     body: { userIds: [leadRecord.contact_owner] }
                   });
+                  
+                  console.log('Edge function response:', displayNames, 'Error:', edgeError);
                   
                   if (displayNames && displayNames[leadRecord.contact_owner]) {
                     leadOwnerName = displayNames[leadRecord.contact_owner];
                     console.log('Got display name from edge function:', leadOwnerName);
+                  } else {
+                    // Final fallback: just use the UUID or "Unknown"
+                    leadOwnerName = 'Unknown Owner';
+                    console.log('All lookups failed, using fallback');
                   }
                 } catch (edgeError) {
                   console.error('Edge function failed:', edgeError);
+                  leadOwnerName = 'Unknown Owner';
                 }
               }
               console.log('Final lead owner name:', leadOwnerName);
