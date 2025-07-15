@@ -127,9 +127,11 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         enums: {
           stage: ['Discussions', 'Qualified', 'RFQ', 'Offered', 'Won', 'Lost', 'Dropped'],
           currency: ['USD', 'EUR', 'GBP', 'CAD', 'AUD'],
-          budget_confirmed: ['Yes', 'No', 'Partial'],
-          supplier_portal_access: ['Yes', 'No', 'Pending'],
-          negotiation_status: ['Initial Offer', 'Under Negotiation', 'Final Offer', 'Stalled']
+          budget_confirmed: ['Yes', 'No', 'Estimate Only'],
+          customer_agreed_on_need: ['Yes', 'No', 'Partial'],
+          supplier_portal_access: ['Invited', 'Approved', 'Not Invited'],
+          negotiation_status: ['Ongoing', 'Finalized', 'Rejected', 'Accepted', 'Dropped', 'No Response'],
+          loss_reason: ['Budget', 'Competitor', 'Timeline', 'Other']
         }
       }
     };
@@ -202,11 +204,16 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       }
     }
 
-    // Handle UUID fields
-    if (key.includes('_id') || key === 'related_lead_id' || key === 'related_meeting_id') {
+    // Handle UUID fields - be more strict about what we consider UUID fields
+    if ((key === 'related_lead_id' || key === 'related_meeting_id' || key === 'created_by' || key === 'modified_by') && tableName === 'deals') {
       // UUID validation - check if it's a valid UUID format
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      return uuidRegex.test(value) ? value : null;
+      if (uuidRegex.test(value)) {
+        return value;
+      } else {
+        console.log(`Invalid UUID format for ${key}: ${value}, setting to null`);
+        return null; // Don't set invalid UUIDs
+      }
     }
 
     // Handle specific field types
@@ -397,7 +404,9 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
             // Map data using header mappings
             mappedHeaders.forEach((headerMap, index) => {
               if (headerMap.mapped && row[index]) {
-                const validatedValue = validateAndConvertValue(headerMap.mapped, row[index]);
+                const rawValue = row[index];
+                const validatedValue = validateAndConvertValue(headerMap.mapped, rawValue);
+                console.log(`Mapping: ${headerMap.original} -> ${headerMap.mapped}: "${rawValue}" -> "${validatedValue}"`);
                 if (validatedValue !== null) {
                   record[headerMap.mapped] = validatedValue;
                 }
@@ -445,6 +454,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
               }
             }
 
+            console.log(`Final record for batch:`, record);
             batchRecords.push(record);
 
           } catch (rowError: any) {
