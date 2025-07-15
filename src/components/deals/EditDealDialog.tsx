@@ -167,15 +167,12 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
     return canMoveToStage(tempDeal, nextStage);
   };
 
-  const handleMoveToNextStage = async () => {
-    const nextStage = getNextStage();
-    if (!nextStage) return;
-    
+  const handleMoveToStage = async (targetStage: string) => {
     setLoading(true);
     try {
       const dealData = {
         deal_name: formData.deal_name,
-        stage: nextStage, // Move to next stage
+        stage: targetStage, // Move to target stage
         amount: formData.amount ? parseFloat(formData.amount) : null,
         currency: formData.currency,
         probability: formData.probability ? parseInt(formData.probability) : null,
@@ -226,13 +223,14 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
       if (error) throw error;
 
       toast({
-        title: "Deal moved to next stage",
-        description: `Deal moved to ${nextStage} stage successfully.`,
+        title: "Success",
+        description: `Deal moved to ${targetStage} stage successfully`,
       });
 
       onSuccess();
+      onOpenChange(false);
     } catch (error: any) {
-      console.error('Error moving deal to next stage:', error);
+      console.error('Error moving deal to stage:', error);
       toast({
         variant: "destructive",
         title: "Error moving deal",
@@ -241,6 +239,12 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleMoveToNextStage = async () => {
+    const nextStage = getNextStage();
+    if (!nextStage) return;
+    await handleMoveToStage(nextStage);
   };
 
   return (
@@ -345,26 +349,62 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
               <Button type="submit" disabled={loading}>
                 {loading ? 'Updating...' : 'Update Deal'}
               </Button>
-              <Button 
-                type="button" 
-                onClick={handleMoveToNextStage}
-                disabled={loading || !getNextStage() || !canMoveToNextStage()}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                title={
-                  !getNextStage() 
-                    ? "Deal is in final stage" 
-                    : !canMoveToNextStage() 
-                      ? "Complete required fields to move forward: Deal Name, Probability (%), Description/Lead Link, and all stage-specific fields" 
-                      : `Move to ${getNextStage()}`
-                }
-              >
-                {loading 
-                  ? 'Moving...' 
-                  : getNextStage() 
-                    ? `Move to ${getNextStage()}` 
-                    : 'Final Stage'
-                }
-              </Button>
+              
+              {/* Conditional stage progression buttons */}
+              {deal.stage === 'Offered' ? (
+                // Offered stage - show conditional buttons based on negotiation status
+                <>
+                  <Button 
+                    type="button" 
+                    onClick={() => handleMoveToStage('Won')}
+                    disabled={loading || formData.negotiation_status !== 'Accepted'}
+                    className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                    title={formData.negotiation_status !== 'Accepted' ? "Set Negotiation Status to 'Accepted' to move to Won" : "Move to Won"}
+                  >
+                    {loading ? 'Moving...' : 'Move to Won'}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    onClick={() => handleMoveToStage('Lost')}
+                    disabled={loading || formData.negotiation_status !== 'Rejected'}
+                    className="bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                    title={formData.negotiation_status !== 'Rejected' ? "Set Negotiation Status to 'Rejected' to move to Lost" : "Move to Lost"}
+                  >
+                    {loading ? 'Moving...' : 'Move to Lost'}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    onClick={() => handleMoveToStage('Dropped')}
+                    disabled={loading || (formData.negotiation_status !== 'Dropped' && formData.negotiation_status !== 'No Response')}
+                    className="bg-gray-600 text-white hover:bg-gray-700 disabled:opacity-50"
+                    title={(formData.negotiation_status !== 'Dropped' && formData.negotiation_status !== 'No Response') ? "Set Negotiation Status to 'Dropped' or 'No Response' to move to Dropped" : "Move to Dropped"}
+                  >
+                    {loading ? 'Moving...' : 'Move to Dropped'}
+                  </Button>
+                </>
+              ) : (
+                // Regular stage progression button for other stages
+                <Button 
+                  type="button" 
+                  onClick={handleMoveToNextStage}
+                  disabled={loading || !getNextStage() || !canMoveToNextStage()}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  title={
+                    !getNextStage() 
+                      ? "Deal is in final stage" 
+                      : !canMoveToNextStage() 
+                        ? "Complete required fields to move forward: Deal Name, Probability (%), Description/Lead Link, and all stage-specific fields" 
+                        : `Move to ${getNextStage()}`
+                  }
+                >
+                  {loading 
+                    ? 'Moving...' 
+                    : getNextStage() 
+                      ? `Move to ${getNextStage()}` 
+                      : 'Final Stage'
+                  }
+                </Button>
+              )}
             </div>
           </div>
         </form>
