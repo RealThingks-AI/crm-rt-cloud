@@ -89,6 +89,10 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
         loss_reason: formData.loss_reason || null,
         drop_reason: formData.drop_reason || null,
         
+        // Execution fields
+        execution_started: formData.execution_started,
+        begin_execution_date: formData.begin_execution_date || null,
+        
         // General
         internal_notes: formData.internal_notes || null,
       };
@@ -212,6 +216,10 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
         win_reason: formData.win_reason || null,
         loss_reason: formData.loss_reason || null,
         drop_reason: formData.drop_reason || null,
+        
+        // Execution fields
+        execution_started: formData.execution_started,
+        begin_execution_date: formData.begin_execution_date || null,
         
         // General
         internal_notes: formData.internal_notes || null,

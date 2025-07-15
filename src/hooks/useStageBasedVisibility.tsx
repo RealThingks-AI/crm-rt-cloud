@@ -98,6 +98,9 @@ export const STAGE_HIDDEN_FIELDS = {
     'decision_makers',
     'amount',
     'currency'
+  ],
+  'Won': [
+    'probability'
   ]
 };
 
