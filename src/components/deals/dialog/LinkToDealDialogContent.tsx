@@ -78,8 +78,8 @@ export const LinkToDealDialogContent = ({
           
           console.log('Meeting organizer edge function response:', displayNames, 'Error:', edgeError);
           
-          if (displayNames && displayNames[meeting.created_by]) {
-            leadOwnerName = displayNames[meeting.created_by];
+          if (displayNames?.userDisplayNames && displayNames.userDisplayNames[meeting.created_by]) {
+            leadOwnerName = displayNames.userDisplayNames[meeting.created_by];
             console.log('Got meeting organizer display name:', leadOwnerName);
           } else {
             // Fallback: Try to get from profiles
