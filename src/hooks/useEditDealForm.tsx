@@ -105,7 +105,7 @@ export const useEditDealForm = (deal: Deal) => {
         
         // Discussions stage - enhanced with meeting data
         customer_need_identified: deal.customer_need_identified || (meetingData.meetingOutcome?.outcome_type === 'successful'),
-        need_summary: getEnhancedNeedSummary(),
+        need_summary: '', // Always start blank as per user requirement
         decision_maker_present: deal.decision_maker_present || false,
         customer_agreed_on_need: deal.customer_agreed_on_need || '',
         discussion_notes: deal.discussion_notes || '',
