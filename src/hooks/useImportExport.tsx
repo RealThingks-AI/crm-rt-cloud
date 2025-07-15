@@ -106,20 +106,30 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       },
       deals: {
         allowedColumns: [
-          'deal_name',
-          'amount',
-          'closing_date',
-          'stage',
-          'probability',
-          'type',
-          'next_step',
-          'description',
-          'currency',
-          'pipeline'
+          // Basic fields
+          'deal_name', 'amount', 'closing_date', 'stage', 'probability', 'description', 'currency',
+          // Discussions stage
+          'customer_need_identified', 'need_summary', 'decision_maker_present', 'customer_agreed_on_need',
+          // Qualified stage
+          'nda_signed', 'budget_confirmed', 'supplier_portal_access', 'expected_deal_timeline_start', 'expected_deal_timeline_end', 'budget_holder', 'decision_makers', 'timeline',
+          // RFQ stage
+          'rfq_value', 'rfq_document_url', 'product_service_scope', 'rfq_confirmation_note',
+          // Offered stage
+          'proposal_sent_date', 'negotiation_status', 'decision_expected_date', 'negotiation_notes',
+          // Final stages
+          'win_reason', 'loss_reason', 'drop_reason',
+          // Execution
+          'execution_started', 'begin_execution_date',
+          // General
+          'internal_notes', 'related_lead_id', 'related_meeting_id'
         ],
         required: ['deal_name'],
         enums: {
-          stage: ['Contact', 'Lead', 'Meeting', 'Qualified', 'RFQ', 'Offered', 'Won', 'Lost', 'Dropped']
+          stage: ['Discussions', 'Qualified', 'RFQ', 'Offered', 'Won', 'Lost', 'Dropped'],
+          currency: ['USD', 'EUR', 'GBP', 'CAD', 'AUD'],
+          budget_confirmed: ['Yes', 'No', 'Partial'],
+          supplier_portal_access: ['Yes', 'No', 'Pending'],
+          negotiation_status: ['Initial Offer', 'Under Negotiation', 'Final Offer', 'Stalled']
         }
       }
     };

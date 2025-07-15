@@ -36,7 +36,7 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
       return;
     }
 
-    // Define all available columns from the list view for export
+    // Define all available columns from the list view for export (based on actual DB schema)
     const headers = [
       'Deal Name',
       'Stage',
@@ -52,7 +52,6 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
       'Need Summary',
       'Decision Maker Present',
       'Customer Agreed on Need',
-      'Discussion Notes',
       
       // Qualified stage fields
       'NDA Signed',
@@ -63,12 +62,10 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
       'Budget Holder',
       'Decision Makers',
       'Timeline Notes',
-      'Supplier Portal Required',
       
       // RFQ stage fields
       'RFQ Value',
       'RFQ Document URL',
-      'RFQ Document Link',
       'Product Service Scope',
       'RFQ Confirmation Note',
       
@@ -76,32 +73,25 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
       'Proposal Sent Date',
       'Negotiation Status',
       'Decision Expected Date',
-      'Offer Sent Date',
-      'Revised Offer Notes',
       'Negotiation Notes',
       
       // Final stage fields
       'Win Reason',
       'Loss Reason',
-      'Lost To',
       'Drop Reason',
-      'Drop Summary',
-      'Learning Summary',
       
       // Execution fields
       'Execution Started',
       'Begin Execution Date',
-      'Confirmation Note',
       
       // General fields
       'Internal Notes',
-      'Last Activity Time',
       'Related Lead ID',
       'Related Meeting ID',
       'Created At'
     ];
 
-    // Convert deals to CSV rows with all available fields
+    // Convert deals to CSV rows with all available fields (matching actual DB schema)
     const csvRows = dealsToExport.map(deal => [
       deal.deal_name || '',
       deal.stage || '',
@@ -117,7 +107,6 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
       deal.need_summary || '',
       deal.decision_maker_present ? 'Yes' : 'No',
       deal.customer_agreed_on_need || '',
-      deal.discussion_notes || '',
       
       // Qualified stage fields
       deal.nda_signed ? 'Yes' : 'No',
@@ -128,12 +117,10 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
       deal.budget_holder || '',
       deal.decision_makers || '',
       deal.timeline || '',
-      deal.supplier_portal_required ? 'Yes' : 'No',
       
       // RFQ stage fields
       deal.rfq_value?.toString() || '',
       deal.rfq_document_url || '',
-      deal.rfq_document_link || '',
       deal.product_service_scope || '',
       deal.rfq_confirmation_note || '',
       
@@ -141,22 +128,16 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
       deal.proposal_sent_date || '',
       deal.negotiation_status || '',
       deal.decision_expected_date || '',
-      deal.offer_sent_date || '',
-      deal.revised_offer_notes || '',
       deal.negotiation_notes || '',
       
       // Final stage fields
       deal.win_reason || '',
       deal.loss_reason || '',
-      deal.lost_to || '',
       deal.drop_reason || '',
-      deal.drop_summary || '',
-      deal.learning_summary || '',
       
       // Execution fields
       deal.execution_started ? 'Yes' : 'No',
       deal.begin_execution_date || '',
-      deal.confirmation_note || '',
       
       // General fields
       deal.internal_notes || '',
@@ -281,52 +262,43 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
             need_summary: values[9] || null,
             decision_maker_present: parseBoolean(values[10]),
             customer_agreed_on_need: values[11] || null,
-            discussion_notes: values[12] || null,
             
             // Qualified stage fields
-            nda_signed: parseBoolean(values[13]),
-            budget_confirmed: values[14] || null,
-            supplier_portal_access: values[15] || null,
-            expected_deal_timeline_start: parseDate(values[16]),
-            expected_deal_timeline_end: parseDate(values[17]),
-            budget_holder: values[18] || null,
-            decision_makers: values[19] || null,
-            timeline: values[20] || null,
-            supplier_portal_required: parseBoolean(values[21]),
+            nda_signed: parseBoolean(values[12]),
+            budget_confirmed: values[13] || null,
+            supplier_portal_access: values[14] || null,
+            expected_deal_timeline_start: parseDate(values[15]),
+            expected_deal_timeline_end: parseDate(values[16]),
+            budget_holder: values[17] || null,
+            decision_makers: values[18] || null,
+            timeline: values[19] || null,
             
             // RFQ stage fields
-            rfq_value: parseNumber(values[22]),
-            rfq_document_url: values[23] || null,
-            rfq_document_link: values[24] || null,
-            product_service_scope: values[25] || null,
-            rfq_confirmation_note: values[26] || null,
+            rfq_value: parseNumber(values[20]),
+            rfq_document_url: values[21] || null,
+            product_service_scope: values[22] || null,
+            rfq_confirmation_note: values[23] || null,
             
             // Offered stage fields
-            proposal_sent_date: parseDate(values[27]),
-            negotiation_status: values[28] || null,
-            decision_expected_date: parseDate(values[29]),
-            offer_sent_date: parseDate(values[30]),
-            revised_offer_notes: values[31] || null,
-            negotiation_notes: values[32] || null,
+            proposal_sent_date: parseDate(values[24]),
+            negotiation_status: values[25] || null,
+            decision_expected_date: parseDate(values[26]),
+            negotiation_notes: values[27] || null,
             
             // Final stage fields
-            win_reason: values[33] || null,
-            loss_reason: values[34] || null,
-            lost_to: values[35] || null,
-            drop_reason: values[36] || null,
-            drop_summary: values[37] || null,
-            learning_summary: values[38] || null,
+            win_reason: values[28] || null,
+            loss_reason: values[29] || null,
+            drop_reason: values[30] || null,
             
             // Execution fields
-            execution_started: parseBoolean(values[39]),
-            begin_execution_date: parseDate(values[40]),
-            confirmation_note: values[41] || null,
+            execution_started: parseBoolean(values[31]),
+            begin_execution_date: parseDate(values[32]),
             
             // General fields
-            internal_notes: values[42] || null,
-            related_lead_id: values[43] || null,
-            related_meeting_id: values[44] || null,
-            created_at: parseDate(values[45]) || new Date().toISOString(),
+            internal_notes: values[33] || null,
+            related_lead_id: values[34] || null,
+            related_meeting_id: values[35] || null,
+            created_at: parseDate(values[36]) || new Date().toISOString(),
             
             created_by: user.id,
             modified_by: user.id
