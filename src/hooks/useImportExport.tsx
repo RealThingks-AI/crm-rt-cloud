@@ -569,11 +569,19 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         headers.map(header => {
           let value = row[header] || '';
           
-          // Format dates properly
+          // Format dates properly with validation
           if (header.includes('time') || header.includes('date')) {
             if (value) {
               const date = new Date(value);
-              value = date.toISOString();
+              // Check if the date is valid before converting to ISO string
+              if (!isNaN(date.getTime())) {
+                value = date.toISOString();
+              } else {
+                // If invalid date, keep original value or set to empty
+                value = '';
+              }
+            } else {
+              value = '';
             }
           }
           
