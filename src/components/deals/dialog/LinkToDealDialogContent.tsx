@@ -64,6 +64,20 @@ export const LinkToDealDialogContent = ({
       let companyName = '';
       let leadOwnerName = 'Unknown';
 
+      // Get meeting creator profile as fallback for lead owner
+      const { data: creator } = await supabase
+        .from('profiles')
+        .select('full_name, "Email ID"')
+        .eq('id', meeting.created_by)
+        .single();
+
+      // Set default lead owner to meeting creator
+      if (creator?.full_name && creator.full_name !== creator?.["Email ID"]) {
+        leadOwnerName = creator.full_name;
+      } else if (creator?.["Email ID"]) {
+        leadOwnerName = creator["Email ID"].split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      }
+
       // Find lead information based on meeting participants
       if (meeting.participants && meeting.participants.length > 0) {
         // Try to find a lead record that matches any of the participants
@@ -80,7 +94,7 @@ export const LinkToDealDialogContent = ({
               leadDisplayName = leadByEmail.lead_name;
               companyName = leadByEmail.company_name || '';
               
-              // Get lead owner's display name
+              // Get lead owner's display name (override the meeting creator)
               if (leadByEmail.contact_owner) {
                 const { data: ownerProfile } = await supabase
                   .from('profiles')
@@ -109,7 +123,7 @@ export const LinkToDealDialogContent = ({
             leadDisplayName = leadByName.lead_name;
             companyName = leadByName.company_name || '';
             
-            // Get lead owner's display name
+            // Get lead owner's display name (override the meeting creator)
             if (leadByName.contact_owner) {
               const { data: ownerProfile } = await supabase
                 .from('profiles')
