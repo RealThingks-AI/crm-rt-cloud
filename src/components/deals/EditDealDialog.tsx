@@ -322,6 +322,7 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
               formData={formData} 
               updateFormData={updateFormData}
               readOnly={isFieldReadOnly('win_reason')}
+              stage={formData.stage}
             />
           )}
           
