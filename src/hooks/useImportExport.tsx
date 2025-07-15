@@ -211,7 +211,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       if (uuidRegex.test(value)) {
         return value;
       } else {
-        console.log(`Invalid UUID format for ${key}: ${value}, setting to null`);
         return null; // Don't set invalid UUIDs
       }
     }
@@ -406,7 +405,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
               if (headerMap.mapped && row[index]) {
                 const rawValue = row[index];
                 const validatedValue = validateAndConvertValue(headerMap.mapped, rawValue);
-                console.log(`Mapping: ${headerMap.original} -> ${headerMap.mapped}: "${rawValue}" -> "${validatedValue}"`);
                 if (validatedValue !== null) {
                   record[headerMap.mapped] = validatedValue;
                 }
@@ -454,7 +452,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
               }
             }
 
-            console.log(`Final record for batch:`, record);
             batchRecords.push(record);
 
           } catch (rowError: any) {
@@ -614,7 +611,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           let value = row[header] || '';
           
           // Format dates properly with validation
-          if (header.includes('time') || header.includes('date')) {
+          if ((header.includes('time') || header.includes('date')) && !header.includes('_id')) {
             if (value) {
               const date = new Date(value);
               // Check if the date is valid before converting to ISO string
