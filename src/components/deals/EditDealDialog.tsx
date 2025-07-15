@@ -256,8 +256,8 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
             currentStage={deal.stage}
           />
           
-          {/* View All Fields Toggle - Hidden for Discussions stage */}
-          {deal.stage !== 'Discussions' && canShowPreviousStageFields && (
+          {/* View All Fields Toggle - Hidden for Discussions and Qualified stages */}
+          {deal.stage !== 'Discussions' && deal.stage !== 'Qualified' && canShowPreviousStageFields && (
             <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg border-t">
               <Switch
                 id="show-all-fields"
