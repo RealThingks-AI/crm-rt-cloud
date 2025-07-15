@@ -352,35 +352,42 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
               
               {/* Conditional stage progression buttons */}
               {deal.stage === 'Offered' ? (
-                // Offered stage - show conditional buttons based on negotiation status
+                // Offered stage - show buttons dynamically based on negotiation status
                 <>
-                  <Button 
-                    type="button" 
-                    onClick={() => handleMoveToStage('Won')}
-                    disabled={loading || formData.negotiation_status !== 'Accepted'}
-                    className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
-                    title={formData.negotiation_status !== 'Accepted' ? "Set Negotiation Status to 'Accepted' to move to Won" : "Move to Won"}
-                  >
-                    {loading ? 'Moving...' : 'Move to Won'}
-                  </Button>
-                  <Button 
-                    type="button" 
-                    onClick={() => handleMoveToStage('Lost')}
-                    disabled={loading || formData.negotiation_status !== 'Rejected'}
-                    className="bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
-                    title={formData.negotiation_status !== 'Rejected' ? "Set Negotiation Status to 'Rejected' to move to Lost" : "Move to Lost"}
-                  >
-                    {loading ? 'Moving...' : 'Move to Lost'}
-                  </Button>
-                  <Button 
-                    type="button" 
-                    onClick={() => handleMoveToStage('Dropped')}
-                    disabled={loading || (formData.negotiation_status !== 'Dropped' && formData.negotiation_status !== 'No Response')}
-                    className="bg-gray-600 text-white hover:bg-gray-700 disabled:opacity-50"
-                    title={(formData.negotiation_status !== 'Dropped' && formData.negotiation_status !== 'No Response') ? "Set Negotiation Status to 'Dropped' or 'No Response' to move to Dropped" : "Move to Dropped"}
-                  >
-                    {loading ? 'Moving...' : 'Move to Dropped'}
-                  </Button>
+                  {formData.negotiation_status === 'Ongoing' && (
+                    // Ongoing shows no stage progression buttons, only Update Deal (which is already shown above)
+                    null
+                  )}
+                  {formData.negotiation_status === 'Accepted' && (
+                    <Button 
+                      type="button" 
+                      onClick={() => handleMoveToStage('Won')}
+                      disabled={loading}
+                      className="bg-green-600 text-white hover:bg-green-700"
+                    >
+                      {loading ? 'Moving...' : 'Move to Won'}
+                    </Button>
+                  )}
+                  {formData.negotiation_status === 'Rejected' && (
+                    <Button 
+                      type="button" 
+                      onClick={() => handleMoveToStage('Lost')}
+                      disabled={loading}
+                      className="bg-red-600 text-white hover:bg-red-700"
+                    >
+                      {loading ? 'Moving...' : 'Move to Lost'}
+                    </Button>
+                  )}
+                  {(formData.negotiation_status === 'Dropped' || formData.negotiation_status === 'No Response') && (
+                    <Button 
+                      type="button" 
+                      onClick={() => handleMoveToStage('Dropped')}
+                      disabled={loading}
+                      className="bg-gray-600 text-white hover:bg-gray-700"
+                    >
+                      {loading ? 'Moving...' : 'Move to Dropped'}
+                    </Button>
+                  )}
                 </>
               ) : (
                 // Regular stage progression button for other stages
