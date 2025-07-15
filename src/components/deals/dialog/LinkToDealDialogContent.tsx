@@ -67,7 +67,43 @@ export const LinkToDealDialogContent = ({
       let leadOwnerName = 'Unknown';
       let leadOwnerId = null;
 
-      // First, try to find lead information based on meeting participants
+      // Always use meeting organizer's display name for Lead Owner field
+      if (meeting.created_by) {
+        console.log('Getting meeting organizer display name for:', meeting.created_by);
+        
+        try {
+          const { data: displayNames, error: edgeError } = await supabase.functions.invoke('get-user-display-names', {
+            body: { userIds: [meeting.created_by] }
+          });
+          
+          console.log('Meeting organizer edge function response:', displayNames, 'Error:', edgeError);
+          
+          if (displayNames && displayNames[meeting.created_by]) {
+            leadOwnerName = displayNames[meeting.created_by];
+            console.log('Got meeting organizer display name:', leadOwnerName);
+          } else {
+            // Fallback: Try to get from profiles
+            const { data: organizerProfile } = await supabase
+              .from('profiles')
+              .select('full_name, "Email ID"')
+              .eq('id', meeting.created_by)
+              .single();
+            
+            if (organizerProfile?.full_name) {
+              leadOwnerName = organizerProfile.full_name;
+              console.log('Got organizer name from profile:', leadOwnerName);
+            } else if (organizerProfile?.["Email ID"]) {
+              leadOwnerName = organizerProfile["Email ID"].split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              console.log('Formatted organizer name from email:', leadOwnerName);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to get meeting organizer display name:', error);
+          leadOwnerName = 'Unknown';
+        }
+      }
+
+      // Try to find lead information based on meeting participants for other fields
       if (meeting.participants && meeting.participants.length > 0) {
         console.log('Checking participants:', meeting.participants);
         
@@ -139,86 +175,18 @@ export const LinkToDealDialogContent = ({
             }
           }
 
-          // If we found a lead record, use its data
+          // If we found a lead record, use its data (excluding lead owner)
           if (leadRecord) {
             leadDisplayName = leadRecord.lead_name;
             companyName = leadRecord.company_name || '';
             leadOwnerId = leadRecord.contact_owner;
             
-            console.log('Using lead record:', leadRecord);
-            
-            // Get lead owner's display name using the new logic
-            if (leadRecord.contact_owner) {
-              console.log('Looking up lead owner for UUID:', leadRecord.contact_owner);
-              
-              // First get the lead owner's email from profiles
-              const { data: ownerProfile, error: ownerError } = await supabase
-                .from('profiles')
-                .select('"Email ID"')
-                .eq('id', leadRecord.contact_owner)
-                .single();
-              
-              console.log('Lead owner profile lookup:', ownerProfile, 'Error:', ownerError);
-              
-              if (ownerProfile?.["Email ID"]) {
-                const ownerEmail = ownerProfile["Email ID"];
-                console.log('Found lead owner email:', ownerEmail);
-                
-                // Use edge function to get display name from Supabase Auth based on email
-                try {
-                  const { data: displayNames, error: edgeError } = await supabase.functions.invoke('get-user-display-names', {
-                    body: { userIds: [leadRecord.contact_owner] }
-                  });
-                  
-                  console.log('Edge function response:', displayNames, 'Error:', edgeError);
-                  
-                  if (displayNames && displayNames[leadRecord.contact_owner]) {
-                    leadOwnerName = displayNames[leadRecord.contact_owner];
-                    console.log('Got display name from Supabase Auth via edge function:', leadOwnerName);
-                  } else {
-                    // Fallback: Format email to display name
-                    leadOwnerName = ownerEmail.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    console.log('Formatted display name from email:', leadOwnerName);
-                  }
-                } catch (edgeError) {
-                  console.error('Edge function failed, using email fallback:', edgeError);
-                  // Fallback: Format email to display name
-                  leadOwnerName = ownerEmail.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                  console.log('Using email fallback for lead owner:', leadOwnerName);
-                }
-              } else {
-                console.log('No email found for lead owner, setting to Unknown Lead');
-                leadOwnerName = 'Unknown Lead';
-              }
-              
-              console.log('Final lead owner name:', leadOwnerName);
-            }
+            console.log('Using lead record for lead info:', leadRecord);
             break;
           }
         }
       }
 
-      // If no lead found, get meeting creator as fallback for lead owner
-      if (leadOwnerName === 'Unknown' && meeting.created_by) {
-        console.log('Looking up meeting creator as fallback:', meeting.created_by);
-        
-        const { data: creator, error: creatorError } = await supabase
-          .from('profiles')
-          .select('full_name, "Email ID"')
-          .eq('id', meeting.created_by)
-          .single();
-
-        console.log('Creator profile:', creator, 'Error:', creatorError);
-
-        if (creator) {
-          if (creator.full_name && creator.full_name !== creator["Email ID"]) {
-            leadOwnerName = creator.full_name;
-          } else if (creator["Email ID"]) {
-            leadOwnerName = creator["Email ID"].split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-          }
-          console.log('Set lead owner from meeting creator to:', leadOwnerName);
-        }
-      }
 
       // If no lead name found, use participant info as fallback
       if (!leadDisplayName && meeting.participants && meeting.participants.length > 0) {
