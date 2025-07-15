@@ -59,47 +59,101 @@ export const LinkToDealDialogContent = ({
         .eq('meeting_id', meetingId)
         .single();
 
-      // Get meeting creator profile for lead owner
-      const { data: creator } = await supabase
-        .from('profiles')
-        .select('full_name, "Email ID"')
-        .eq('id', meeting.created_by)
-        .single();
-
-      // Get lead information if participants contain email/name
+      // Initialize default values
       let leadDisplayName = '';
+      let companyName = '';
+      let leadOwnerName = 'Unknown';
+
+      // Find lead information based on meeting participants
       if (meeting.participants && meeting.participants.length > 0) {
-        const firstParticipant = meeting.participants[0];
-        // Check if participant is an email, try to get display name from profiles
-        if (firstParticipant.includes('@')) {
-          const { data: leadProfile } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('Email ID', firstParticipant)
+        // Try to find a lead record that matches any of the participants
+        for (const participant of meeting.participants) {
+          // First try to find by email in leads table
+          if (participant.includes('@')) {
+            const { data: leadByEmail } = await supabase
+              .from('leads')
+              .select('lead_name, company_name, contact_owner')
+              .eq('email', participant)
+              .single();
+
+            if (leadByEmail) {
+              leadDisplayName = leadByEmail.lead_name;
+              companyName = leadByEmail.company_name || '';
+              
+              // Get lead owner's display name
+              if (leadByEmail.contact_owner) {
+                const { data: ownerProfile } = await supabase
+                  .from('profiles')
+                  .select('full_name, "Email ID"')
+                  .eq('id', leadByEmail.contact_owner)
+                  .single();
+                
+                if (ownerProfile?.full_name && ownerProfile.full_name !== ownerProfile["Email ID"]) {
+                  leadOwnerName = ownerProfile.full_name;
+                } else if (ownerProfile?.["Email ID"]) {
+                  leadOwnerName = ownerProfile["Email ID"].split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                }
+              }
+              break;
+            }
+          }
+
+          // If no lead found by email, try by name
+          const { data: leadByName } = await supabase
+            .from('leads')
+            .select('lead_name, company_name, contact_owner')
+            .ilike('lead_name', `%${participant}%`)
             .single();
-          leadDisplayName = leadProfile?.full_name || firstParticipant.split('@')[0];
-        } else {
-          leadDisplayName = firstParticipant;
+
+          if (leadByName) {
+            leadDisplayName = leadByName.lead_name;
+            companyName = leadByName.company_name || '';
+            
+            // Get lead owner's display name
+            if (leadByName.contact_owner) {
+              const { data: ownerProfile } = await supabase
+                .from('profiles')
+                .select('full_name, "Email ID"')
+                .eq('id', leadByName.contact_owner)
+                .single();
+              
+              if (ownerProfile?.full_name && ownerProfile.full_name !== ownerProfile["Email ID"]) {
+                leadOwnerName = ownerProfile.full_name;
+              } else if (ownerProfile?.["Email ID"]) {
+                leadOwnerName = ownerProfile["Email ID"].split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              }
+            }
+            break;
+          }
+        }
+
+        // If no lead found, use participant info as fallback
+        if (!leadDisplayName) {
+          const firstParticipant = meeting.participants[0];
+          if (firstParticipant.includes('@')) {
+            // Try to get display name from profiles
+            const { data: participantProfile } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('Email ID', firstParticipant)
+              .single();
+            leadDisplayName = participantProfile?.full_name || firstParticipant.split('@')[0];
+          } else {
+            leadDisplayName = firstParticipant;
+          }
         }
       }
 
-      // Extract company name from meeting title or description
-      const extractedCompany = extractCompanyFromMeeting(meeting);
+      // If no company found from lead, try to extract from meeting title as fallback
+      if (!companyName) {
+        companyName = extractCompanyFromMeeting(meeting);
+      }
 
       // Set form data
       setDealTitle(`Deal from ${meeting.meeting_title}`);
-      setCompany(extractedCompany);
+      setCompany(companyName);
       setLeadName(leadDisplayName);
-      // Create a proper display name from the creator data
-      let displayName = 'Unknown';
-      if (creator?.full_name && creator.full_name !== creator?.["Email ID"]) {
-        // Use full_name if it's different from email
-        displayName = creator.full_name;
-      } else if (creator?.["Email ID"]) {
-        // Extract name from email (part before @)
-        displayName = creator["Email ID"].split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      }
-      setLeadOwner(displayName);
+      setLeadOwner(leadOwnerName);
       setNotesSummary(outcome?.summary || '');
 
     } catch (error) {
