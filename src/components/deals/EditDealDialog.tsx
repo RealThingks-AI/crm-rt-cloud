@@ -68,6 +68,9 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
         supplier_portal_access: formData.supplier_portal_access || null,
         expected_deal_timeline_start: formData.expected_deal_timeline_start || null,
         expected_deal_timeline_end: formData.expected_deal_timeline_end || null,
+        budget_holder: formData.budget_holder || null,
+        decision_makers: formData.decision_makers || null,
+        timeline: formData.timeline || null,
         
         // RFQ stage
         rfq_value: formData.rfq_value ? parseFloat(formData.rfq_value) : null,
