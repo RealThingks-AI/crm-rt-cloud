@@ -147,27 +147,24 @@ export const LinkToDealDialogContent = ({
             
             console.log('Using lead record:', leadRecord);
             
-            // Get lead owner's display name from profiles
+            // Get lead owner's display name using the new logic
             if (leadRecord.contact_owner) {
-              console.log('Looking up lead owner profile for ID:', leadRecord.contact_owner);
+              console.log('Looking up lead owner for UUID:', leadRecord.contact_owner);
               
+              // First get the lead owner's email from profiles
               const { data: ownerProfile, error: ownerError } = await supabase
                 .from('profiles')
-                .select('full_name, "Email ID"')
+                .select('"Email ID"')
                 .eq('id', leadRecord.contact_owner)
                 .single();
               
-              console.log('Lead owner profile query result:', ownerProfile, 'Error:', ownerError);
+              console.log('Lead owner profile lookup:', ownerProfile, 'Error:', ownerError);
               
-              if (ownerProfile?.full_name && ownerProfile.full_name !== ownerProfile["Email ID"]) {
-                leadOwnerName = ownerProfile.full_name;
-                console.log('Set lead owner from profile full_name:', leadOwnerName);
-              } else if (ownerProfile?.["Email ID"]) {
-                leadOwnerName = ownerProfile["Email ID"].split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                console.log('Set lead owner from profile email:', leadOwnerName);
-              } else {
-                // Fallback: Try edge function to get user display name
-                console.log('Profile lookup failed, trying edge function for user display names');
+              if (ownerProfile?.["Email ID"]) {
+                const ownerEmail = ownerProfile["Email ID"];
+                console.log('Found lead owner email:', ownerEmail);
+                
+                // Use edge function to get display name from Supabase Auth based on email
                 try {
                   const { data: displayNames, error: edgeError } = await supabase.functions.invoke('get-user-display-names', {
                     body: { userIds: [leadRecord.contact_owner] }
@@ -177,17 +174,23 @@ export const LinkToDealDialogContent = ({
                   
                   if (displayNames && displayNames[leadRecord.contact_owner]) {
                     leadOwnerName = displayNames[leadRecord.contact_owner];
-                    console.log('Got display name from edge function:', leadOwnerName);
+                    console.log('Got display name from Supabase Auth via edge function:', leadOwnerName);
                   } else {
-                    // Final fallback: just use the UUID or "Unknown"
-                    leadOwnerName = 'Unknown Owner';
-                    console.log('All lookups failed, using fallback');
+                    // Fallback: Format email to display name
+                    leadOwnerName = ownerEmail.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    console.log('Formatted display name from email:', leadOwnerName);
                   }
                 } catch (edgeError) {
-                  console.error('Edge function failed:', edgeError);
-                  leadOwnerName = 'Unknown Owner';
+                  console.error('Edge function failed, using email fallback:', edgeError);
+                  // Fallback: Format email to display name
+                  leadOwnerName = ownerEmail.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                  console.log('Using email fallback for lead owner:', leadOwnerName);
                 }
+              } else {
+                console.log('No email found for lead owner, setting to Unknown Lead');
+                leadOwnerName = 'Unknown Lead';
               }
+              
               console.log('Final lead owner name:', leadOwnerName);
             }
             break;
