@@ -75,31 +75,67 @@ export const LinkToDealDialogContent = ({
         for (const participant of meeting.participants) {
           let leadRecord = null;
           
-          // First try to find by email in leads table
+          // Try multiple matching strategies
+          console.log('Trying to match participant:', participant);
+          
+          // Strategy 1: Exact email match
           if (participant.includes('@')) {
             const { data: leadByEmail } = await supabase
               .from('leads')
-              .select('lead_name, company_name, contact_owner')
+              .select('lead_name, company_name, contact_owner, email')
               .eq('email', participant)
               .single();
 
             if (leadByEmail) {
               leadRecord = leadByEmail;
-              console.log('Found lead by email:', leadRecord);
+              console.log('Found lead by exact email match:', leadRecord);
             }
           }
-
-          // If no lead found by email, try by name
+          
+          // Strategy 2: Exact name match
           if (!leadRecord) {
             const { data: leadByName } = await supabase
               .from('leads')
-              .select('lead_name, company_name, contact_owner')
-              .ilike('lead_name', `%${participant}%`)
+              .select('lead_name, company_name, contact_owner, email')
+              .eq('lead_name', participant)
               .single();
 
             if (leadByName) {
               leadRecord = leadByName;
-              console.log('Found lead by name:', leadRecord);
+              console.log('Found lead by exact name match:', leadRecord);
+            }
+          }
+          
+          // Strategy 3: Partial name match in lead_name
+          if (!leadRecord) {
+            const { data: leadByPartialName } = await supabase
+              .from('leads')
+              .select('lead_name, company_name, contact_owner, email')
+              .ilike('lead_name', `%${participant}%`)
+              .single();
+
+            if (leadByPartialName) {
+              leadRecord = leadByPartialName;
+              console.log('Found lead by partial name match:', leadRecord);
+            }
+          }
+          
+          // Strategy 4: Extract name from email and match with lead_name
+          if (!leadRecord && !participant.includes('@')) {
+            // If participant is a name, try to find lead with similar name pattern in email
+            const nameWords = participant.toLowerCase().split(' ');
+            if (nameWords.length >= 2) {
+              const emailPattern = `%${nameWords[0]}.${nameWords[1]}%`;
+              const { data: leadByEmailPattern } = await supabase
+                .from('leads')
+                .select('lead_name, company_name, contact_owner, email')
+                .ilike('email', emailPattern)
+                .single();
+
+              if (leadByEmailPattern) {
+                leadRecord = leadByEmailPattern;
+                console.log('Found lead by email pattern match:', leadRecord);
+              }
             }
           }
 
@@ -109,22 +145,39 @@ export const LinkToDealDialogContent = ({
             companyName = leadRecord.company_name || '';
             leadOwnerId = leadRecord.contact_owner;
             
+            console.log('Using lead record:', leadRecord);
+            
             // Get lead owner's display name from profiles
             if (leadRecord.contact_owner) {
-              const { data: ownerProfile } = await supabase
+              const { data: ownerProfile, error: ownerError } = await supabase
                 .from('profiles')
                 .select('full_name, "Email ID"')
                 .eq('id', leadRecord.contact_owner)
                 .single();
               
-              console.log('Lead owner profile:', ownerProfile);
+              console.log('Lead owner profile query result:', ownerProfile, 'Error:', ownerError);
               
               if (ownerProfile?.full_name && ownerProfile.full_name !== ownerProfile["Email ID"]) {
                 leadOwnerName = ownerProfile.full_name;
               } else if (ownerProfile?.["Email ID"]) {
                 leadOwnerName = ownerProfile["Email ID"].split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              } else {
+                // Fallback: If profile lookup fails, try to get user email from auth.users via edge function
+                console.log('Profile lookup failed, trying edge function for user display names');
+                try {
+                  const { data: displayNames } = await supabase.functions.invoke('get-user-display-names', {
+                    body: { userIds: [leadRecord.contact_owner] }
+                  });
+                  
+                  if (displayNames && displayNames[leadRecord.contact_owner]) {
+                    leadOwnerName = displayNames[leadRecord.contact_owner];
+                    console.log('Got display name from edge function:', leadOwnerName);
+                  }
+                } catch (edgeError) {
+                  console.error('Edge function failed:', edgeError);
+                }
               }
-              console.log('Set lead owner from lead record to:', leadOwnerName);
+              console.log('Final lead owner name:', leadOwnerName);
             }
             break;
           }
