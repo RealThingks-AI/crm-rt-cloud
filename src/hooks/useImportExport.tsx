@@ -202,6 +202,13 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       }
     }
 
+    // Handle UUID fields
+    if (key.includes('_id') || key === 'related_lead_id' || key === 'related_meeting_id') {
+      // UUID validation - check if it's a valid UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      return uuidRegex.test(value) ? value : null;
+    }
+
     // Handle specific field types
     switch (key) {
       case 'no_of_employees':
@@ -210,6 +217,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       
       case 'annual_revenue':
       case 'amount':
+      case 'rfq_value':
         const revenue = parseFloat(value.replace(/[$,]/g, ''));
         return isNaN(revenue) ? null : revenue;
       
@@ -217,15 +225,41 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(value) ? value : null;
       
+      // Date fields for deals
+      case 'closing_date':
+      case 'expected_deal_timeline_start':
+      case 'expected_deal_timeline_end':
+      case 'proposal_sent_date':
+      case 'decision_expected_date':
+      case 'begin_execution_date':
+        if (tableName === 'deals') {
+          const date = new Date(value);
+          return isNaN(date.getTime()) ? null : date.toISOString().split('T')[0]; // Return date only (YYYY-MM-DD)
+        }
+        return value.trim();
+      
+      // Time fields for meetings
       case 'start_time':
       case 'end_time':
-      case 'closing_date':
-        const date = new Date(value);
-        return isNaN(date.getTime()) ? null : date.toISOString();
+        if (tableName === 'meetings') {
+          const date = new Date(value);
+          return isNaN(date.getTime()) ? null : date.toISOString();
+        }
+        return value.trim();
       
       case 'probability':
         const prob = parseInt(value);
         return isNaN(prob) ? null : Math.max(0, Math.min(100, prob));
+      
+      // Boolean fields for deals
+      case 'customer_need_identified':
+      case 'decision_maker_present':
+      case 'nda_signed':
+      case 'execution_started':
+        if (tableName === 'deals') {
+          return ['yes', 'true', '1', 'on'].includes(value.toLowerCase());
+        }
+        return value.trim();
       
       case 'participants':
         // Handle comma-separated email list
@@ -575,7 +609,12 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
               const date = new Date(value);
               // Check if the date is valid before converting to ISO string
               if (!isNaN(date.getTime())) {
-                value = date.toISOString();
+                // For deals table, format dates as YYYY-MM-DD for date fields
+                if (tableName === 'deals' && (header.includes('date') || header.includes('timeline'))) {
+                  value = date.toISOString().split('T')[0];
+                } else {
+                  value = date.toISOString();
+                }
               } else {
                 // If invalid date, keep original value or set to empty
                 value = '';
