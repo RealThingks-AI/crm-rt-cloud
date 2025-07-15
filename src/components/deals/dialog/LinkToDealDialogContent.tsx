@@ -52,6 +52,8 @@ export const LinkToDealDialogContent = ({
 
       if (meetingError) throw meetingError;
 
+      console.log('Meeting data:', meeting);
+
       // Get meeting outcome for notes
       const { data: outcome } = await supabase
         .from('meeting_outcomes')
@@ -64,22 +66,32 @@ export const LinkToDealDialogContent = ({
       let companyName = '';
       let leadOwnerName = 'Unknown';
 
-      // Get meeting creator profile as fallback for lead owner
-      const { data: creator } = await supabase
-        .from('profiles')
-        .select('full_name, "Email ID"')
-        .eq('id', meeting.created_by)
-        .single();
+      // ALWAYS get meeting creator profile first as default lead owner
+      if (meeting.created_by) {
+        console.log('Looking up meeting creator:', meeting.created_by);
+        
+        const { data: creator, error: creatorError } = await supabase
+          .from('profiles')
+          .select('full_name, "Email ID"')
+          .eq('id', meeting.created_by)
+          .single();
 
-      // Set default lead owner to meeting creator
-      if (creator?.full_name && creator.full_name !== creator?.["Email ID"]) {
-        leadOwnerName = creator.full_name;
-      } else if (creator?.["Email ID"]) {
-        leadOwnerName = creator["Email ID"].split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        console.log('Creator profile:', creator, 'Error:', creatorError);
+
+        if (creator) {
+          if (creator.full_name && creator.full_name !== creator["Email ID"]) {
+            leadOwnerName = creator.full_name;
+          } else if (creator["Email ID"]) {
+            leadOwnerName = creator["Email ID"].split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          }
+          console.log('Set lead owner to:', leadOwnerName);
+        }
       }
 
       // Find lead information based on meeting participants
       if (meeting.participants && meeting.participants.length > 0) {
+        console.log('Checking participants:', meeting.participants);
+        
         // Try to find a lead record that matches any of the participants
         for (const participant of meeting.participants) {
           // First try to find by email in leads table
@@ -91,6 +103,7 @@ export const LinkToDealDialogContent = ({
               .single();
 
             if (leadByEmail) {
+              console.log('Found lead by email:', leadByEmail);
               leadDisplayName = leadByEmail.lead_name;
               companyName = leadByEmail.company_name || '';
               
@@ -120,6 +133,7 @@ export const LinkToDealDialogContent = ({
             .single();
 
           if (leadByName) {
+            console.log('Found lead by name:', leadByName);
             leadDisplayName = leadByName.lead_name;
             companyName = leadByName.company_name || '';
             
@@ -141,7 +155,7 @@ export const LinkToDealDialogContent = ({
           }
         }
 
-        // If no lead found, use participant info as fallback
+        // If no lead found, use participant info as fallback for lead name
         if (!leadDisplayName) {
           const firstParticipant = meeting.participants[0];
           if (firstParticipant.includes('@')) {
@@ -162,6 +176,8 @@ export const LinkToDealDialogContent = ({
       if (!companyName) {
         companyName = extractCompanyFromMeeting(meeting);
       }
+
+      console.log('Final values - Lead Owner:', leadOwnerName, 'Company:', companyName, 'Lead Name:', leadDisplayName);
 
       // Set form data
       setDealTitle(`Deal from ${meeting.meeting_title}`);
