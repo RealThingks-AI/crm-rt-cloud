@@ -76,6 +76,7 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
         rfq_value: formData.rfq_value ? parseFloat(formData.rfq_value) : null,
         rfq_document_url: formData.rfq_document_url || null,
         product_service_scope: formData.product_service_scope || null,
+        rfq_confirmation_note: formData.rfq_confirmation_note || null,
         
         // Offered stage
         proposal_sent_date: formData.proposal_sent_date || null,
@@ -193,11 +194,15 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
         supplier_portal_access: formData.supplier_portal_access || null,
         expected_deal_timeline_start: formData.expected_deal_timeline_start || null,
         expected_deal_timeline_end: formData.expected_deal_timeline_end || null,
+        budget_holder: formData.budget_holder || null,
+        decision_makers: formData.decision_makers || null,
+        timeline: formData.timeline || null,
         
         // RFQ stage
         rfq_value: formData.rfq_value ? parseFloat(formData.rfq_value) : null,
         rfq_document_url: formData.rfq_document_url || null,
         product_service_scope: formData.product_service_scope || null,
+        rfq_confirmation_note: formData.rfq_confirmation_note || null,
         
         // Offered stage
         proposal_sent_date: formData.proposal_sent_date || null,
