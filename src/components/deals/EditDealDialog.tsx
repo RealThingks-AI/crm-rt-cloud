@@ -400,8 +400,8 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
                     </Button>
                   )}
                 </>
-              ) : (
-                // Regular stage progression button for other stages
+              ) : !['Won', 'Lost', 'Dropped'].includes(deal.stage) ? (
+                // Regular stage progression button for non-final stages only
                 <Button 
                   type="button" 
                   onClick={handleMoveToNextStage}
@@ -422,7 +422,7 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
                       : 'Final Stage'
                   }
                 </Button>
-              )}
+              ) : null}
             </div>
           </div>
         </form>

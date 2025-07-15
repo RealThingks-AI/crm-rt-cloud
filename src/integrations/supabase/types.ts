@@ -125,6 +125,7 @@ export type Database = {
       deals: {
         Row: {
           amount: number | null
+          begin_execution_date: string | null
           budget_confirmed: string | null
           budget_holder: string | null
           closing_date: string | null
@@ -139,6 +140,7 @@ export type Database = {
           decision_makers: string | null
           description: string | null
           drop_reason: string | null
+          execution_started: boolean | null
           expected_deal_timeline_end: string | null
           expected_deal_timeline_start: string | null
           id: string
@@ -165,6 +167,7 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
+          begin_execution_date?: string | null
           budget_confirmed?: string | null
           budget_holder?: string | null
           closing_date?: string | null
@@ -179,6 +182,7 @@ export type Database = {
           decision_makers?: string | null
           description?: string | null
           drop_reason?: string | null
+          execution_started?: boolean | null
           expected_deal_timeline_end?: string | null
           expected_deal_timeline_start?: string | null
           id?: string
@@ -205,6 +209,7 @@ export type Database = {
         }
         Update: {
           amount?: number | null
+          begin_execution_date?: string | null
           budget_confirmed?: string | null
           budget_holder?: string | null
           closing_date?: string | null
@@ -219,6 +224,7 @@ export type Database = {
           decision_makers?: string | null
           description?: string | null
           drop_reason?: string | null
+          execution_started?: boolean | null
           expected_deal_timeline_end?: string | null
           expected_deal_timeline_start?: string | null
           id?: string
