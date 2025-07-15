@@ -103,39 +103,6 @@ export const QualifiedStageFields = ({ formData, updateFormData, readOnly = fals
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="budget_holder">Budget Holder</Label>
-        <Input
-          id="budget_holder"
-          value={formData.budget_holder}
-          onChange={readOnly ? undefined : (e) => updateFormData({ budget_holder: e.target.value })}
-          placeholder="Enter budget holder details"
-          readOnly={readOnly}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="decision_makers">Decision Makers</Label>
-        <Textarea
-          id="decision_makers"
-          value={formData.decision_makers}
-          onChange={readOnly ? undefined : (e) => updateFormData({ decision_makers: e.target.value })}
-          placeholder="Enter decision makers details"
-          readOnly={readOnly}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="timeline">Timeline</Label>
-        <Textarea
-          id="timeline"
-          value={formData.timeline}
-          onChange={readOnly ? undefined : (e) => updateFormData({ timeline: e.target.value })}
-          placeholder="Enter timeline details"
-          readOnly={readOnly}
-        />
-      </div>
-
-      <div className="space-y-2">
         <Label htmlFor="need_summary">Need Summary</Label>
         <Textarea
           id="need_summary"
