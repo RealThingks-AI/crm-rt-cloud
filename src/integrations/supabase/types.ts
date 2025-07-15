@@ -126,6 +126,7 @@ export type Database = {
         Row: {
           amount: number | null
           budget_confirmed: string | null
+          budget_holder: string | null
           closing_date: string | null
           created_at: string | null
           created_by: string | null
@@ -135,6 +136,7 @@ export type Database = {
           deal_name: string
           decision_expected_date: string | null
           decision_maker_present: boolean | null
+          decision_makers: string | null
           description: string | null
           drop_reason: string | null
           expected_deal_timeline_end: string | null
@@ -156,11 +158,13 @@ export type Database = {
           rfq_value: number | null
           stage: string
           supplier_portal_access: string | null
+          timeline: string | null
           win_reason: string | null
         }
         Insert: {
           amount?: number | null
           budget_confirmed?: string | null
+          budget_holder?: string | null
           closing_date?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -170,6 +174,7 @@ export type Database = {
           deal_name: string
           decision_expected_date?: string | null
           decision_maker_present?: boolean | null
+          decision_makers?: string | null
           description?: string | null
           drop_reason?: string | null
           expected_deal_timeline_end?: string | null
@@ -191,11 +196,13 @@ export type Database = {
           rfq_value?: number | null
           stage?: string
           supplier_portal_access?: string | null
+          timeline?: string | null
           win_reason?: string | null
         }
         Update: {
           amount?: number | null
           budget_confirmed?: string | null
+          budget_holder?: string | null
           closing_date?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -205,6 +212,7 @@ export type Database = {
           deal_name?: string
           decision_expected_date?: string | null
           decision_maker_present?: boolean | null
+          decision_makers?: string | null
           description?: string | null
           drop_reason?: string | null
           expected_deal_timeline_end?: string | null
@@ -226,6 +234,7 @@ export type Database = {
           rfq_value?: number | null
           stage?: string
           supplier_portal_access?: string | null
+          timeline?: string | null
           win_reason?: string | null
         }
         Relationships: [
