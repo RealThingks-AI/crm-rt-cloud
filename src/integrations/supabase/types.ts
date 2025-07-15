@@ -154,6 +154,7 @@ export type Database = {
           proposal_sent_date: string | null
           related_lead_id: string | null
           related_meeting_id: string | null
+          rfq_confirmation_note: string | null
           rfq_document_url: string | null
           rfq_value: number | null
           stage: string
@@ -192,6 +193,7 @@ export type Database = {
           proposal_sent_date?: string | null
           related_lead_id?: string | null
           related_meeting_id?: string | null
+          rfq_confirmation_note?: string | null
           rfq_document_url?: string | null
           rfq_value?: number | null
           stage?: string
@@ -230,6 +232,7 @@ export type Database = {
           proposal_sent_date?: string | null
           related_lead_id?: string | null
           related_meeting_id?: string | null
+          rfq_confirmation_note?: string | null
           rfq_document_url?: string | null
           rfq_value?: number | null
           stage?: string
