@@ -81,6 +81,7 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
         // Offered stage
         proposal_sent_date: formData.proposal_sent_date || null,
         negotiation_status: formData.negotiation_status || null,
+        negotiation_notes: formData.negotiation_notes || null,
         decision_expected_date: formData.decision_expected_date || null,
         
         // Final stages
@@ -90,13 +91,6 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
         
         // General
         internal_notes: formData.internal_notes || null,
-        
-        // Store negotiation notes in internal_notes for now, or create separate field
-        ...(formData.negotiation_notes && { 
-          internal_notes: formData.internal_notes 
-            ? `${formData.internal_notes}\n\nNegotiation Notes: ${formData.negotiation_notes}`
-            : `Negotiation Notes: ${formData.negotiation_notes}`
-        }),
       };
 
       const { error } = await supabase
@@ -211,6 +205,7 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
         // Offered stage
         proposal_sent_date: formData.proposal_sent_date || null,
         negotiation_status: formData.negotiation_status || null,
+        negotiation_notes: formData.negotiation_notes || null,
         decision_expected_date: formData.decision_expected_date || null,
         
         // Final stages

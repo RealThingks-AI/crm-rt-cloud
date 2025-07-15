@@ -148,6 +148,7 @@ export type Database = {
           modified_by: string | null
           nda_signed: boolean | null
           need_summary: string | null
+          negotiation_notes: string | null
           negotiation_status: string | null
           probability: number | null
           product_service_scope: string | null
@@ -187,6 +188,7 @@ export type Database = {
           modified_by?: string | null
           nda_signed?: boolean | null
           need_summary?: string | null
+          negotiation_notes?: string | null
           negotiation_status?: string | null
           probability?: number | null
           product_service_scope?: string | null
@@ -226,6 +228,7 @@ export type Database = {
           modified_by?: string | null
           nda_signed?: boolean | null
           need_summary?: string | null
+          negotiation_notes?: string | null
           negotiation_status?: string | null
           probability?: number | null
           product_service_scope?: string | null
