@@ -16,10 +16,13 @@ interface FinalStageFieldsProps {
 }
 
 export const FinalStageFields = ({ formData, updateFormData, readOnly = false, stage }: FinalStageFieldsProps) => {
+  // Loss and Drop reason fields should always be editable
+  const isEditable = stage === 'Lost' || stage === 'Dropped' ? true : !readOnly;
+  
   return (
-    <div className={`space-y-4 border-t pt-4 ${readOnly ? 'opacity-75' : ''}`}>
-      <h3 className={`font-medium text-sm ${readOnly ? 'text-gray-500' : 'text-gray-700'}`}>
-        Final Stage Fields {readOnly && '(Read Only)'}
+    <div className="space-y-4 border-t pt-4">
+      <h3 className="font-medium text-sm text-gray-700">
+        Final Stage Fields
       </h3>
       
       {stage === 'Won' && (
@@ -28,9 +31,9 @@ export const FinalStageFields = ({ formData, updateFormData, readOnly = false, s
           <Textarea
             id="win_reason"
             value={formData.win_reason}
-            onChange={readOnly ? undefined : (e) => updateFormData({ win_reason: e.target.value })}
+            onChange={isEditable ? (e) => updateFormData({ win_reason: e.target.value }) : undefined}
             rows={2}
-            readOnly={readOnly}
+            readOnly={!isEditable}
           />
         </div>
       )}
@@ -40,8 +43,8 @@ export const FinalStageFields = ({ formData, updateFormData, readOnly = false, s
           <Label htmlFor="loss_reason">Loss Reason</Label>
           <Select 
             value={formData.loss_reason} 
-            onValueChange={readOnly ? undefined : (value) => updateFormData({ loss_reason: value })}
-            disabled={readOnly}
+            onValueChange={isEditable ? (value) => updateFormData({ loss_reason: value }) : undefined}
+            disabled={!isEditable}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select loss reason" />
@@ -62,9 +65,9 @@ export const FinalStageFields = ({ formData, updateFormData, readOnly = false, s
           <Textarea
             id="drop_reason"
             value={formData.drop_reason}
-            onChange={readOnly ? undefined : (e) => updateFormData({ drop_reason: e.target.value })}
+            onChange={isEditable ? (e) => updateFormData({ drop_reason: e.target.value }) : undefined}
             rows={2}
-            readOnly={readOnly}
+            readOnly={!isEditable}
           />
         </div>
       )}

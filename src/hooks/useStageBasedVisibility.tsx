@@ -101,6 +101,12 @@ export const STAGE_HIDDEN_FIELDS = {
   ],
   'Won': [
     'probability'
+  ],
+  'Lost': [
+    'probability'
+  ],
+  'Dropped': [
+    'probability'
   ]
 };
 
