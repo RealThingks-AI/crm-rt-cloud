@@ -14,7 +14,177 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      contacts: {
+        Row: {
+          city: string | null
+          company_name: string | null
+          contact_name: string
+          contact_source: string | null
+          country: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          email: string | null
+          id: string
+          industry: string | null
+          linkedin: string | null
+          mobile_no: string | null
+          phone_no: string | null
+          position: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          city?: string | null
+          company_name?: string | null
+          contact_name: string
+          contact_source?: string | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          industry?: string | null
+          linkedin?: string | null
+          mobile_no?: string | null
+          phone_no?: string | null
+          position?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          city?: string | null
+          company_name?: string | null
+          contact_name?: string
+          contact_source?: string | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          industry?: string | null
+          linkedin?: string | null
+          mobile_no?: string | null
+          phone_no?: string | null
+          position?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          city: string | null
+          company_name: string | null
+          contact_source: string | null
+          country: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          email: string | null
+          id: string
+          industry: string | null
+          interest: string | null
+          lead_name: string
+          lead_status: string | null
+          linkedin: string | null
+          mobile_no: string | null
+          modified_by: string | null
+          modified_time: string | null
+          no_of_employees: number | null
+          phone_no: string | null
+          position: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          city?: string | null
+          company_name?: string | null
+          contact_source?: string | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          industry?: string | null
+          interest?: string | null
+          lead_name: string
+          lead_status?: string | null
+          linkedin?: string | null
+          mobile_no?: string | null
+          modified_by?: string | null
+          modified_time?: string | null
+          no_of_employees?: number | null
+          phone_no?: string | null
+          position?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          city?: string | null
+          company_name?: string | null
+          contact_source?: string | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          industry?: string | null
+          interest?: string | null
+          lead_name?: string
+          lead_status?: string | null
+          linkedin?: string | null
+          mobile_no?: string | null
+          modified_by?: string | null
+          modified_time?: string | null
+          no_of_employees?: number | null
+          phone_no?: string | null
+          position?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          module_id: string | null
+          module_type: string | null
+          read_at: string | null
+          title: string
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          module_id?: string | null
+          module_type?: string | null
+          read_at?: string | null
+          title: string
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          module_id?: string | null
+          module_type?: string | null
+          read_at?: string | null
+          title?: string
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
