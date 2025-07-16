@@ -83,29 +83,43 @@ export const useMeetingSubmission = () => {
         
         if (formData.participants.length > 0) {
           try {
-            // Check if participants are already emails or UUIDs
-            const isUUIDs = formData.participants.every(p => 
-              /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p)
-            );
+            // Separate UUIDs from emails
+            const uuidParticipants: string[] = [];
+            const emailParticipants: string[] = [];
             
-            if (isUUIDs) {
-              // Fetch emails from leads table using UUIDs
+            formData.participants.forEach(participant => {
+              if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(participant)) {
+                uuidParticipants.push(participant);
+              } else {
+                // Assume it's an email
+                emailParticipants.push(participant);
+              }
+            });
+            
+            console.log('Processing participants - UUIDs:', uuidParticipants, 'Emails:', emailParticipants);
+            
+            // Start with any direct emails
+            participantEmails = [...emailParticipants];
+            
+            // Fetch emails for UUID participants
+            if (uuidParticipants.length > 0) {
               const { data: leadsData, error: leadsError } = await supabase
                 .from('leads')
-                .select('id, email')
-                .in('id', formData.participants);
+                .select('id, email, lead_name')
+                .in('id', uuidParticipants);
               
               if (leadsError) {
                 console.error('Error fetching lead emails for Teams meeting:', leadsError);
               } else {
-                participantEmails = (leadsData || [])
+                console.log('Found lead data for Teams meeting:', leadsData);
+                const leadEmails = (leadsData || [])
                   .map(lead => lead.email)
                   .filter(Boolean); // Remove any null/empty emails
+                participantEmails.push(...leadEmails);
               }
-            } else {
-              // Participants are already emails
-              participantEmails = formData.participants.filter(Boolean);
             }
+            
+            console.log('Final participant emails for Teams meeting:', participantEmails);
           } catch (error) {
             console.error('Error converting participants to emails:', error);
           }

@@ -21,7 +21,9 @@ interface MeetingParticipantsProps {
 const MeetingParticipants = ({ participants, onParticipantsChange }: MeetingParticipantsProps) => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string>('');
-  const [participantNames, setParticipantNames] = useState<{[key: string]: string}>({});
+  const [participantEmails, setParticipantEmails] = useState<{[key: string]: string}>({});
+
+  console.log('MeetingParticipants received participants:', participants);
 
   // Fetch all leads for selection
   useEffect(() => {
@@ -46,33 +48,57 @@ const MeetingParticipants = ({ participants, onParticipantsChange }: MeetingPart
     fetchLeads();
   }, []);
 
-  // Fetch names for existing participants
+  // Fetch emails for existing participants
   useEffect(() => {
-    const fetchParticipantNames = async () => {
+    const fetchParticipantEmails = async () => {
       if (participants.length === 0) return;
 
       try {
-        const { data: leadsData, error } = await supabase
-          .from('leads')
-          .select('id, lead_name')
-          .in('id', participants);
+        // Separate UUIDs from emails
+        const uuidParticipants: string[] = [];
+        const emailParticipants: string[] = [];
+        
+        participants.forEach(participant => {
+          // Check if it's a UUID format
+          if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(participant)) {
+            uuidParticipants.push(participant);
+          } else {
+            // It's already an email, store it directly
+            emailParticipants.push(participant);
+          }
+        });
 
-        if (error) {
-          console.error('Error fetching participant names:', error);
-          return;
+        const emailsMap: {[key: string]: string} = {};
+        
+        // For email participants, use them as display emails
+        emailParticipants.forEach(email => {
+          emailsMap[email] = email;
+        });
+
+        // For UUID participants, fetch emails from leads table
+        if (uuidParticipants.length > 0) {
+          const { data: leadsData, error } = await supabase
+            .from('leads')
+            .select('id, email, lead_name')
+            .in('id', uuidParticipants);
+
+          if (error) {
+            console.error('Error fetching participant emails:', error);
+          } else {
+            leadsData?.forEach(lead => {
+              // Use email if available, fallback to lead name
+              emailsMap[lead.id] = lead.email || lead.lead_name;
+            });
+          }
         }
 
-        const namesMap: {[key: string]: string} = {};
-        leadsData?.forEach(lead => {
-          namesMap[lead.id] = lead.lead_name;
-        });
-        setParticipantNames(namesMap);
+        setParticipantEmails(emailsMap);
       } catch (error) {
-        console.error('Error fetching participant names:', error);
+        console.error('Error fetching participant emails:', error);
       }
     };
 
-    fetchParticipantNames();
+    fetchParticipantEmails();
   }, [participants]);
 
   const addParticipant = () => {
@@ -102,9 +128,13 @@ const MeetingParticipants = ({ participants, onParticipantsChange }: MeetingPart
               {availableLeads.map((lead) => (
                 <SelectItem key={lead.id} value={lead.id}>
                   <div className="flex flex-col">
-                    <span className="font-medium">{lead.lead_name}</span>
-                    {lead.email && (
-                      <span className="text-sm text-muted-foreground">{lead.email}</span>
+                    {lead.email ? (
+                      <>
+                        <span className="font-medium">{lead.email}</span>
+                        <span className="text-sm text-muted-foreground">{lead.lead_name}</span>
+                      </>
+                    ) : (
+                      <span className="font-medium">{lead.lead_name}</span>
                     )}
                     {lead.company_name && (
                       <span className="text-sm text-muted-foreground">{lead.company_name}</span>
@@ -126,7 +156,7 @@ const MeetingParticipants = ({ participants, onParticipantsChange }: MeetingPart
         <div className="flex flex-wrap gap-2">
           {participants.map((leadId) => (
             <Badge key={leadId} variant="secondary" className="flex items-center space-x-1">
-              <span>{participantNames[leadId] || leadId}</span>
+              <span>{participantEmails[leadId] || leadId}</span>
               <button
                 type="button"
                 onClick={() => removeParticipant(leadId)}

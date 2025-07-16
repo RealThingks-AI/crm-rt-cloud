@@ -85,19 +85,25 @@ const AddLeadForm = ({ onSuccess, onCancel, initialData, isEditing = false, lead
         setUserProfile(displayName);
         
         if (isEditing && initialData?.contact_owner) {
-          // For editing, fetch the existing owner's name
-          const { data: ownerUser } = await supabase.auth.admin.getUserById(initialData.contact_owner);
-          const { data: ownerProfile } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', initialData.contact_owner)
-            .maybeSingle();
-          
-          const ownerAuthName = ownerUser.user?.user_metadata?.full_name || ownerUser.user?.user_metadata?.name;
-          const ownerEmailName = ownerUser.user?.email ? ownerUser.user.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';
-          const ownerDisplayName = ownerAuthName || ownerProfile?.full_name || ownerEmailName || 'Unknown User';
-          
-          setFormData(prev => ({ ...prev, lead_owner: ownerDisplayName }));
+          // For editing, fetch the existing owner's name using edge function
+          try {
+            const { data, error } = await supabase.functions.invoke('get-user-display-names', {
+              body: { userIds: [initialData.contact_owner] }
+            });
+
+            if (error) {
+              console.error('Error fetching user display name:', error);
+              setFormData(prev => ({ ...prev, lead_owner: 'Unknown User' }));
+            } else if (data?.userDisplayNames) {
+              const ownerDisplayName = data.userDisplayNames[initialData.contact_owner] || 'Unknown User';
+              setFormData(prev => ({ ...prev, lead_owner: ownerDisplayName }));
+            } else {
+              setFormData(prev => ({ ...prev, lead_owner: 'Unknown User' }));
+            }
+          } catch (functionError) {
+            console.error('Error calling get-user-display-names function:', functionError);
+            setFormData(prev => ({ ...prev, lead_owner: 'Unknown User' }));
+          }
         } else {
           // For new leads, use current user
           setFormData(prev => ({ ...prev, lead_owner: displayName }));

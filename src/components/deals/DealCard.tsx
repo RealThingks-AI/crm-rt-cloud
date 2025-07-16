@@ -159,7 +159,7 @@ const DealCard = ({ deal, onRefresh, onEdit }: DealCardProps) => {
       <CardContent className="p-4">
         {/* Deal Title */}
         <div className="mb-3">
-          <h3 className="text-sm font-semibold text-gray-900 leading-tight">
+          <h3 className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 break-words">
             {deal.deal_name}
           </h3>
         </div>

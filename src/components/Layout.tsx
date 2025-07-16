@@ -1,6 +1,7 @@
 
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { useCurrentUserRole } from '@/hooks/useCurrentUserRole';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,21 @@ const Layout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Initialize idle timeout hook with 1 hour timeout
+  useIdleTimeout({
+    timeout: 60 * 60 * 1000, // 1 hour in milliseconds
+    onIdle: async () => {
+      console.log('User idle for 1 hour - automatically signing out');
+      try {
+        await signOut();
+        navigate('/');
+      } catch (error) {
+        console.error('Error during automatic logout:', error);
+      }
+    },
+    enabled: true
+  });
 
   const handleSignOut = async () => {
     try {

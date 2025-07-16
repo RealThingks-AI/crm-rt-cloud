@@ -47,6 +47,11 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
       'Description',
       'Modified At',
       
+      // Lead information
+      'Lead Name',
+      'Lead Owner',
+      'Company Name',
+      
       // Discussions stage fields
       'Customer Need Identified',
       'Need Summary',
@@ -101,6 +106,11 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
       deal.closing_date || '',
       deal.description || '',
       deal.modified_at || '',
+      
+      // Lead information (placeholder - will be populated from lead lookup)
+      '', // Lead Name
+      '', // Lead Owner 
+      '', // Company Name
       
       // Discussions stage fields
       deal.customer_need_identified ? 'Yes' : 'No',
@@ -249,7 +259,7 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
 
           const dealData: any = {
             deal_name: values[0] || 'Imported Deal',
-            stage: values[1] || 'Discussions',
+            stage: values[1] || null, // Don't default to Discussions - let the validation handle it
             amount: parseNumber(values[2]),
             currency: values[3] || 'USD',
             probability: parseInt(values[4]),
@@ -257,48 +267,53 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
             description: values[6] || null,
             modified_at: parseDate(values[7]) || new Date().toISOString(),
             
+            // Lead information
+            lead_name: values[8] || null,
+            lead_owner: values[9] || null,
+            company_name: values[10] || null,
+            
             // Discussions stage fields
-            customer_need_identified: parseBoolean(values[8]),
-            need_summary: values[9] || null,
-            decision_maker_present: parseBoolean(values[10]),
-            customer_agreed_on_need: values[11] || null,
+            customer_need_identified: parseBoolean(values[11]),
+            need_summary: values[12] || null,
+            decision_maker_present: parseBoolean(values[13]),
+            customer_agreed_on_need: values[14] || null,
             
             // Qualified stage fields
-            nda_signed: parseBoolean(values[12]),
-            budget_confirmed: values[13] || null,
-            supplier_portal_access: values[14] || null,
-            expected_deal_timeline_start: parseDate(values[15]),
-            expected_deal_timeline_end: parseDate(values[16]),
-            budget_holder: values[17] || null,
-            decision_makers: values[18] || null,
-            timeline: values[19] || null,
+            nda_signed: parseBoolean(values[15]),
+            budget_confirmed: values[16] || null,
+            supplier_portal_access: values[17] || null,
+            expected_deal_timeline_start: parseDate(values[18]),
+            expected_deal_timeline_end: parseDate(values[19]),
+            budget_holder: values[20] || null,
+            decision_makers: values[21] || null,
+            timeline: values[22] || null,
             
             // RFQ stage fields
-            rfq_value: parseNumber(values[20]),
-            rfq_document_url: values[21] || null,
-            product_service_scope: values[22] || null,
-            rfq_confirmation_note: values[23] || null,
+            rfq_value: parseNumber(values[23]),
+            rfq_document_url: values[24] || null,
+            product_service_scope: values[25] || null,
+            rfq_confirmation_note: values[26] || null,
             
             // Offered stage fields
-            proposal_sent_date: parseDate(values[24]),
-            negotiation_status: values[25] || null,
-            decision_expected_date: parseDate(values[26]),
-            negotiation_notes: values[27] || null,
+            proposal_sent_date: parseDate(values[27]),
+            negotiation_status: values[28] || null,
+            decision_expected_date: parseDate(values[29]),
+            negotiation_notes: values[30] || null,
             
             // Final stage fields
-            win_reason: values[28] || null,
-            loss_reason: values[29] || null,
-            drop_reason: values[30] || null,
+            win_reason: values[31] || null,
+            loss_reason: values[32] || null,
+            drop_reason: values[33] || null,
             
             // Execution fields
-            execution_started: parseBoolean(values[31]),
-            begin_execution_date: parseDate(values[32]),
+            execution_started: parseBoolean(values[34]),
+            begin_execution_date: parseDate(values[35]),
             
             // General fields
-            internal_notes: values[33] || null,
-            related_lead_id: values[34] || null,
-            related_meeting_id: values[35] || null,
-            created_at: parseDate(values[36]) || new Date().toISOString(),
+            internal_notes: values[36] || null,
+            related_lead_id: values[37] || null,
+            related_meeting_id: values[38] || null,
+            created_at: parseDate(values[39]) || new Date().toISOString(),
             
             created_by: user.id,
             modified_by: user.id
@@ -311,16 +326,32 @@ const DealsImportExport = ({ deals, onImportSuccess }: DealsImportExportProps) =
         }
       });
 
-      const { error } = await supabase
-        .from('deals')
-        .insert(dealsToImport);
+      // Use the edge function for import with duplicate checking
+      const { data, error } = await supabase.functions.invoke('deals-import-export', {
+        body: {
+          action: 'import',
+          data: {
+            deals: dealsToImport,
+            userId: user.id
+          }
+        }
+      });
 
       if (error) throw error;
 
-      toast({
-        title: "Import successful",
-        description: `${dealsToImport.length} deals imported successfully`,
-      });
+      if (data?.success) {
+        const { results } = data;
+        toast({
+          title: "Import completed",
+          description: `Created: ${results.created}, Updated: ${results.updated}${results.errors.length > 0 ? `, Errors: ${results.errors.length}` : ''}`,
+        });
+        
+        if (results.errors.length > 0) {
+          console.error('Import errors:', results.errors);
+        }
+      } else {
+        throw new Error('Import failed');
+      }
 
       onImportSuccess();
       setShowImportDialog(false);

@@ -80,16 +80,17 @@ const DealsListView = ({ deals, onEdit, onDelete }: DealsListViewProps) => {
   const visibleColumns = useMemo(() => {
     const baseVisibleColumns = columns.filter(col => col.visible);
     
-    // For each deal, check if at least one deal can show each column based on stage visibility
+    // Show a column if any deal has data in that field or if it's a basic field
     const filteredColumns = baseVisibleColumns.filter(col => 
       deals.some(deal => {
-        // Use stage-based visibility logic for each deal
+        // Basic fields are always visible
         const isBasicField = ['deal_name', 'stage', 'amount', 'probability', 'closing_date', 'currency', 'description', 'modified_at', 'created_at', 'internal_notes'].includes(col.key);
         
         if (isBasicField) return true;
         
-        // Check if field is visible based on deal's current stage and progression
-        return isFieldVisibleForDeal(deal, col.key);
+        // Show field if the deal has data in this field (not null/undefined/empty)
+        const fieldValue = deal[col.key as keyof Deal];
+        return fieldValue !== null && fieldValue !== undefined && fieldValue !== '';
       })
     );
     
@@ -237,9 +238,10 @@ const DealsListView = ({ deals, onEdit, onDelete }: DealsListViewProps) => {
             {sortedDeals.map((deal) => (
               <TableRow key={deal.id}>
                  {visibleColumns.map((column) => {
-                   // Check if this specific field should be visible for this specific deal
+                   // Show field if it has data or if it's a basic field
                    const isBasicField = ['deal_name', 'stage', 'amount', 'probability', 'closing_date', 'currency', 'description', 'modified_at', 'created_at', 'internal_notes'].includes(column.key);
-                   const shouldShowField = isBasicField || isFieldVisibleForDeal(deal, column.key);
+                   const fieldValue = deal[column.key as keyof Deal];
+                   const shouldShowField = isBasicField || (fieldValue !== null && fieldValue !== undefined && fieldValue !== '');
                    
                    return (
                      <TableCell key={column.key}>

@@ -162,6 +162,7 @@ export type Database = {
           rfq_value: number | null
           stage: string
           supplier_portal_access: string | null
+          supplier_portal_required: boolean | null
           timeline: string | null
           win_reason: string | null
         }
@@ -204,6 +205,7 @@ export type Database = {
           rfq_value?: number | null
           stage?: string
           supplier_portal_access?: string | null
+          supplier_portal_required?: boolean | null
           timeline?: string | null
           win_reason?: string | null
         }
@@ -246,6 +248,7 @@ export type Database = {
           rfq_value?: number | null
           stage?: string
           supplier_portal_access?: string | null
+          supplier_portal_required?: boolean | null
           timeline?: string | null
           win_reason?: string | null
         }

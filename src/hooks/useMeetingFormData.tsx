@@ -47,7 +47,7 @@ export const useMeetingFormData = (
       setFormData(prev => ({
         ...prev,
         meeting_title: `Meeting with ${initialLeadData.lead_name}`,
-        participants: initialLeadData.email ? [initialLeadData.email] : []
+        participants: initialLeadData.id ? [initialLeadData.id] : []
       }));
     }
   }, [meeting, initialLeadData]);
