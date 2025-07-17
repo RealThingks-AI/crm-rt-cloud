@@ -159,7 +159,8 @@ serve(async (req) => {
         count: enrichedDeals?.length || 0,
         // Include ALL database fields plus lead fields for perfect roundtrip compatibility
         fields: [
-          'id', 'deal_name', 'amount', 'closing_date', 'stage', 'probability', 'description', 'currency',
+          'id', 'deal_name', 'company_name', 'lead_name', 'lead_owner', 'phone_no',
+          'amount', 'closing_date', 'stage', 'probability', 'description', 'currency',
           'customer_need_identified', 'need_summary', 'decision_maker_present', 'customer_agreed_on_need',
           'nda_signed', 'budget_confirmed', 'supplier_portal_access', 'expected_deal_timeline_start',
           'expected_deal_timeline_end', 'budget_holder', 'decision_makers', 'timeline',
@@ -167,8 +168,7 @@ serve(async (req) => {
           'proposal_sent_date', 'negotiation_status', 'decision_expected_date', 'negotiation_notes',
           'win_reason', 'loss_reason', 'drop_reason', 'supplier_portal_required', 'execution_started', 
           'begin_execution_date', 'internal_notes', 'related_lead_id', 'related_meeting_id',
-          'created_by', 'modified_by', 'created_at', 'modified_at',
-          'company_name', 'lead_name', 'lead_owner', 'phone_no'
+          'created_by', 'modified_by', 'created_at', 'modified_at'
         ]
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
