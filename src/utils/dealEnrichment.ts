@@ -92,12 +92,17 @@ export const enrichDealsWithLeadInfo = async (deals: Deal[]): Promise<Deal[]> =>
           lead_owner = profile["Email ID"].split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         }
       }
+      
+      // If no lead owner found, set to empty string instead of undefined
+      if (!lead_owner) {
+        lead_owner = '';
+      }
 
       return {
         ...deal,
         company_name: leadInfo.company_name,
         lead_name: leadInfo.lead_name,
-        lead_owner: lead_owner || undefined,
+        lead_owner: lead_owner,
         phone_no: leadInfo.phone_no,
       };
     });
