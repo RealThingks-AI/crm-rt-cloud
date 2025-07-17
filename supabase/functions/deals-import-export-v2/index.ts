@@ -329,6 +329,74 @@ serve(async (req) => {
             }
           }
 
+          // Handle lead information - create or find appropriate lead
+          let finalLeadId = cleanDealData.related_lead_id;
+          
+          if (dealData.company_name?.trim() || dealData.lead_name?.trim() || dealData.phone_no?.trim()) {
+            console.log(`Processing lead information for deal: ${cleanDealData.deal_name}`);
+            
+            // Check if we need to create a new lead or find existing one that matches the data
+            let matchingLead = null;
+            
+            if (dealData.lead_name?.trim()) {
+              // Look for existing lead with matching name and company
+              const { data: existingLeads, error: leadSearchError } = await supabaseClient
+                .from('leads')
+                .select('id, lead_name, company_name, phone_no')
+                .eq('lead_name', dealData.lead_name.trim())
+                .eq('company_name', dealData.company_name?.trim() || '');
+              
+              if (!leadSearchError && existingLeads && existingLeads.length > 0) {
+                // Find the best match
+                for (const lead of existingLeads) {
+                  if ((!dealData.phone_no || lead.phone_no === dealData.phone_no?.trim()) &&
+                      (!dealData.company_name || lead.company_name === dealData.company_name?.trim())) {
+                    matchingLead = lead;
+                    break;
+                  }
+                }
+              }
+            }
+            
+            if (matchingLead) {
+              // Use existing matching lead
+              finalLeadId = matchingLead.id;
+              console.log(`Found matching lead: ${matchingLead.lead_name} (ID: ${matchingLead.id})`);
+            } else if (dealData.lead_name?.trim()) {
+              // Create new lead with the provided information
+              console.log(`Creating new lead for deal: ${cleanDealData.deal_name}`);
+              
+              const newLeadData = {
+                lead_name: dealData.lead_name.trim(),
+                company_name: dealData.company_name?.trim() || null,
+                phone_no: dealData.phone_no?.trim() || null,
+                created_time: now,
+                created_by: userId,
+                modified_time: now,
+                modified_by: userId,
+              };
+              
+              const { data: newLead, error: leadCreateError } = await supabaseClient
+                .from('leads')
+                .insert(newLeadData)
+                .select('id')
+                .single();
+              
+              if (leadCreateError) {
+                console.error('Lead creation error:', leadCreateError);
+                // Continue without lead link
+              } else if (newLead) {
+                finalLeadId = newLead.id;
+                console.log(`Created new lead: ${dealData.lead_name} (ID: ${newLead.id})`);
+              }
+            }
+          }
+          
+          // Update cleanDealData with the final lead ID
+          if (finalLeadId) {
+            cleanDealData.related_lead_id = finalLeadId;
+          }
+
           if (existingDeal) {
             // Update existing deal
             console.log(`Updating existing deal: ${cleanDealData.deal_name} (ID: ${existingDeal.id})`);
@@ -347,38 +415,6 @@ serve(async (req) => {
             if (error) {
               console.error('Update error:', error);
               throw error;
-            }
-            
-            // Update linked lead record if lead information is provided and deal has related_lead_id
-            if (cleanDealData.related_lead_id && (dealData.company_name || dealData.lead_name || dealData.phone_no)) {
-              console.log(`Updating linked lead for deal: ${cleanDealData.deal_name}`);
-              
-              const leadUpdateData: any = {
-                modified_time: now,
-                modified_by: userId,
-              };
-              
-              if (dealData.company_name?.trim()) {
-                leadUpdateData.company_name = dealData.company_name.trim();
-              }
-              if (dealData.lead_name?.trim()) {
-                leadUpdateData.lead_name = dealData.lead_name.trim();
-              }
-              if (dealData.phone_no?.trim()) {
-                leadUpdateData.phone_no = dealData.phone_no.trim();
-              }
-              
-              const { error: leadError } = await supabaseClient
-                .from('leads')
-                .update(leadUpdateData)
-                .eq('id', cleanDealData.related_lead_id);
-              
-              if (leadError) {
-                console.error('Lead update error:', leadError);
-                // Don't throw - deal update succeeded, lead update is bonus
-              } else {
-                console.log(`Successfully updated linked lead for deal: ${cleanDealData.deal_name}`);
-              }
             }
             
             console.log(`Successfully updated deal: ${cleanDealData.deal_name}`);
