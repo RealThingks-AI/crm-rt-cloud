@@ -31,6 +31,7 @@ export const LinkToDealDialogContent = ({
   const [notesSummary, setNotesSummary] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [existingLeadId, setExistingLeadId] = useState<string | null>(null);
 
   // Load meeting data and outcome when dialog opens
   useEffect(() => {
@@ -103,7 +104,7 @@ export const LinkToDealDialogContent = ({
         }
       }
 
-      // Try to find lead information based on meeting participants for other fields
+      // Try to find lead information based on meeting participants
       if (meeting.participants && meeting.participants.length > 0) {
         console.log('Checking participants:', meeting.participants);
         
@@ -111,14 +112,28 @@ export const LinkToDealDialogContent = ({
         for (const participant of meeting.participants) {
           let leadRecord = null;
           
-          // Try multiple matching strategies
           console.log('Trying to match participant:', participant);
           
-          // Strategy 1: Exact email match
-          if (participant.includes('@')) {
+          // Strategy 1: Direct UUID match (most common case)
+          if (participant.length === 36 && participant.includes('-')) {
+            // This looks like a UUID, try to find lead by ID
+            const { data: leadById } = await supabase
+              .from('leads')
+              .select('id, lead_name, company_name, contact_owner, email')
+              .eq('id', participant)
+              .single();
+
+            if (leadById) {
+              leadRecord = leadById;
+              console.log('Found lead by UUID match:', leadRecord);
+            }
+          }
+          
+          // Strategy 2: Exact email match
+          if (!leadRecord && participant.includes('@')) {
             const { data: leadByEmail } = await supabase
               .from('leads')
-              .select('lead_name, company_name, contact_owner, email')
+              .select('id, lead_name, company_name, contact_owner, email')
               .eq('email', participant)
               .single();
 
@@ -128,11 +143,11 @@ export const LinkToDealDialogContent = ({
             }
           }
           
-          // Strategy 2: Exact name match
+          // Strategy 3: Exact name match
           if (!leadRecord) {
             const { data: leadByName } = await supabase
               .from('leads')
-              .select('lead_name, company_name, contact_owner, email')
+              .select('id, lead_name, company_name, contact_owner, email')
               .eq('lead_name', participant)
               .single();
 
@@ -142,11 +157,11 @@ export const LinkToDealDialogContent = ({
             }
           }
           
-          // Strategy 3: Partial name match in lead_name
+          // Strategy 4: Partial name match in lead_name
           if (!leadRecord) {
             const { data: leadByPartialName } = await supabase
               .from('leads')
-              .select('lead_name, company_name, contact_owner, email')
+              .select('id, lead_name, company_name, contact_owner, email')
               .ilike('lead_name', `%${participant}%`)
               .single();
 
@@ -155,31 +170,13 @@ export const LinkToDealDialogContent = ({
               console.log('Found lead by partial name match:', leadRecord);
             }
           }
-          
-          // Strategy 4: Extract name from email and match with lead_name
-          if (!leadRecord && !participant.includes('@')) {
-            // If participant is a name, try to find lead with similar name pattern in email
-            const nameWords = participant.toLowerCase().split(' ');
-            if (nameWords.length >= 2) {
-              const emailPattern = `%${nameWords[0]}.${nameWords[1]}%`;
-              const { data: leadByEmailPattern } = await supabase
-                .from('leads')
-                .select('lead_name, company_name, contact_owner, email')
-                .ilike('email', emailPattern)
-                .single();
 
-              if (leadByEmailPattern) {
-                leadRecord = leadByEmailPattern;
-                console.log('Found lead by email pattern match:', leadRecord);
-              }
-            }
-          }
-
-          // If we found a lead record, use its data (excluding lead owner)
+          // If we found a lead record, use its data and store the lead ID
           if (leadRecord) {
             leadDisplayName = leadRecord.lead_name;
             companyName = leadRecord.company_name || '';
             leadOwnerId = leadRecord.contact_owner;
+            setExistingLeadId(leadRecord.id); // Store the existing lead ID
             
             console.log('Using lead record for lead info:', leadRecord);
             break;
@@ -255,10 +252,11 @@ export const LinkToDealDialogContent = ({
 
     setIsCreating(true);
     try {
-      // First, create a lead record if we have lead information
-      let leadId = null;
+      // Use existing lead ID if found, otherwise create a new lead
+      let leadId = existingLeadId;
       
-      if (leadName.trim() || company.trim()) {
+      if (!leadId && (leadName.trim() || company.trim())) {
+        // Only create a new lead if we didn't find an existing one
         // Get the lead owner's user ID
         let leadOwnerId = user?.id; // Default to current user
         
