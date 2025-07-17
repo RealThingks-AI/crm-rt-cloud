@@ -359,17 +359,84 @@ serve(async (req) => {
             }
             
             if (matchingLead) {
-              // Use existing matching lead
+              // Use existing matching lead but update with new lead owner if provided
               finalLeadId = matchingLead.id;
               console.log(`Found matching lead: ${matchingLead.lead_name} (ID: ${matchingLead.id})`);
+              
+              // Update existing lead with new lead owner if provided in import
+              if (dealData.lead_owner?.trim()) {
+                console.log(`Updating existing lead with new owner: ${dealData.lead_owner}`);
+                
+                // Find contact_owner ID from lead_owner name
+                let contactOwnerId = null;
+                const { data: ownerProfiles, error: ownerSearchError } = await supabaseClient
+                  .from('profiles')
+                  .select('id, full_name, "Email ID"')
+                  .or(`full_name.ilike.%${dealData.lead_owner.trim()}%,"Email ID".ilike.%${dealData.lead_owner.trim()}%`);
+                
+                if (!ownerSearchError && ownerProfiles && ownerProfiles.length > 0) {
+                  const exactMatch = ownerProfiles.find(p => 
+                    p.full_name?.toLowerCase() === dealData.lead_owner.trim().toLowerCase() ||
+                    p["Email ID"]?.toLowerCase() === dealData.lead_owner.trim().toLowerCase()
+                  );
+                  
+                  contactOwnerId = exactMatch ? exactMatch.id : ownerProfiles[0].id;
+                  
+                  // Update the existing lead
+                  const { error: leadUpdateError } = await supabaseClient
+                    .from('leads')
+                    .update({ 
+                      contact_owner: contactOwnerId,
+                      modified_time: now,
+                      modified_by: userId
+                    })
+                    .eq('id', matchingLead.id);
+                  
+                  if (leadUpdateError) {
+                    console.error('Error updating lead owner:', leadUpdateError);
+                  } else {
+                    console.log(`Updated lead owner for: ${matchingLead.lead_name}`);
+                  }
+                }
+              }
             } else if (dealData.lead_name?.trim()) {
               // Create new lead with the provided information
               console.log(`Creating new lead for deal: ${cleanDealData.deal_name}`);
+              
+              // Find contact_owner ID from lead_owner name if provided
+              let contactOwnerId = null;
+              if (dealData.lead_owner?.trim()) {
+                console.log(`Looking for user with name: ${dealData.lead_owner}`);
+                
+                // Search for user by full_name or email
+                const { data: ownerProfiles, error: ownerSearchError } = await supabaseClient
+                  .from('profiles')
+                  .select('id, full_name, "Email ID"')
+                  .or(`full_name.ilike.%${dealData.lead_owner.trim()}%,"Email ID".ilike.%${dealData.lead_owner.trim()}%`);
+                
+                if (!ownerSearchError && ownerProfiles && ownerProfiles.length > 0) {
+                  // Find exact match or best match
+                  const exactMatch = ownerProfiles.find(p => 
+                    p.full_name?.toLowerCase() === dealData.lead_owner.trim().toLowerCase() ||
+                    p["Email ID"]?.toLowerCase() === dealData.lead_owner.trim().toLowerCase()
+                  );
+                  
+                  if (exactMatch) {
+                    contactOwnerId = exactMatch.id;
+                    console.log(`Found exact match for lead owner: ${exactMatch.full_name || exactMatch["Email ID"]} (ID: ${exactMatch.id})`);
+                  } else {
+                    // Use first partial match
+                    contactOwnerId = ownerProfiles[0].id;
+                    console.log(`Found partial match for lead owner: ${ownerProfiles[0].full_name || ownerProfiles[0]["Email ID"]} (ID: ${ownerProfiles[0].id})`);
+                  }
+                }
+              }
               
               const newLeadData = {
                 lead_name: dealData.lead_name.trim(),
                 company_name: dealData.company_name?.trim() || null,
                 phone_no: dealData.phone_no?.trim() || null,
+                contact_owner: contactOwnerId,
                 created_time: now,
                 created_by: userId,
                 modified_time: now,
@@ -387,7 +454,7 @@ serve(async (req) => {
                 // Continue without lead link
               } else if (newLead) {
                 finalLeadId = newLead.id;
-                console.log(`Created new lead: ${dealData.lead_name} (ID: ${newLead.id})`);
+                console.log(`Created new lead: ${dealData.lead_name} (ID: ${newLead.id}) with owner: ${dealData.lead_owner || 'None'}`);
               }
             }
           }
