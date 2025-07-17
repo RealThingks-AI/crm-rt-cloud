@@ -363,12 +363,14 @@ serve(async (req) => {
               finalLeadId = matchingLead.id;
               console.log(`Found matching lead: ${matchingLead.lead_name} (ID: ${matchingLead.id})`);
               
-              // Update existing lead with new lead owner if provided in import
+              // Always update the existing lead with ALL provided lead information
+              console.log(`Updating existing lead with imported data`);
+              
+              // Find contact_owner ID from lead_owner name if provided
+              let contactOwnerId = null;
               if (dealData.lead_owner?.trim()) {
-                console.log(`Updating existing lead with new owner: ${dealData.lead_owner}`);
+                console.log(`Looking for lead owner: ${dealData.lead_owner}`);
                 
-                // Find contact_owner ID from lead_owner name
-                let contactOwnerId = null;
                 const { data: ownerProfiles, error: ownerSearchError } = await supabaseClient
                   .from('profiles')
                   .select('id, full_name, "Email ID"')
@@ -381,23 +383,40 @@ serve(async (req) => {
                   );
                   
                   contactOwnerId = exactMatch ? exactMatch.id : ownerProfiles[0].id;
-                  
-                  // Update the existing lead
-                  const { error: leadUpdateError } = await supabaseClient
-                    .from('leads')
-                    .update({ 
-                      contact_owner: contactOwnerId,
-                      modified_time: now,
-                      modified_by: userId
-                    })
-                    .eq('id', matchingLead.id);
-                  
-                  if (leadUpdateError) {
-                    console.error('Error updating lead owner:', leadUpdateError);
-                  } else {
-                    console.log(`Updated lead owner for: ${matchingLead.lead_name}`);
-                  }
+                  console.log(`Found contact owner: ${exactMatch ? exactMatch.full_name || exactMatch["Email ID"] : ownerProfiles[0].full_name || ownerProfiles[0]["Email ID"]} (ID: ${contactOwnerId})`);
                 }
+              }
+              
+              // Prepare update data with ALL lead fields
+              const leadUpdateData: any = {
+                modified_time: now,
+                modified_by: userId
+              };
+              
+              // Update all provided lead fields
+              if (dealData.lead_name?.trim()) {
+                leadUpdateData.lead_name = dealData.lead_name.trim();
+              }
+              if (dealData.company_name?.trim()) {
+                leadUpdateData.company_name = dealData.company_name.trim();
+              }
+              if (dealData.phone_no?.trim()) {
+                leadUpdateData.phone_no = dealData.phone_no.trim();
+              }
+              if (contactOwnerId) {
+                leadUpdateData.contact_owner = contactOwnerId;
+              }
+              
+              // Update the existing lead with ALL provided information
+              const { error: leadUpdateError } = await supabaseClient
+                .from('leads')
+                .update(leadUpdateData)
+                .eq('id', matchingLead.id);
+              
+              if (leadUpdateError) {
+                console.error('Error updating lead:', leadUpdateError);
+              } else {
+                console.log(`Successfully updated lead: ${dealData.lead_name} with all provided information`);
               }
             } else if (dealData.lead_name?.trim()) {
               // Create new lead with the provided information
