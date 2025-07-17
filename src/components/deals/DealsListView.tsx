@@ -26,6 +26,12 @@ const DEFAULT_COLUMNS: DealColumn[] = [
   { key: 'probability', label: 'Probability', required: false, visible: true },
   { key: 'modified_at', label: 'Last Updated', required: false, visible: true },
   
+  // Lead-related fields - visible by default when available
+  { key: 'company_name', label: 'Company Name', required: false, visible: true },
+  { key: 'lead_name', label: 'Lead Name', required: false, visible: true },
+  { key: 'lead_owner', label: 'Lead Owner', required: false, visible: true },
+  { key: 'phone_no', label: 'Phone', required: false, visible: false },
+  
   // Secondary fields - available but hidden by default
   { key: 'closing_date', label: 'Close Date', required: false, visible: false },
   { key: 'currency', label: 'Currency', required: false, visible: false },
@@ -92,7 +98,7 @@ const DealsListView = ({ deals, onEdit, onDelete, selectedDealIds = [], onDealSe
     const filteredColumns = baseVisibleColumns.filter(col => 
       deals.some(deal => {
         // Core fields are always visible when enabled
-        const isCoreField = ['deal_name', 'stage', 'amount', 'probability', 'modified_at', 'created_at', 'internal_notes', 'created_by', 'modified_by', 'related_lead_id', 'related_meeting_id'].includes(col.key);
+        const isCoreField = ['deal_name', 'stage', 'amount', 'probability', 'modified_at', 'created_at', 'internal_notes', 'created_by', 'modified_by', 'related_lead_id', 'related_meeting_id', 'company_name', 'lead_name', 'lead_owner', 'phone_no'].includes(col.key);
         
         if (isCoreField) return true;
         
@@ -261,7 +267,7 @@ const DealsListView = ({ deals, onEdit, onDelete, selectedDealIds = [], onDealSe
                 )}
                   {visibleColumns.map((column) => {
                     // Show field if it has data or if it's a core field
-                    const isCoreField = ['deal_name', 'stage', 'amount', 'probability', 'modified_at', 'created_at', 'internal_notes', 'created_by', 'modified_by', 'related_lead_id', 'related_meeting_id'].includes(column.key);
+                    const isCoreField = ['deal_name', 'stage', 'amount', 'probability', 'modified_at', 'created_at', 'internal_notes', 'created_by', 'modified_by', 'related_lead_id', 'related_meeting_id', 'company_name', 'lead_name', 'lead_owner', 'phone_no'].includes(column.key);
                     const fieldValue = deal[column.key as keyof Deal];
                     const shouldShowField = isCoreField || (fieldValue !== null && fieldValue !== undefined && fieldValue !== '');
                    

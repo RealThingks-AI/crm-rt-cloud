@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { enrichDealsWithLeadInfo } from '@/utils/dealEnrichment';
 
 export interface Deal {
   id: string;
@@ -13,6 +14,12 @@ export interface Deal {
   probability?: number;
   closing_date?: string;
   description?: string;
+  
+  // Lead-related fields (joined from leads table)
+  company_name?: string;
+  lead_name?: string;
+  lead_owner?: string;
+  phone_no?: string;
   discussion_notes?: string;
   budget_holder?: string;
   decision_makers?: string;
@@ -317,28 +324,30 @@ export const useDeals = () => {
       if (error) throw error;
       
       // Type assertion to handle the database response and apply probability logic
-      const typedDeals = (data || []).map(deal => {
-        let probability = deal.probability;
+      const typedDeals = (data || []).map(dealData => {
+        let probability = dealData.probability;
         
         // Apply probability logic based on stage
-        if (deal.stage === 'Won') {
+        if (dealData.stage === 'Won') {
           probability = 100;
-        } else if (deal.stage === 'Lost' || deal.stage === 'Dropped') {
+        } else if (dealData.stage === 'Lost' || dealData.stage === 'Dropped') {
           probability = 0;
         }
-        
+
         return {
-          ...deal,
+          ...dealData,
           probability,
-          customer_agreed_on_need: deal.customer_agreed_on_need as 'Yes' | 'No' | 'Partial' | undefined,
-          budget_confirmed: deal.budget_confirmed as 'Yes' | 'No' | 'Estimate Only' | undefined,
-          supplier_portal_access: deal.supplier_portal_access as 'Invited' | 'Approved' | 'Not Invited' | undefined,
-          negotiation_status: deal.negotiation_status as 'Ongoing' | 'Finalized' | 'Rejected' | undefined,
-          loss_reason: deal.loss_reason as 'Budget' | 'Competitor' | 'Timeline' | 'Other' | undefined
+          customer_agreed_on_need: dealData.customer_agreed_on_need as 'Yes' | 'No' | 'Partial' | undefined,
+          budget_confirmed: dealData.budget_confirmed as 'Yes' | 'No' | 'Estimate Only' | undefined,
+          supplier_portal_access: dealData.supplier_portal_access as 'Invited' | 'Approved' | 'Not Invited' | undefined,
+          negotiation_status: dealData.negotiation_status as 'Ongoing' | 'Finalized' | 'Rejected' | undefined,
+          loss_reason: dealData.loss_reason as 'Budget' | 'Competitor' | 'Timeline' | 'Other' | undefined
         };
       }) as Deal[];
       
-      setDeals(typedDeals);
+      // Enrich deals with lead information
+      const enrichedDeals = await enrichDealsWithLeadInfo(typedDeals);
+      setDeals(enrichedDeals);
     } catch (error: any) {
       console.error('Error fetching deals:', error);
       toast({

@@ -140,6 +140,8 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           'id', 'created_at', 'modified_at', 'created_by', 'modified_by',
           // Basic fields
           'deal_name', 'amount', 'closing_date', 'stage', 'probability', 'description', 'currency',
+          // Lead-related fields
+          'company_name', 'lead_name', 'lead_owner', 'phone_no',
           // Discussions stage
           'customer_need_identified', 'need_summary', 'decision_maker_present', 'customer_agreed_on_need',
           // Qualified stage

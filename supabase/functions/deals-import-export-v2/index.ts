@@ -63,6 +63,12 @@ interface Deal {
   modified_by?: string;
   created_at?: string;
   modified_at?: string;
+  
+  // Lead-related fields (from joined leads table)
+  company_name?: string;
+  lead_name?: string;
+  lead_owner?: string;
+  phone_no?: string;
 }
 
 serve(async (req) => {
@@ -88,7 +94,9 @@ serve(async (req) => {
     console.log('Action:', action, 'Data keys:', Object.keys(data || {}));
     
     if (action === 'export') {
-      console.log('Exporting all deals...');
+      console.log('Exporting all deals with lead information...');
+      
+      // First get all deals
       const { data: deals, error } = await supabaseClient
         .from('deals')
         .select('*')
@@ -99,14 +107,57 @@ serve(async (req) => {
         throw error;
       }
 
-      console.log(`Successfully exported ${deals?.length || 0} deals`);
+      // Enrich deals with lead information
+      const enrichedDeals = [];
+      for (const deal of deals || []) {
+        let enrichedDeal = { ...deal };
+        
+        if (deal.related_lead_id) {
+          // Get lead information
+          const { data: leadData, error: leadError } = await supabaseClient
+            .from('leads')
+            .select('lead_name, company_name, phone_no, contact_owner')
+            .eq('id', deal.related_lead_id)
+            .single();
+
+          if (!leadError && leadData) {
+            enrichedDeal.company_name = leadData.company_name;
+            enrichedDeal.lead_name = leadData.lead_name;
+            enrichedDeal.phone_no = leadData.phone_no;
+
+            // Get lead owner profile
+            if (leadData.contact_owner) {
+              const { data: profile, error: profileError } = await supabaseClient
+                .from('profiles')
+                .select('full_name, "Email ID"')
+                .eq('id', leadData.contact_owner)
+                .single();
+
+              if (!profileError && profile) {
+                let lead_owner = '';
+                if (profile.full_name && profile.full_name !== profile["Email ID"]) {
+                  lead_owner = profile.full_name;
+                } else if (profile["Email ID"]) {
+                  // Extract name from email (part before @)
+                  lead_owner = profile["Email ID"].split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                }
+                enrichedDeal.lead_owner = lead_owner;
+              }
+            }
+          }
+        }
+        
+        enrichedDeals.push(enrichedDeal);
+      }
+
+      console.log(`Successfully exported ${enrichedDeals?.length || 0} deals with lead information`);
       
-      // Return deals with EXACT field names for perfect import compatibility
+      // Return enriched deals with EXACT field names for perfect import compatibility
       return new Response(JSON.stringify({ 
         success: true, 
-        data: deals || [],
-        count: deals?.length || 0,
-        // Include ALL database fields for perfect roundtrip compatibility
+        data: enrichedDeals || [],
+        count: enrichedDeals?.length || 0,
+        // Include ALL database fields plus lead fields for perfect roundtrip compatibility
         fields: [
           'id', 'deal_name', 'amount', 'closing_date', 'stage', 'probability', 'description', 'currency',
           'customer_need_identified', 'need_summary', 'decision_maker_present', 'customer_agreed_on_need',
@@ -116,7 +167,8 @@ serve(async (req) => {
           'proposal_sent_date', 'negotiation_status', 'decision_expected_date', 'negotiation_notes',
           'win_reason', 'loss_reason', 'drop_reason', 'supplier_portal_required', 'execution_started', 
           'begin_execution_date', 'internal_notes', 'related_lead_id', 'related_meeting_id',
-          'created_by', 'modified_by', 'created_at', 'modified_at'
+          'created_by', 'modified_by', 'created_at', 'modified_at',
+          'company_name', 'lead_name', 'lead_owner', 'phone_no'
         ]
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
