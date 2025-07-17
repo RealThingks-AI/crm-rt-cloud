@@ -349,6 +349,38 @@ serve(async (req) => {
               throw error;
             }
             
+            // Update linked lead record if lead information is provided and deal has related_lead_id
+            if (cleanDealData.related_lead_id && (dealData.company_name || dealData.lead_name || dealData.phone_no)) {
+              console.log(`Updating linked lead for deal: ${cleanDealData.deal_name}`);
+              
+              const leadUpdateData: any = {
+                modified_time: now,
+                modified_by: userId,
+              };
+              
+              if (dealData.company_name?.trim()) {
+                leadUpdateData.company_name = dealData.company_name.trim();
+              }
+              if (dealData.lead_name?.trim()) {
+                leadUpdateData.lead_name = dealData.lead_name.trim();
+              }
+              if (dealData.phone_no?.trim()) {
+                leadUpdateData.phone_no = dealData.phone_no.trim();
+              }
+              
+              const { error: leadError } = await supabaseClient
+                .from('leads')
+                .update(leadUpdateData)
+                .eq('id', cleanDealData.related_lead_id);
+              
+              if (leadError) {
+                console.error('Lead update error:', leadError);
+                // Don't throw - deal update succeeded, lead update is bonus
+              } else {
+                console.log(`Successfully updated linked lead for deal: ${cleanDealData.deal_name}`);
+              }
+            }
+            
             console.log(`Successfully updated deal: ${cleanDealData.deal_name}`);
             results.updated++;
           } else {
