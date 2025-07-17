@@ -267,10 +267,7 @@ const EditDealDialog = ({ deal, open, onOpenChange, onSuccess, onDelete }: EditD
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Lead Information Section */}
-          <LeadInformationSection 
-            dealId={deal.id} 
-            relatedLeadId={deal.related_lead_id || undefined} 
-          />
+          <LeadInformationSection deal={deal} />
           
           <BasicDealFields 
             formData={formData} 

@@ -316,6 +316,7 @@ export const useDeals = () => {
 
   const fetchDeals = async () => {
     try {
+      // Simple query for deals without joins - we'll use the imported data directly
       const { data, error } = await supabase
         .from('deals')
         .select('*')
@@ -345,9 +346,8 @@ export const useDeals = () => {
         };
       }) as Deal[];
       
-      // Enrich deals with lead information
-      const enrichedDeals = await enrichDealsWithLeadInfo(typedDeals);
-      setDeals(enrichedDeals);
+      // No need for enrichment as we get all data directly in the query
+      setDeals(typedDeals);
     } catch (error: any) {
       console.error('Error fetching deals:', error);
       toast({
