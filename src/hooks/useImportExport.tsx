@@ -104,7 +104,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           'contact_owner',
           'lead_owner'
         ],
-        required: ['lead_name', 'lead_owner'],
+        required: ['lead_name', 'contact_owner'],
         enums: {
           contact_source: ['Website', 'Referral', 'Cold Call', 'Email', 'Social Media', 'Trade Show', 'Other'],
           lead_status: ['New', 'Contacted', 'Qualified', 'Lost'],
@@ -502,8 +502,8 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
                   record[field] = `Meeting ${batchStart + i + 1}`;
                 } else if (field === 'deal_name') {
                   record[field] = `Deal ${batchStart + i + 1}`;
-                } else if (field === 'lead_owner') {
-                  // For leads, lead_owner is required and cannot be auto-generated
+                } else if (field === 'contact_owner') {
+                  // For leads, contact_owner is required and cannot be auto-generated
                   throw new Error(`Lead Owner is required.`);
                 } else if (field === 'start_time' || field === 'end_time') {
                   // For meetings, if time is missing, skip this record
