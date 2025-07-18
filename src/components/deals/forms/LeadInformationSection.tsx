@@ -41,44 +41,11 @@ export const LeadInformationSection = ({ dealId, relatedLeadId }: LeadInformatio
           return;
         }
 
-        // Fetch lead owner profile if contact_owner exists
-        let leadOwnerName = '';
-        if (lead.contact_owner) {
-          try {
-            // First try to get display name via edge function
-            const { data: userDisplayData, error: displayError } = await supabase.functions.invoke('get-user-display-names', {
-              body: { userIds: [lead.contact_owner] }
-            });
-
-            if (!displayError && userDisplayData?.userDisplayNames?.[lead.contact_owner]) {
-              leadOwnerName = userDisplayData.userDisplayNames[lead.contact_owner];
-            } else {
-              // Fallback to direct profile query
-              const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('full_name, "Email ID"')
-                .eq('id', lead.contact_owner)
-                .single();
-
-              if (!profileError && profile) {
-                // Create a proper display name
-                if (profile.full_name && profile.full_name !== profile["Email ID"]) {
-                  leadOwnerName = profile.full_name;
-                } else if (profile["Email ID"]) {
-                  // Extract name from email (part before @)
-                  leadOwnerName = profile["Email ID"].split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                }
-              }
-            }
-          } catch (error) {
-            console.error('Error fetching lead owner name:', error);
-          }
-        }
-
+        // Use the contact_owner directly as the lead owner text (from imported data)
         setLeadInfo({
           company_name: lead.company_name,
           lead_name: lead.lead_name,
-          lead_owner: leadOwnerName,
+          lead_owner: lead.contact_owner || '', // Use imported text directly
           email: lead.email,
           phone_no: lead.phone_no,
         });
@@ -167,7 +134,7 @@ export const LeadInformationSection = ({ dealId, relatedLeadId }: LeadInformatio
             <div className="flex items-center gap-2">
               <Users className="h-3 w-3 text-gray-500" />
                <Input
-                 value={leadInfo.lead_owner || 'Unknown Owner'}
+                 value={leadInfo.lead_owner || 'No Owner'}
                 readOnly
                 className="bg-gray-50 text-sm"
               />
