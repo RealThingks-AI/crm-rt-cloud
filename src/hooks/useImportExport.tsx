@@ -480,6 +480,10 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
                   const validatedValue = validateAndConvertValue(headerMap.mapped, rawValue);
                   if (validatedValue !== null) {
                     record[headerMap.mapped] = validatedValue;
+                    // Log lead_owner values specifically for debugging
+                    if (headerMap.mapped === 'contact_owner') {
+                      console.log(`Lead Owner mapping: Excel column "${headerMap.original}" with value "${rawValue}" -> database field "${headerMap.mapped}" with value "${validatedValue}"`);
+                    }
                     // Log stage values specifically for debugging
                     if (headerMap.mapped === 'stage') {
                       console.log(`Stage mapping: "${rawValue}" -> "${validatedValue}"`);
