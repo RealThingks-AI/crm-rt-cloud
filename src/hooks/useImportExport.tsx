@@ -82,6 +82,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       },
       leads: {
         allowedColumns: [
+          'lead_name',
           'contact_name',
           'company_name',
           'position',
@@ -99,9 +100,11 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           'city',
           'state',
           'country',
-          'description'
+          'description',
+          'contact_owner',
+          'lead_owner'
         ],
-        required: ['contact_name'],
+        required: ['lead_name', 'lead_owner'],
         enums: {
           contact_source: ['Website', 'Referral', 'Cold Call', 'Email', 'Social Media', 'Trade Show', 'Other'],
           lead_status: ['New', 'Contacted', 'Qualified', 'Lost'],
@@ -186,9 +189,10 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
     
     // Fuzzy matching for common variations
     const mappings: Record<string, string> = {
-      'name': 'contact_name',
-      'full_name': 'contact_name',
-      'contact': 'contact_name',
+      'name': tableName === 'leads' ? 'lead_name' : 'contact_name',
+      'full_name': tableName === 'leads' ? 'lead_name' : 'contact_name',
+      'contact': tableName === 'leads' ? 'lead_name' : 'contact_name',
+      'lead_name': 'lead_name',
       'company': 'company_name',
       'organization': 'company_name',
       'job_title': 'position',
@@ -221,6 +225,9 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       'meeting_link': 'teams_link',
       'video_link': 'teams_link',
       'join_link': 'teams_link',
+      'owner': 'contact_owner',
+      'lead_owner': 'contact_owner',
+      'assigned_to': 'contact_owner',
     };
     
     return mappings[normalized] || null;
@@ -354,8 +361,10 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
   // Check for duplicates based on key fields
   const checkDuplicate = async (record: any): Promise<boolean> => {
     try {
-      const keyFields = tableName === 'contacts_module' || tableName === 'contacts' || tableName === 'leads' 
+      const keyFields = tableName === 'contacts_module' || tableName === 'contacts' 
         ? ['email', 'contact_name'] 
+        : tableName === 'leads'
+        ? ['email', 'lead_name']
         : tableName === 'meetings'
         ? ['title', 'start_time']
         : ['deal_name'];
@@ -379,6 +388,24 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
   const handleImport = async (file: File) => {
     try {
       console.log(`Starting import of ${file.name} (${file.size} bytes) into ${tableName}`);
+      
+      // For leads import, delete all existing leads first
+      if (tableName === 'leads') {
+        console.log('Deleting all existing leads before import...');
+        const { error: deleteError } = await supabase
+          .from('leads')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all records
+        
+        if (deleteError) {
+          throw new Error(`Failed to delete existing leads: ${deleteError.message}`);
+        }
+        
+        toast({
+          title: "Existing leads deleted",
+          description: "All existing leads have been deleted before import",
+        });
+      }
       
       const text = await file.text();
       
@@ -469,10 +496,15 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
               if (!record[field]) {
                 if (field === 'contact_name') {
                   record[field] = `Contact ${batchStart + i + 1}`;
+                } else if (field === 'lead_name') {
+                  record[field] = `Lead ${batchStart + i + 1}`;
                 } else if (field === 'title') {
                   record[field] = `Meeting ${batchStart + i + 1}`;
                 } else if (field === 'deal_name') {
                   record[field] = `Deal ${batchStart + i + 1}`;
+                } else if (field === 'lead_owner') {
+                  // For leads, lead_owner is required and cannot be auto-generated
+                  throw new Error(`Lead Owner is required.`);
                 } else if (field === 'start_time' || field === 'end_time') {
                   // For meetings, if time is missing, skip this record
                   throw new Error(`Missing required field: ${field}`);

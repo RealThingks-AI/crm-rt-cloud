@@ -91,12 +91,10 @@ export const useLeads = () => {
           });
         }
 
-        // Transform leads to include proper display names
+        // Transform leads to include proper display names - use imported data as-is
         const transformedLeads = leadsData.map(lead => ({
           ...lead,
-          lead_owner_name: lead.contact_owner ? 
-                          (userMap.get(lead.contact_owner) || 'Unknown User') : 
-                          'No Owner'
+          lead_owner_name: lead.contact_owner || ''
         }));
         
         setLeads(transformedLeads);
