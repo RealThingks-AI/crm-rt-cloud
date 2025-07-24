@@ -1,311 +1,332 @@
-import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { supabase } from '@/integrations/supabase/client';
-import { Search, Plus } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import ContactColumnCustomizer from '@/components/ContactColumnCustomizer';
-import ContactsTableRefactored from '@/components/ContactsTableRefactored';
-import AddContactModuleForm from '@/components/forms/AddContactModuleForm';
-import EditContactModuleForm from '@/components/forms/EditContactModuleForm';
-import ConvertToLeadForm from '@/components/forms/ConvertToLeadForm';
-import BulkActions from '@/components/BulkActions';
-import ActionsDropdown from '@/components/ActionsDropdown';
-import { useContactsModule } from '@/hooks/useContactsModule';
-import { useBulkActions } from '@/hooks/useBulkActions';
-import { useImportExport } from '@/hooks/useImportExport';
-import { useBulkDelete } from '@/hooks/useBulkDelete';
-import { Contact } from '@/types/contact';
+import { ContactTable } from "@/components/ContactTable";
+import { Button } from "@/components/common/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/common/ui/dropdown-menu";
+import { Settings, Download, Upload, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Input } from "@/components/common/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/supabase/client";
+import { exportContactsToCSV, downloadCSV, parseCSVFile } from "@/utils/csvUtils";
 
-const ContactsModule = () => {
-  const { contacts, loading, columns, setColumns, fetchContacts } = useContactsModule();
-  
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [showEditForm, setShowEditForm] = useState(false);
-  const [showConvertForm, setShowConvertForm] = useState(false);
-  const [editingContact, setEditingContact] = useState<Contact | null>(null);
-  const [convertingContact, setConvertingContact] = useState<Contact | null>(null);
+const Contacts = () => {
+  const { toast } = useToast();
+  const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [handleExport, setHandleExport] = useState<(() => void) | null>(null);
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
 
-  const filteredContacts = contacts.filter(contact =>
-    contact.contact_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.company_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-  const {
-    selectedItems,
-    isAllSelected,
-    toggleSelectAll,
-    toggleSelectItem,
-    clearSelection,
-    hasSelection
-  } = useBulkActions(filteredContacts);
-
-  const { handleBulkDelete, handleSingleDelete, isDeleting } = useBulkDelete({
-    tableName: 'contacts',
-    onRefresh: fetchContacts,
-    clearSelection
-  });
-
-  const { handleImport, handleExportAll, handleExportSelected, handleExportFiltered } = useImportExport({
-    moduleName: 'Contacts',
-    tableName: 'contacts',
-    onRefresh: fetchContacts
-  });
-
-  const handleBulkUpdateStatus = async (ids: string[], status: string) => {
     try {
-      // Create the update object - check if the field exists in the contacts table
-      const updateData: Record<string, any> = {};
+      console.log('Starting CSV import...');
       
-      // First, let's check what fields are available in the contacts table
-      const { data: sampleData, error: sampleError } = await supabase
-        .from('contacts')
-        .select('*')
-        .limit(1);
-        
-      if (!sampleError && sampleData && sampleData.length > 0) {
-        // Check if lead_status field exists in the contacts table
-        if ('lead_status' in sampleData[0]) {
-          updateData.lead_status = status;
-        } else {
-          // If lead_status doesn't exist, we can't update it
-          toast({
-            variant: "destructive",
-            title: "Field not available",
-            description: "The lead_status field is not available in the contacts table",
-          });
-          return;
-        }
+      // Parse the CSV file
+      const csvData = await parseCSVFile(file);
+      
+      if (csvData.length === 0) {
+        toast({
+          title: "Import Error",
+          description: "No valid contacts found in the CSV file",
+          variant: "destructive",
+        });
+        return;
       }
 
+      console.log('Parsed CSV data:', csvData);
+
+      // Convert CSV data to database format
+      const user = await supabase.auth.getUser();
+      const contactsToInsert = csvData.map(row => ({
+        contact_name: row['Contact Name'],
+        company_name: row['Company Name'] || null,
+        position: row['Position'] || null,
+        email: row['Email'] || null,
+        phone_no: row['Phone'] || null,
+        mobile_no: row['Mobile'] || null,
+        country: row['Region'] || null,
+        city: row['City'] || null,
+        industry: row['Industry'] || null,
+        contact_source: row['Contact Source'] || null,
+        linkedin: row['LinkedIn'] || null,
+        website: row['Website'] || null,
+        description: row['Description'] || null,
+        contact_owner: row['Contact Owner'] || user.data.user?.id, // Auto-map to current user if not specified
+        created_by: user.data.user?.id
+      })).filter(contact => contact.contact_name); // Only include contacts with names
+
+      console.log('Contacts to insert:', contactsToInsert);
+
+      // Insert into database
       const { error } = await supabase
         .from('contacts')
-        .update(updateData)
-        .in('id', ids);
+        .insert(contactsToInsert);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database insert error:', error);
+        throw error;
+      }
 
       toast({
-        title: "Status updated",
-        description: `Successfully updated status for ${ids.length} contact(s)`,
+        title: "Import Successful",
+        description: `Successfully imported ${contactsToInsert.length} contacts`,
       });
-
-      clearSelection();
-      fetchContacts();
-    } catch (error: any) {
-      console.error('Error updating status:', error);
+      
+      // Reset the input and refresh data by triggering a page refresh
+      event.target.value = '';
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Import error:', error);
       toast({
+        title: "Import Error",
+        description: "Failed to import contacts. Please check your CSV format.",
         variant: "destructive",
-        title: "Error updating status",
-        description: error.message,
       });
     }
   };
 
-  const handleBulkChangeOwner = async (ids: string[], ownerId: string) => {
+  const handleExportContacts = async () => {
+    try {
+      console.log('Starting export process...');
+      
+      // Fetch all contacts from database
+      const { data: contacts, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .order('created_time', { ascending: false });
+
+      if (error) {
+        console.error('Database fetch error:', error);
+        throw error;
+      }
+
+      if (!contacts || contacts.length === 0) {
+        toast({
+          title: "No Data",
+          description: "No contacts available to export",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Fetched contacts for export:', contacts.length);
+
+      // Use the CSV utility function for consistent export
+      const csvContent = exportContactsToCSV(contacts);
+
+      console.log('CSV content created');
+
+      const filename = `contacts_export_${new Date().toISOString().split('T')[0]}.csv`;
+      
+      // Open CSV content in new window (works reliably in iframes)
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(`
+          <html>
+            <head>
+              <title>${filename}</title>
+              <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                .header { margin-bottom: 20px; }
+                .download-btn { 
+                  background: #007bff; 
+                  color: white; 
+                  padding: 10px 20px; 
+                  border: none; 
+                  border-radius: 5px; 
+                  cursor: pointer; 
+                  margin-right: 10px;
+                }
+                .copy-btn { 
+                  background: #28a745; 
+                  color: white; 
+                  padding: 10px 20px; 
+                  border: none; 
+                  border-radius: 5px; 
+                  cursor: pointer; 
+                }
+                pre { 
+                  background: #f8f9fa; 
+                  padding: 15px; 
+                  border: 1px solid #ddd; 
+                  border-radius: 5px; 
+                  overflow: auto;
+                  white-space: pre-wrap;
+                  word-wrap: break-word;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="header">
+                <h2>Contacts Export - ${filename}</h2>
+                <p>Your CSV data is ready. Use the buttons below to download or copy the content:</p>
+                <button class="download-btn" onclick="downloadCSV()">Download CSV File</button>
+                <button class="copy-btn" onclick="copyToClipboard()">Copy to Clipboard</button>
+              </div>
+              <pre id="csvContent">${csvContent}</pre>
+              <script>
+                function downloadCSV() {
+                  const blob = new Blob([\`${csvContent}\`], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = '${filename}';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }
+                
+                function copyToClipboard() {
+                  const content = document.getElementById('csvContent').textContent;
+                  navigator.clipboard.writeText(content).then(() => {
+                    alert('CSV content copied to clipboard!');
+                  }).catch(() => {
+                    // Fallback for older browsers
+                    const textarea = document.createElement('textarea');
+                    textarea.value = content;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    alert('CSV content copied to clipboard!');
+                  });
+                }
+              </script>
+            </body>
+          </html>
+        `);
+        newWindow.document.close();
+        
+        toast({
+          title: "Export Successful",
+          description: `Opened ${contacts.length} contacts in new window. Use the download button to save as ${filename}`,
+        });
+      } else {
+        // Fallback: copy to clipboard
+        try {
+          await navigator.clipboard.writeText(csvContent);
+          toast({
+            title: "Export Successful",
+            description: `${contacts.length} contacts copied to clipboard as CSV format`,
+          });
+        } catch (clipboardError) {
+          toast({
+            title: "Export Ready",
+            description: `CSV content prepared for ${contacts.length} contacts. Please check console for data.`,
+          });
+          console.log('CSV Content:');
+          console.log(csvContent);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Export Error",
+        description: "Failed to export contacts. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedContacts.length === 0) return;
+
     try {
       const { error } = await supabase
         .from('contacts')
-        .update({ contact_owner: ownerId })
-        .in('id', ids);
+        .delete()
+        .in('id', selectedContacts);
 
       if (error) throw error;
 
       toast({
-        title: "Owner updated",
-        description: `Successfully updated owner for ${ids.length} contact(s)`,
+        title: "Success",
+        description: `${selectedContacts.length} contacts deleted successfully`,
       });
-
-      clearSelection();
-      fetchContacts();
-    } catch (error: any) {
+      
+      setSelectedContacts([]);
+    } catch (error) {
       toast({
+        title: "Error",
+        description: "Failed to delete contacts",
         variant: "destructive",
-        title: "Error updating owner",
-        description: error.message,
       });
     }
   };
 
-  const handleAddSuccess = () => {
-    setShowAddForm(false);
-    fetchContacts();
-  };
-
-  const handleEditSuccess = () => {
-    setShowEditForm(false);
-    setEditingContact(null);
-    fetchContacts();
-  };
-
-  const handleEditContact = (contact: Contact) => {
-    setEditingContact(contact);
-    setShowEditForm(true);
-  };
-
-  const handleConvertToLead = (contact: Contact) => {
-    setConvertingContact(contact);
-    setShowConvertForm(true);
-  };
-
-  const handleConvertSuccess = () => {
-    setShowConvertForm(false);
-    setConvertingContact(null);
-    toast({
-      title: "Success",
-      description: "Contact converted to lead successfully",
-    });
-  };
-
-  const statusOptions = [
-    { value: 'New', label: 'New' },
-    { value: 'Contacted', label: 'Contacted' },
-    { value: 'Qualified', label: 'Qualified' },
-    { value: 'Lost', label: 'Lost' }
-  ];
-
-  const ownerOptions = [
-    { value: 'user1', label: 'John Doe' },
-    { value: 'user2', label: 'Jane Smith' }
-  ];
-
-  if (loading) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-24 bg-gray-200 rounded"></div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Contacts</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Contacts</h1>
         </div>
-        <div className="flex items-center space-x-3">
-          <ContactColumnCustomizer 
-            columns={columns} 
-            onColumnsChange={setColumns} 
-          />
-          <Button onClick={() => setShowAddForm(true)} size="default">
-            <Plus className="h-4 w-4 mr-2" />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="default"
+            onClick={() => setShowColumnCustomizer(true)}
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            Column Customization
+          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="default">
+                <Download className="w-4 h-4 mr-2" />
+                Action
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem asChild>
+                <label className="flex items-center cursor-pointer">
+                  <Upload className="w-4 h-4 mr-2" />
+                  Import CSV
+                  <Input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleImportCSV}
+                    className="hidden"
+                  />
+                </label>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportContacts}>
+                <Download className="w-4 h-4 mr-2" />
+                Export All
+              </DropdownMenuItem>
+              {selectedContacts.length > 0 && (
+                <DropdownMenuItem 
+                  onClick={handleBulkDelete}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Selected ({selectedContacts.length})
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button onClick={() => setShowModal(true)}>
+            <Plus className="w-4 h-4 mr-2" />
             Add Contact
           </Button>
-          <ActionsDropdown
-            onImport={handleImport}
-            onExportAll={() => handleExportAll(contacts)}
-            onExportSelected={() => handleExportSelected(contacts, selectedItems)}
-            onExportFiltered={() => handleExportFiltered(filteredContacts)}
-            onBulkDelete={handleBulkDelete}
-            onBulkUpdateOwner={handleBulkChangeOwner}
-            hasSelected={hasSelection}
-            hasFiltered={searchTerm.length > 0}
-            selectedItems={selectedItems}
-            moduleName="Contacts"
-          />
         </div>
       </div>
 
-      <div className="mb-6">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search contacts..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <BulkActions
-          selectedItems={selectedItems}
-          onSelectAll={toggleSelectAll}
-          onDelete={handleBulkDelete}
-          onUpdateStatus={handleBulkUpdateStatus}
-          onChangeOwner={handleBulkChangeOwner}
-          isAllSelected={isAllSelected}
-          totalItems={filteredContacts.length}
-          statusOptions={statusOptions}
-          ownerOptions={ownerOptions}
-        />
-      </div>
-
-      <Card>
-        <CardContent className="p-0">
-          <ContactsTableRefactored
-            contacts={filteredContacts}
-            visibleColumns={columns.filter(col => col.visible)}
-            onEditContact={handleEditContact}
-            onDeleteContact={handleSingleDelete}
-            onConvertToLead={handleConvertToLead}
-            onAddContact={() => setShowAddForm(true)}
-            selectedItems={selectedItems}
-            onToggleSelect={toggleSelectItem}
-            isDeleting={isDeleting}
-          />
-        </CardContent>
-      </Card>
-
-      <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle>Add New Contact</DialogTitle>
-          </DialogHeader>
-          <AddContactModuleForm
-            onSuccess={handleAddSuccess}
-            onCancel={() => setShowAddForm(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Contact</DialogTitle>
-          </DialogHeader>
-          {editingContact && (
-            <EditContactModuleForm
-              contact={editingContact}
-              onSuccess={handleEditSuccess}
-              onCancel={() => {
-                setShowEditForm(false);
-                setEditingContact(null);
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showConvertForm} onOpenChange={setShowConvertForm}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle>Convert Contact to Lead</DialogTitle>
-          </DialogHeader>
-          {convertingContact && (
-            <ConvertToLeadForm
-              contact={convertingContact}
-              onSuccess={handleConvertSuccess}
-              onCancel={() => {
-                setShowConvertForm(false);
-                setConvertingContact(null);
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Contact Table */}
+      <ContactTable 
+        showColumnCustomizer={showColumnCustomizer}
+        setShowColumnCustomizer={setShowColumnCustomizer}
+        showModal={showModal}
+        setShowModal={setShowModal}
+        onExportReady={() => {}} // No longer needed
+        selectedContacts={selectedContacts}
+        setSelectedContacts={setSelectedContacts}
+      />
     </div>
   );
 };
 
-export default ContactsModule;
+export default Contacts;

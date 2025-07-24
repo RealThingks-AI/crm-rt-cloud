@@ -1,138 +1,122 @@
-
-import { useDashboardData } from '@/hooks/useDashboardData';
-import { useDashboardPreferences } from '@/hooks/useDashboardPreferences';
-import { DashboardCustomizationModal } from '@/components/dashboard/DashboardCustomizationModal';
-import DashboardStats from '@/components/dashboard/DashboardStats';
-import { DealsPipelinePieChart } from '@/components/dashboard/DealsPipelinePieChart';
-import ContactsChart from '@/components/dashboard/ContactsChart';
-import LeadsChart from '@/components/dashboard/LeadsChart';
-import MeetingsChart from '@/components/dashboard/MeetingsChart';
-import { QuickActions } from '@/components/dashboard/QuickActions';
-import { Card, CardContent } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/common/ui/card";
+import { BarChart3, Users, Euro, TrendingUp, Calendar, Target } from "lucide-react";
 
 const Dashboard = () => {
-  const { contacts, leads, deals, meetings, loading, error } = useDashboardData();
-  const { preferences, loading: preferencesLoading } = useDashboardPreferences();
-
-  if (loading || preferencesLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Loading dashboard...</span>
-        </div>
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard</h1>
+        <p className="text-muted-foreground">Welcome to your business overview</p>
       </div>
-    );
-  }
 
-  if (error) {
-    return (
-      <div className="p-6">
+      {/* Quick Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="hover-scale">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Deals</CardTitle>
+            <BarChart3 className="w-4 h-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">142</div>
+            <p className="text-xs text-muted-foreground">+12% from last month</p>
+          </CardContent>
+        </Card>
+
+        <Card className="hover-scale">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+            <Euro className="w-4 h-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">€2.4M</div>
+            <p className="text-xs text-muted-foreground">+8% from last month</p>
+          </CardContent>
+        </Card>
+
+        <Card className="hover-scale">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Active Leads</CardTitle>
+            <TrendingUp className="w-4 h-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">68</div>
+            <p className="text-xs text-muted-foreground">+24% from last month</p>
+          </CardContent>
+        </Card>
+
+        <Card className="hover-scale">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Meetings Today</CardTitle>
+            <Calendar className="w-4 h-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">5</div>
+            <p className="text-xs text-muted-foreground">2 upcoming</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <CardContent className="p-6">
-            <div className="text-center">
-              <h2 className="text-lg font-semibold text-destructive mb-2">Error Loading Dashboard</h2>
-              <p className="text-muted-foreground">{error}</p>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="w-5 h-5" />
+              Recent Deals
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[
+                { name: "Enterprise Software Deal", value: "€450K", status: "Negotiation" },
+                { name: "Cloud Migration Project", value: "€280K", status: "Proposal" },
+                { name: "Digital Transformation", value: "€520K", status: "Lead" },
+                { name: "AI Implementation", value: "€180K", status: "Qualified" },
+              ].map((deal, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <div>
+                    <p className="font-medium">{deal.name}</p>
+                    <p className="text-sm text-muted-foreground">{deal.status}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-green-600">{deal.value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Team Performance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[
+                { name: "John Smith", deals: 12, revenue: "€340K" },
+                { name: "Sarah Johnson", deals: 8, revenue: "€280K" },
+                { name: "Mike Wilson", deals: 15, revenue: "€420K" },
+                { name: "Lisa Brown", deals: 6, revenue: "€190K" },
+              ].map((member, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <div>
+                    <p className="font-medium">{member.name}</p>
+                    <p className="text-sm text-muted-foreground">{member.deals} deals</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold">{member.revenue}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       </div>
-    );
-  }
-
-  const getLayoutClasses = () => {
-    switch (preferences.layout_view) {
-      case 'compact':
-        return 'gap-4';
-      case 'analytics':
-        return 'gap-6';
-      case 'minimal':
-        return 'gap-4';
-      default:
-        return 'gap-6';
-    }
-  };
-
-  const getWidgetSize = () => {
-    switch (preferences.layout_view) {
-      case 'compact':
-        return 'lg:col-span-1';
-      case 'analytics':
-        return 'lg:col-span-2';
-      case 'minimal':
-        return 'lg:col-span-1';
-      default:
-        return 'lg:col-span-1';
-    }
-  };
-
-  const renderWidget = (widgetId: string) => {
-    if (!preferences.visible_widgets.includes(widgetId)) return null;
-
-    switch (widgetId) {
-      case 'pipeline':
-        return <DealsPipelinePieChart key={widgetId} />;
-      case 'meetings':
-        return (
-          <div key={widgetId} className={preferences.layout_view === 'analytics' ? 'lg:col-span-2' : ''}>
-            <MeetingsChart meetings={meetings} />
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back! Here's what's happening.</p>
-        </div>
-        <DashboardCustomizationModal />
-      </div>
-
-      {/* Summary Stats */}
-      {(preferences.layout_view === 'grid' || preferences.layout_view === 'compact') && (
-        <DashboardStats
-          contactsCount={contacts.length}
-          leadsCount={leads.length}
-          dealsCount={deals.length}
-          meetingsCount={meetings.length}
-        />
-      )}
-
-      {/* Main Dashboard Grid */}
-      <div className={`grid grid-cols-1 lg:grid-cols-3 ${getLayoutClasses()}`}>
-        {/* Quick Actions - Always visible in compact/grid layout */}
-        {(preferences.layout_view === 'grid' || preferences.layout_view === 'compact') && (
-          <QuickActions />
-        )}
-
-        {/* Render widgets based on user preferences and order */}
-        {preferences.card_order.map(renderWidget)}
-
-        {/* Additional charts for analytics view */}
-        {preferences.layout_view === 'analytics' && (
-          <>
-            <div className="lg:col-span-2">
-              <ContactsChart contacts={contacts} />
-            </div>
-            <div className="lg:col-span-2">
-              <LeadsChart leads={leads} />
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Minimal layout special handling */}
-      {preferences.layout_view === 'minimal' && (
-        <div className="mt-6">
-          <QuickActions />
-        </div>
-      )}
     </div>
   );
 };

@@ -124,133 +124,211 @@ export type Database = {
       }
       deals: {
         Row: {
+          action_items: string | null
           amount: number | null
           begin_execution_date: string | null
+          budget: string | null
           budget_confirmed: string | null
           budget_holder: string | null
+          business_value: string | null
           closing_date: string | null
           created_at: string | null
           created_by: string | null
           currency: string | null
+          currency_type: string | null
+          current_status: string | null
           customer_agreed_on_need: string | null
+          customer_challenges: string | null
+          customer_name: string | null
+          customer_need: string | null
           customer_need_identified: boolean | null
           deal_name: string
           decision_expected_date: string | null
+          decision_maker_level: string | null
           decision_maker_present: boolean | null
           decision_makers: string | null
           description: string | null
           drop_reason: string | null
+          duration: number | null
+          end_date: string | null
           execution_started: boolean | null
+          expected_closing_date: string | null
           expected_deal_timeline_end: string | null
           expected_deal_timeline_start: string | null
           id: string
+          internal_comment: string | null
           internal_notes: string | null
+          is_recurring: boolean | null
+          lead_name: string | null
+          lead_owner: string | null
           loss_reason: string | null
+          lost_reason: string | null
           modified_at: string | null
           modified_by: string | null
           nda_signed: boolean | null
+          need_improvement: string | null
           need_summary: string | null
           negotiation_notes: string | null
           negotiation_status: string | null
+          priority: number | null
           probability: number | null
           product_service_scope: string | null
+          project_name: string | null
+          project_type: string | null
           proposal_sent_date: string | null
+          region: string | null
           related_lead_id: string | null
           related_meeting_id: string | null
+          relationship_strength: string | null
+          revenue: number | null
           rfq_confirmation_note: string | null
           rfq_document_url: string | null
           rfq_value: number | null
           stage: string
+          start_date: string | null
           supplier_portal_access: string | null
           supplier_portal_required: boolean | null
           timeline: string | null
           win_reason: string | null
+          won_reason: string | null
         }
         Insert: {
+          action_items?: string | null
           amount?: number | null
           begin_execution_date?: string | null
+          budget?: string | null
           budget_confirmed?: string | null
           budget_holder?: string | null
+          business_value?: string | null
           closing_date?: string | null
           created_at?: string | null
           created_by?: string | null
           currency?: string | null
+          currency_type?: string | null
+          current_status?: string | null
           customer_agreed_on_need?: string | null
+          customer_challenges?: string | null
+          customer_name?: string | null
+          customer_need?: string | null
           customer_need_identified?: boolean | null
           deal_name: string
           decision_expected_date?: string | null
+          decision_maker_level?: string | null
           decision_maker_present?: boolean | null
           decision_makers?: string | null
           description?: string | null
           drop_reason?: string | null
+          duration?: number | null
+          end_date?: string | null
           execution_started?: boolean | null
+          expected_closing_date?: string | null
           expected_deal_timeline_end?: string | null
           expected_deal_timeline_start?: string | null
           id?: string
+          internal_comment?: string | null
           internal_notes?: string | null
+          is_recurring?: boolean | null
+          lead_name?: string | null
+          lead_owner?: string | null
           loss_reason?: string | null
+          lost_reason?: string | null
           modified_at?: string | null
           modified_by?: string | null
           nda_signed?: boolean | null
+          need_improvement?: string | null
           need_summary?: string | null
           negotiation_notes?: string | null
           negotiation_status?: string | null
+          priority?: number | null
           probability?: number | null
           product_service_scope?: string | null
+          project_name?: string | null
+          project_type?: string | null
           proposal_sent_date?: string | null
+          region?: string | null
           related_lead_id?: string | null
           related_meeting_id?: string | null
+          relationship_strength?: string | null
+          revenue?: number | null
           rfq_confirmation_note?: string | null
           rfq_document_url?: string | null
           rfq_value?: number | null
           stage?: string
+          start_date?: string | null
           supplier_portal_access?: string | null
           supplier_portal_required?: boolean | null
           timeline?: string | null
           win_reason?: string | null
+          won_reason?: string | null
         }
         Update: {
+          action_items?: string | null
           amount?: number | null
           begin_execution_date?: string | null
+          budget?: string | null
           budget_confirmed?: string | null
           budget_holder?: string | null
+          business_value?: string | null
           closing_date?: string | null
           created_at?: string | null
           created_by?: string | null
           currency?: string | null
+          currency_type?: string | null
+          current_status?: string | null
           customer_agreed_on_need?: string | null
+          customer_challenges?: string | null
+          customer_name?: string | null
+          customer_need?: string | null
           customer_need_identified?: boolean | null
           deal_name?: string
           decision_expected_date?: string | null
+          decision_maker_level?: string | null
           decision_maker_present?: boolean | null
           decision_makers?: string | null
           description?: string | null
           drop_reason?: string | null
+          duration?: number | null
+          end_date?: string | null
           execution_started?: boolean | null
+          expected_closing_date?: string | null
           expected_deal_timeline_end?: string | null
           expected_deal_timeline_start?: string | null
           id?: string
+          internal_comment?: string | null
           internal_notes?: string | null
+          is_recurring?: boolean | null
+          lead_name?: string | null
+          lead_owner?: string | null
           loss_reason?: string | null
+          lost_reason?: string | null
           modified_at?: string | null
           modified_by?: string | null
           nda_signed?: boolean | null
+          need_improvement?: string | null
           need_summary?: string | null
           negotiation_notes?: string | null
           negotiation_status?: string | null
+          priority?: number | null
           probability?: number | null
           product_service_scope?: string | null
+          project_name?: string | null
+          project_type?: string | null
           proposal_sent_date?: string | null
+          region?: string | null
           related_lead_id?: string | null
           related_meeting_id?: string | null
+          relationship_strength?: string | null
+          revenue?: number | null
           rfq_confirmation_note?: string | null
           rfq_document_url?: string | null
           rfq_value?: number | null
           stage?: string
+          start_date?: string | null
           supplier_portal_access?: string | null
           supplier_portal_required?: boolean | null
           timeline?: string | null
           win_reason?: string | null
+          won_reason?: string | null
         }
         Relationships: [
           {
