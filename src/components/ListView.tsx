@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +36,7 @@ export const ListView = ({
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
   const [columns, setColumns] = useState<ColumnConfig[]>([
-    // Include ALL possible fields from all stages
+    // Only include active fields from the deals pipeline (removed all specified fields)
     // Basic fields
     { field: 'project_name', label: 'Project', visible: true, order: 0 },
     { field: 'customer_name', label: 'Customer', visible: true, order: 1 },
@@ -63,26 +64,38 @@ export const ListView = ({
     
     // RFQ stage fields
     { field: 'is_recurring', label: 'Is Recurring', visible: false, order: 17 },
-    { field: 'project_type', label: 'Project Type', visible: false, order: 18 },
-    { field: 'duration', label: 'Duration', visible: false, order: 19 },
-    { field: 'revenue', label: 'Revenue', visible: false, order: 20 },
-    { field: 'start_date', label: 'Start Date', visible: false, order: 21 },
-    { field: 'end_date', label: 'End Date', visible: false, order: 22 },
+    { field: 'project_duration', label: 'Duration', visible: false, order: 18 },
+    { field: 'start_date', label: 'Start Date', visible: false, order: 19 },
+    { field: 'end_date', label: 'End Date', visible: false, order: 20 },
+    { field: 'rfq_received_date', label: 'RFQ Received', visible: false, order: 21 },
+    { field: 'proposal_due_date', label: 'Proposal Due', visible: false, order: 22 },
+    { field: 'rfq_status', label: 'RFQ Status', visible: false, order: 23 },
     
     // Offered stage fields
-    { field: 'currency_type', label: 'Currency', visible: false, order: 23 },
-    { field: 'action_items', label: 'Action Items', visible: false, order: 24 },
-    { field: 'current_status', label: 'Current Status', visible: false, order: 25 },
+    { field: 'currency_type', label: 'Currency', visible: false, order: 24 },
+    { field: 'action_items', label: 'Action Items', visible: false, order: 25 },
+    { field: 'current_status', label: 'Current Status', visible: false, order: 26 },
+    { field: 'closing', label: 'Closing', visible: false, order: 27 },
     
     // Final stage fields
-    { field: 'won_reason', label: 'Won Reason', visible: false, order: 26 },
-    { field: 'lost_reason', label: 'Lost Reason', visible: false, order: 27 },
-    { field: 'need_improvement', label: 'Need Improvement', visible: false, order: 28 },
-    { field: 'drop_reason', label: 'Drop Reason', visible: false, order: 29 },
+    { field: 'won_reason', label: 'Won Reason', visible: false, order: 28 },
+    { field: 'lost_reason', label: 'Lost Reason', visible: false, order: 29 },
+    { field: 'need_improvement', label: 'Need Improvement', visible: false, order: 30 },
+    { field: 'drop_reason', label: 'Drop Reason', visible: false, order: 31 },
+    
+    // Won stage specific fields
+    { field: 'quarterly_revenue_q1', label: 'Q1 Revenue', visible: false, order: 32 },
+    { field: 'quarterly_revenue_q2', label: 'Q2 Revenue', visible: false, order: 33 },
+    { field: 'quarterly_revenue_q3', label: 'Q3 Revenue', visible: false, order: 34 },
+    { field: 'quarterly_revenue_q4', label: 'Q4 Revenue', visible: false, order: 35 },
+    { field: 'total_revenue', label: 'Total Revenue', visible: false, order: 36 },
+    { field: 'signed_contract_date', label: 'Signed Date', visible: false, order: 37 },
+    { field: 'implementation_start_date', label: 'Implementation Start', visible: false, order: 38 },
+    { field: 'handoff_status', label: 'Handoff Status', visible: false, order: 39 },
     
     // System fields
-    { field: 'created_at', label: 'Created', visible: false, order: 30 },
-    { field: 'modified_at', label: 'Updated', visible: false, order: 31 },
+    { field: 'created_at', label: 'Created', visible: false, order: 40 },
+    { field: 'modified_at', label: 'Updated', visible: false, order: 41 },
   ]);
   const { toast } = useToast();
 
@@ -172,7 +185,6 @@ export const ListView = ({
         deal.budget?.toLowerCase().includes(searchValue) ||
         deal.business_value?.toLowerCase().includes(searchValue) ||
         deal.decision_maker_level?.toLowerCase().includes(searchValue) ||
-        deal.project_type?.toLowerCase().includes(searchValue) ||
         deal.currency_type?.toLowerCase().includes(searchValue) ||
         deal.action_items?.toLowerCase().includes(searchValue) ||
         deal.current_status?.toLowerCase().includes(searchValue) ||
@@ -183,8 +195,7 @@ export const ListView = ({
         deal.stage?.toLowerCase().includes(searchValue) ||
         String(deal.priority || '').includes(searchValue) ||
         String(deal.probability || '').includes(searchValue) ||
-        String(deal.duration || '').includes(searchValue) ||
-        String(deal.revenue || '').includes(searchValue) ||
+        String(deal.project_duration || '').includes(searchValue) ||
         String(deal.total_contract_value || '').includes(searchValue);
       
       const matchesStage = stageFilter === "all" || deal.stage === stageFilter;
@@ -196,13 +207,13 @@ export const ListView = ({
       let bValue: any;
 
       // Get the values for the sort field
-      if (['priority', 'probability', 'duration'].includes(sortBy)) {
+      if (['priority', 'probability', 'project_duration'].includes(sortBy)) {
         aValue = a[sortBy as keyof Deal] || 0;
         bValue = b[sortBy as keyof Deal] || 0;
-      } else if (['total_contract_value', 'revenue'].includes(sortBy)) {
+      } else if (['total_contract_value', 'total_revenue', 'quarterly_revenue_q1', 'quarterly_revenue_q2', 'quarterly_revenue_q3', 'quarterly_revenue_q4'].includes(sortBy)) {
         aValue = a[sortBy as keyof Deal] || 0;
         bValue = b[sortBy as keyof Deal] || 0;
-      } else if (['expected_closing_date', 'start_date', 'end_date', 'created_at', 'modified_at'].includes(sortBy)) {
+      } else if (['expected_closing_date', 'start_date', 'end_date', 'created_at', 'modified_at', 'rfq_received_date', 'proposal_due_date', 'signed_contract_date', 'implementation_start_date'].includes(sortBy)) {
         const aDateValue = a[sortBy as keyof Deal];
         const bDateValue = b[sortBy as keyof Deal];
         aValue = new Date(typeof aDateValue === 'string' ? aDateValue : 0);
@@ -297,144 +308,122 @@ export const ListView = ({
              style={{ boxShadow: 'var(--shadow-md)' }}>
           <div className="overflow-x-auto">
             <Table className="w-full">
-            <TableHeader>
-              <TableRow className="hover:bg-primary/5 transition-colors"
-                        style={{ background: 'var(--gradient-subtle)' }}>
-                <TableHead className="w-12 min-w-12">
-                  <Checkbox
-                    checked={selectedDeals.size === filteredAndSortedDeals.length && filteredAndSortedDeals.length > 0}
-                    onCheckedChange={handleSelectAll}
-                    className="transition-all hover:scale-110"
-                  />
-                </TableHead>
-                {visibleColumns.map(column => (
-                  <TableHead key={column.field} className={`font-semibold cursor-pointer hover:bg-primary/10 transition-colors ${
-                    column.field === 'project_name' ? 'min-w-[200px]' :
-                    column.field === 'customer_name' ? 'min-w-[150px]' :
-                    column.field === 'lead_owner' ? 'min-w-[140px]' :
-                    column.field === 'stage' ? 'min-w-[120px]' :
-                    column.field === 'priority' ? 'min-w-[100px]' :
-                    column.field === 'total_contract_value' ? 'min-w-[120px]' :
-                    column.field === 'expected_closing_date' ? 'min-w-[140px]' :
-                    column.field === 'modified_at' ? 'min-w-[120px]' :
-                    'min-w-[100px]'
-                  }`}
-                  onClick={() => {
-                    if (sortBy === column.field) {
-                      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                    } else {
-                      setSortBy(column.field);
-                      setSortOrder("desc");
-                    }
-                  }}>
-                    <div className="flex items-center gap-1">
-                      {column.label}
-                      {sortBy === column.field ? (
-                        sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 opacity-50" />
-                      )}
-                    </div>
+              <TableHeader>
+                <TableRow className="hover:bg-primary/5 transition-colors"
+                          style={{ background: 'var(--gradient-subtle)' }}>
+                  <TableHead className="w-12 min-w-12">
+                    <Checkbox
+                      checked={selectedDeals.size === filteredAndSortedDeals.length && filteredAndSortedDeals.length > 0}
+                      onCheckedChange={handleSelectAll}
+                      className="transition-all hover:scale-110"
+                    />
                   </TableHead>
-                ))}
-                <TableHead className="w-24 min-w-24">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-          <TableBody>
-            {filteredAndSortedDeals.map((deal) => (
-              <TableRow 
-                key={deal.id} 
-                className="hover:bg-primary/5 transition-all duration-200 group hover:shadow-sm border-b border-border/50"
-              >
-                <TableCell>
-                  <Checkbox
-                    checked={selectedDeals.has(deal.id)}
-                    onCheckedChange={(checked) => handleSelectDeal(deal.id, Boolean(checked))}
-                    className="transition-all hover:scale-110"
-                  />
-                </TableCell>
-                
-                {visibleColumns.map(column => (
-                  <TableCell key={`${deal.id}-${column.field}`} className="transition-all duration-200 hover:bg-primary/5">
-                    {column.field === 'stage' ? (
-                      <InlineEditCell
-                        value={deal.stage}
-                        field="stage"
-                        dealId={deal.id}
-                        onSave={handleInlineEdit}
-                        type="stage"
-                      />
-                    ) : column.field === 'priority' ? (
-                      <InlineEditCell
-                        value={deal.priority}
-                        field="priority"
-                        dealId={deal.id}
-                        onSave={handleInlineEdit}
-                        type="priority"
-                      />
-                    ) : column.field === 'total_contract_value' ? (
-                      <InlineEditCell
-                        value={deal.total_contract_value}
-                        field="total_contract_value"
-                        dealId={deal.id}
-                        onSave={handleInlineEdit}
-                        type="number"
-                      />
-                    ) : column.field === 'expected_closing_date' ? (
-                      <InlineEditCell
-                        value={deal.expected_closing_date}
-                        field="expected_closing_date"
-                        dealId={deal.id}
-                        onSave={handleInlineEdit}
-                        type="date"
-                      />
-                    ) : column.field === 'modified_at' || column.field === 'created_at' ? (
-                      <span className="text-muted-foreground">
-                        {formatDate(deal[column.field])}
-                      </span>
-                    ) : (
-                      <InlineEditCell
-                        value={deal[column.field as keyof Deal]}
-                        field={column.field}
-                        dealId={deal.id}
-                        onSave={handleInlineEdit}
-                        type="text"
-                      />
-                    )}
-                  </TableCell>
-                ))}
-                
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
+                  {visibleColumns.map(column => (
+                    <TableHead key={column.field} className={`font-semibold cursor-pointer hover:bg-primary/10 transition-colors ${
+                      column.field === 'project_name' ? 'min-w-[200px]' :
+                      column.field === 'customer_name' ? 'min-w-[150px]' :
+                      column.field === 'lead_owner' ? 'min-w-[140px]' :
+                      column.field === 'stage' ? 'min-w-[120px]' :
+                      column.field === 'priority' ? 'min-w-[100px]' :
+                      column.field === 'total_contract_value' ? 'min-w-[120px]' :
+                      column.field === 'expected_closing_date' ? 'min-w-[140px]' :
+                      'min-w-[120px]'
+                    }`}
+                    onClick={() => {
+                      if (sortBy === column.field) {
+                        setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                      } else {
+                        setSortBy(column.field);
+                        setSortOrder("desc");
+                      }
+                    }}>
+                      <div className="flex items-center gap-2">
+                        {column.label}
+                        {sortBy === column.field && (
+                          sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </TableHead>
+                  ))}
+                  <TableHead className="w-20 min-w-20">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAndSortedDeals.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8 text-muted-foreground">
+                      No deals found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredAndSortedDeals.map((deal) => (
+                    <TableRow 
+                      key={deal.id} 
+                      className={`cursor-pointer hover:bg-primary/5 transition-all duration-200 hover:shadow-sm ${
+                        selectedDeals.has(deal.id) ? 'bg-primary/10 shadow-sm' : ''
+                      }`}
                       onClick={() => onDealClick(deal)}
-                      className="opacity-0 group-hover:opacity-100 transition-all duration-200 hover-scale button-scale bg-primary/10 hover:bg-primary/20"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteDeals([deal.id]);
-                        toast({
-                          title: "Deal deleted",
-                          description: `Successfully deleted ${deal.project_name || 'deal'}`,
-                        });
+                      style={{ 
+                        background: selectedDeals.has(deal.id) ? 'var(--primary-50)' : undefined,
+                        borderLeft: selectedDeals.has(deal.id) ? '3px solid hsl(var(--primary))' : undefined 
                       }}
-                      className="opacity-0 group-hover:opacity-100 transition-all duration-200 hover-scale button-scale bg-destructive/10 hover:bg-destructive/20 text-destructive"
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-          </Table>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedDeals.has(deal.id)}
+                          onCheckedChange={(checked) => handleSelectDeal(deal.id, Boolean(checked))}
+                          className="transition-all hover:scale-110"
+                        />
+                      </TableCell>
+                      {visibleColumns.map(column => (
+                        <TableCell key={column.field} className="font-medium">
+                          <InlineEditCell
+                            value={deal[column.field as keyof Deal]}
+                            field={column.field}
+                            dealId={deal.id}
+                            onSave={handleInlineEdit}
+                            type={
+                              column.field === 'stage' ? 'select' :
+                              column.field === 'priority' ? 'number' :
+                              ['total_contract_value', 'total_revenue', 'quarterly_revenue_q1', 'quarterly_revenue_q2', 'quarterly_revenue_q3', 'quarterly_revenue_q4'].includes(column.field) ? 'currency' :
+                              ['expected_closing_date', 'start_date', 'end_date', 'rfq_received_date', 'proposal_due_date', 'signed_contract_date', 'implementation_start_date'].includes(column.field) ? 'date' :
+                              'text'
+                            }
+                            options={column.field === 'stage' ? DEAL_STAGES : undefined}
+                          />
+                        </TableCell>
+                      ))}
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => onDealClick(deal)}
+                            className="hover-scale p-1 h-7 w-7"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              onDeleteDeals([deal.id]);
+                              toast({
+                                title: "Deal deleted",
+                                description: `Successfully deleted ${deal.project_name || 'deal'}`,
+                              });
+                            }}
+                            className="hover-scale p-1 h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </div>
 
@@ -444,14 +433,6 @@ export const ListView = ({
           onExport={handleBulkExport}
           onClearSelection={() => setSelectedDeals(new Set())}
         />
-
-        {filteredAndSortedDeals.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground bg-card rounded-lg border card-hover"
-               style={{ background: 'var(--gradient-subtle)' }}>
-            <p className="text-lg font-bold">No deals found matching your criteria</p>
-            <p className="text-sm mt-2 opacity-75">Try adjusting your search filters or create a new deal</p>
-          </div>
-        )}
       </div>
     </div>
   );

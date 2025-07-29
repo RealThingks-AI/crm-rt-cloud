@@ -51,7 +51,7 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRe
       return;
     }
 
-    // Complete field list covering ALL stages - updated with all recent additions
+    // Only include active fields used in the deals pipeline (removed all the specified fields)
     const exportFields = [
       // System fields
       'id',
@@ -63,7 +63,6 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRe
       // Basic deal info (all stages)
       'deal_name',
       'stage',
-      'description',
       'internal_comment',
       
       // Lead stage fields
@@ -73,9 +72,6 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRe
       'region',
       'lead_owner',
       'priority',
-      'company_name',
-      'phone_no',
-      'fax',
       
       // Discussions stage fields
       'customer_need',
@@ -100,15 +96,10 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRe
       'rfq_received_date',
       'proposal_due_date',
       'rfq_status',
-      'rfq_document_url',
-      'product_service_scope',
-      'rfq_confirmation_note',
       
       // Offered stage fields
       'current_status',
       'closing',
-      'negotiation_status',
-      'negotiation_notes',
       
       // Won stage fields
       'won_reason',
@@ -126,36 +117,7 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRe
       'need_improvement',
       
       // Dropped stage fields
-      'drop_reason',
-      
-      // Additional fields from database schema
-      'project_type',
-      'duration',
-      'revenue',
-      'currency',
-      'amount',
-      'closing_date',
-      'customer_need_identified',
-      'decision_maker_present',
-      'expected_deal_timeline_start',
-      'expected_deal_timeline_end',
-      'nda_signed',
-      'rfq_value',
-      'proposal_sent_date',
-      'decision_expected_date',
-      'execution_started',
-      'begin_execution_date',
-      'supplier_portal_required',
-      'internal_notes',
-      'budget_holder',
-      'decision_makers',
-      'timeline',
-      'win_reason',
-      'loss_reason',
-      'need_summary',
-      'customer_agreed_on_need',
-      'budget_confirmed',
-      'supplier_portal_access'
+      'drop_reason'
     ];
 
     const validDeals = dealsToExport.filter(deal => {

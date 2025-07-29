@@ -66,11 +66,6 @@ export interface Deal {
   
   // Dropped stage fields
   drop_reason?: string;
-  
-  // Legacy fields (keeping for backward compatibility)
-  project_type?: string;
-  duration?: number;
-  revenue?: number;
 }
 
 export const DEAL_STAGES: DealStage[] = ['Lead', 'Discussions', 'Qualified', 'RFQ', 'Offered', 'Won', 'Lost', 'Dropped'];
