@@ -52,7 +52,6 @@ export const KanbanBoard = ({
       deal.budget?.toLowerCase().includes(searchValue) ||
       deal.business_value?.toLowerCase().includes(searchValue) ||
       deal.decision_maker_level?.toLowerCase().includes(searchValue) ||
-      deal.project_type?.toLowerCase().includes(searchValue) ||
       deal.currency_type?.toLowerCase().includes(searchValue) ||
       deal.action_items?.toLowerCase().includes(searchValue) ||
       deal.current_status?.toLowerCase().includes(searchValue) ||
@@ -63,8 +62,6 @@ export const KanbanBoard = ({
       deal.stage?.toLowerCase().includes(searchValue) ||
       String(deal.priority || '').includes(searchValue) ||
       String(deal.probability || '').includes(searchValue) ||
-      String(deal.duration || '').includes(searchValue) ||
-      String(deal.revenue || '').includes(searchValue) ||
       String(deal.total_contract_value || '').includes(searchValue)
     );
   };
