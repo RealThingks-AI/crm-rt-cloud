@@ -3,7 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { CSVParser } from '@/utils/csvParser';
 import { getExportFilename } from '@/utils/exportUtils';
-import { Deal, DealStage } from '@/types/deal';
+import { getColumnConfig } from './import-export/columnConfig';
+import { createHeaderMapper } from './import-export/headerMapper';
+import { createValueValidator } from './import-export/valueValidator';
+import { createDuplicateChecker } from './import-export/duplicateChecker';
+import { createRecordValidator } from './import-export/recordValidator';
 
 interface ImportExportOptions {
   moduleName: string;
@@ -11,508 +15,15 @@ interface ImportExportOptions {
   tableName?: string;
 }
 
-// Simplified interface for column configuration
-interface ColumnConfig {
-  allowedColumns: string[];
-  required: string[];
-  enums: Record<string, string[]>;
-}
-
 export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_module' }: ImportExportOptions) => {
   const { user } = useAuth();
-
-  // Define column mappings for different modules
-  const getColumnConfig = (table: string): ColumnConfig => {
-    const configs: Record<string, ColumnConfig> = {
-      contacts_module: {
-        allowedColumns: [
-          'contact_name',
-          'company_name',
-          'position',
-          'email',
-          'phone_no',
-          'mobile_no',
-          'linkedin',
-          'website',
-          'contact_source',
-          'lead_status',
-          'industry',
-          'no_of_employees',
-          'annual_revenue',
-          'city',
-          'state',
-          'country',
-          'description'
-        ],
-        required: ['contact_name'],
-        enums: {
-          contact_source: ['Website', 'Referral', 'Cold Call', 'Email', 'Social Media', 'Trade Show', 'Other'],
-          lead_status: ['New', 'Contacted', 'Qualified', 'Lost'],
-          industry: ['Automotive', 'Technology', 'Healthcare', 'Finance', 'Manufacturing', 'Retail', 'Other']
-        }
-      },
-      contacts: {
-        allowedColumns: [
-          'contact_name',
-          'company_name',
-          'position',
-          'email',
-          'phone_no',
-          'mobile_no',
-          'linkedin',
-          'website',
-          'contact_source',
-          'lead_status',
-          'industry',
-          'no_of_employees',
-          'annual_revenue',
-          'city',
-          'state',
-          'country',
-          'description'
-        ],
-        required: ['contact_name'],
-        enums: {
-          contact_source: ['Website', 'Referral', 'Cold Call', 'Email', 'Social Media', 'Trade Show', 'Other'],
-          lead_status: ['New', 'Contacted', 'Qualified', 'Lost'],
-          industry: ['Automotive', 'Technology', 'Healthcare', 'Finance', 'Manufacturing', 'Retail', 'Other']
-        }
-      },
-      leads: {
-        allowedColumns: [
-          'lead_name',
-          'contact_name',
-          'company_name',
-          'position',
-          'email',
-          'phone_no',
-          'mobile_no',
-          'linkedin',
-          'website',
-          'contact_source',
-          'lead_status',
-          'industry',
-          'no_of_employees',
-          'annual_revenue',
-          'city',
-          'state',
-          'country',
-          'description',
-          'contact_owner',
-          'lead_owner'
-        ],
-        required: ['lead_name', 'contact_owner'],
-        enums: {
-          contact_source: ['Website', 'Referral', 'Cold Call', 'Email', 'Social Media', 'Trade Show', 'Other'],
-          lead_status: ['New', 'Contacted', 'Qualified', 'Lost'],
-          industry: ['Automotive', 'Technology', 'Healthcare', 'Finance', 'Manufacturing', 'Retail', 'Other']
-        }
-      },
-      meetings: {
-        allowedColumns: [
-          'title',
-          'start_time',
-          'end_time',
-          'location',
-          'agenda',
-          'outcome',
-          'next_action',
-          'status',
-          'priority',
-          'participants',
-          'teams_link',
-          'lead_id',
-          'contact_id',
-          'deal_id',
-          'tags',
-          'follow_up_required',
-          'host'
-        ],
-        required: ['title', 'start_time', 'end_time'],
-        enums: {
-          status: ['scheduled', 'in_progress', 'completed', 'cancelled'],
-          priority: ['Low', 'Medium', 'High', 'Critical']
-        }
-      },
-      deals: {
-        allowedColumns: [
-          'deal_name',
-          'stage',
-          'internal_comment',
-          'project_name',
-          'lead_name',
-          'customer_name',
-          'region',
-          'lead_owner',
-          'priority',
-          'customer_need',
-          'relationship_strength',
-          'budget',
-          'probability',
-          'expected_closing_date',
-          'is_recurring',
-          'customer_challenges',
-          'business_value',
-          'decision_maker_level',
-          'total_contract_value',
-          'currency_type',
-          'start_date',
-          'end_date',
-          'project_duration',
-          'action_items',
-          'rfq_received_date',
-          'proposal_due_date',
-          'rfq_status',
-          'current_status',
-          'closing',
-          'won_reason',
-          'quarterly_revenue_q1',
-          'quarterly_revenue_q2',
-          'quarterly_revenue_q3',
-          'quarterly_revenue_q4',
-          'total_revenue',
-          'signed_contract_date',
-          'implementation_start_date',
-          'handoff_status',
-          'lost_reason',
-          'need_improvement',
-          'drop_reason'
-        ],
-        required: ['deal_name', 'stage'],
-        enums: {
-          stage: ['Lead', 'Discussions', 'Qualified', 'RFQ', 'Offered', 'Won', 'Lost', 'Dropped'],
-          currency_type: ['EUR', 'USD', 'INR'],
-          customer_challenges: ['Open', 'Ongoing', 'Done'],
-          relationship_strength: ['Low', 'Medium', 'High'],
-          business_value: ['Open', 'Ongoing', 'Done'],
-          decision_maker_level: ['Open', 'Ongoing', 'Done'],
-          is_recurring: ['Yes', 'No', 'Unclear'],
-          rfq_status: ['Drafted', 'Submitted', 'Rejected', 'Accepted'],
-          handoff_status: ['Not Started', 'In Progress', 'Complete']
-        }
-      }
-    };
-    return configs[table] || configs.contacts_module;
-  };
-
   const config = getColumnConfig(tableName);
-
-  // Enhanced header mapping - EXACT field matching for deals
-  const mapHeader = (header: string): string | null => {
-    const trimmedHeader = header.trim();
-    
-    console.log(`Mapping header: "${trimmedHeader}"`);
-    
-    // For deals, use EXACT field name matching only
-    if (tableName === 'deals') {
-      if (config.allowedColumns.includes(trimmedHeader)) {
-        console.log(`Exact field match found: ${trimmedHeader}`);
-        return trimmedHeader;
-      }
-      
-      console.log(`No exact mapping found for deals field: ${trimmedHeader}`);
-      return null;
-    }
-    
-    // For other tables, use normalized matching
-    const normalized = trimmedHeader.toLowerCase().replace(/[\s_-]+/g, '_');
-    
-    // Direct match first
-    if (config.allowedColumns.includes(normalized)) {
-      console.log(`Direct match found: ${normalized}`);
-      return normalized;
-    }
-    
-    // Generic mappings for other tables
-    const mappings: Record<string, string> = {
-      'name': tableName === 'leads' ? 'lead_name' : 'contact_name',
-      'full_name': tableName === 'leads' ? 'lead_name' : 'contact_name',
-      'contact': tableName === 'leads' ? 'lead_name' : 'contact_name',
-      'company': 'company_name',
-      'organization': 'company_name',
-      'job_title': 'position',
-      'title': tableName === 'meetings' ? 'title' : 'position',
-      'phone': 'phone_no',
-      'telephone': 'phone_no',
-      'mobile': 'mobile_no',
-      'cell': 'mobile_no',
-      'employees': 'no_of_employees',
-      'revenue': 'annual_revenue',
-      'source': 'contact_source',
-      'status': tableName === 'meetings' ? 'status' : 'lead_status',
-      'lead': 'lead_status'
-    };
-    
-    const mapped = mappings[normalized] || null;
-    if (mapped) {
-      console.log(`Generic mapping found: ${normalized} -> ${mapped}`);
-    } else {
-      console.log(`No mapping found for: ${normalized}`);
-    }
-    
-    return mapped;
-  };
-
-  const validateAndConvertValue = (key: string, value: string) => {
-    if (!value || value.trim() === '') return null;
-
-    console.log(`Validating field ${key} with value: ${value}`);
-
-    // Handle enum validations with exact matching
-    if (key in config.enums) {
-      const enumValues = config.enums[key];
-      if (enumValues && enumValues.includes(value)) {
-        return value;
-      }
-      // Try case-insensitive match
-      const normalizedValue = value.trim();
-      const matchedValue = enumValues.find(enumVal => enumVal.toLowerCase() === normalizedValue.toLowerCase());
-      if (matchedValue) {
-        return matchedValue;
-      }
-      // For critical fields like stage, return null if invalid
-      if (key === 'stage') {
-        console.warn(`Invalid stage value: ${value}, available values: ${enumValues.join(', ')}`);
-        return null;
-      }
-      // For other enums, return null to avoid setting invalid values
-      console.warn(`Invalid enum value for ${key}: ${value}, available values: ${enumValues.join(', ')}`);
-      return null;
-    }
-
-    // Handle specific field types for deals
-    if (tableName === 'deals') {
-      switch (key) {
-        case 'priority':
-          if (value === '' || value === 'null' || value === 'undefined') return null;
-          const priority = parseInt(value);
-          return isNaN(priority) ? null : Math.max(1, Math.min(5, priority));
-        
-        case 'probability':
-          if (value === '' || value === 'null' || value === 'undefined') return null;
-          const prob = parseInt(value);
-          return isNaN(prob) ? null : Math.max(0, Math.min(100, prob));
-        
-        case 'project_duration':
-          if (value === '' || value === 'null' || value === 'undefined') return null;
-          const duration = parseInt(value);
-          return isNaN(duration) ? null : Math.max(0, duration);
-        
-        case 'total_contract_value':
-        case 'quarterly_revenue_q1':
-        case 'quarterly_revenue_q2':
-        case 'quarterly_revenue_q3':
-        case 'quarterly_revenue_q4':
-        case 'total_revenue':
-          if (value === '' || value === 'null' || value === 'undefined') return null;
-          const revenue = parseFloat(value.replace(/[€$,]/g, ''));
-          return isNaN(revenue) ? null : Math.max(0, revenue);
-        
-        case 'start_date':
-        case 'end_date':
-        case 'expected_closing_date':
-        case 'rfq_received_date':
-        case 'proposal_due_date':
-        case 'signed_contract_date':
-        case 'implementation_start_date':
-          if (value === '' || value === 'null' || value === 'undefined') return null;
-          // Handle exported date format (YYYY-MM-DD)
-          const date = new Date(value);
-          return isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
-        
-        // Text fields
-        case 'deal_name':
-        case 'project_name':
-        case 'lead_name':
-        case 'customer_name':
-        case 'region':
-        case 'lead_owner':
-        case 'budget':
-        case 'internal_comment':
-        case 'customer_need':
-        case 'action_items':
-        case 'current_status':
-        case 'closing':
-        case 'won_reason':
-        case 'lost_reason':
-        case 'need_improvement':
-        case 'drop_reason':
-          if (value === '' || value === 'null' || value === 'undefined') return null;
-          return value.trim();
-        
-        default:
-          if (value === '' || value === 'null' || value === 'undefined') return null;
-          return value.trim();
-      }
-    }
-
-    // Handle specific field types for other tables
-    switch (key) {
-      case 'no_of_employees':
-        const employees = parseInt(value);
-        return isNaN(employees) ? null : employees;
-      
-      case 'annual_revenue':
-      case 'amount':
-      case 'rfq_value':
-        const revenue = parseFloat(value.replace(/[$,]/g, ''));
-        return isNaN(revenue) ? null : revenue;
-      
-      case 'email':
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(value) ? value : null;
-      
-      // Time fields for meetings
-      case 'start_time':
-      case 'end_time':
-        if (tableName === 'meetings') {
-          const date = new Date(value);
-          return isNaN(date.getTime()) ? null : date.toISOString();
-        }
-        return value.trim();
-      
-      case 'participants':
-        // Handle comma-separated email list
-        if (tableName === 'meetings') {
-          return value.split(',').map(email => email.trim()).filter(email => email);
-        }
-        return value.trim();
-        
-      case 'tags':
-        // Handle comma-separated tags list
-        if (tableName === 'meetings') {
-          return value.split(',').map(tag => tag.trim()).filter(tag => tag);
-        }
-        return value.trim();
-        
-      case 'follow_up_required':
-        if (tableName === 'meetings') {
-          return ['yes', 'true', '1', 'on'].includes(value.toLowerCase());
-        }
-        return value.trim();
-      
-      default:
-        return value.trim();
-    }
-  };
-
-  // Enhanced validation function specifically for import records
-  const validateImportRecord = (record: any): boolean => {
-    console.log('Validating import record:', record);
-    
-    if (tableName === 'deals') {
-      const hasValidDealName = record.deal_name && record.deal_name.trim() !== '';
-      const hasValidStage = record.stage && ['Lead', 'Discussions', 'Qualified', 'RFQ', 'Offered', 'Won', 'Lost', 'Dropped'].includes(record.stage);
-      
-      console.log(`Import validation - deal_name: ${record.deal_name}, stage: ${record.stage}, valid: ${hasValidDealName && hasValidStage}`);
-      
-      if (!hasValidDealName) {
-        console.error('Invalid deal: missing deal_name');
-        return false;
-      }
-      
-      if (!hasValidStage) {
-        console.error(`Invalid deal: invalid stage "${record.stage}"`);
-        return false;
-      }
-      
-      return true;
-    }
-    
-    const isValid = config.required.every(field => {
-      const value = record[field];
-      return value !== undefined && value !== null && String(value).trim() !== '';
-    });
-    
-    console.log(`Import validation for ${tableName}:`, isValid);
-    return isValid;
-  };
-
-  // COMPLETELY REWRITTEN duplicate detection logic - more robust
-  const checkDuplicate = async (record: any): Promise<boolean> => {
-    try {
-      if (tableName === 'deals') {
-        console.log('Checking for duplicate deal:', {
-          deal_name: record.deal_name,
-          stage: record.stage,
-          customer_name: record.customer_name
-        });
-
-        // Use multiple criteria for more accurate duplicate detection
-        const { data: existingDeals, error } = await supabase
-          .from('deals')
-          .select('id, deal_name, stage, customer_name, project_name, lead_name')
-          .eq('deal_name', record.deal_name);
-
-        if (error) {
-          console.error('Error checking deal duplicates:', error);
-          return false;
-        }
-
-        if (!existingDeals || existingDeals.length === 0) {
-          console.log('No existing deals found with same name');
-          return false;
-        }
-
-        // Check for exact matches based on multiple criteria
-        const exactMatch = existingDeals.find(existing => {
-          // Primary match: same deal name and stage
-          const nameStageMatch = existing.deal_name === record.deal_name && 
-                                existing.stage === record.stage;
-          
-          // Secondary match: same deal name and customer
-          const nameCustomerMatch = existing.deal_name === record.deal_name && 
-                                  existing.customer_name && record.customer_name &&
-                                  existing.customer_name === record.customer_name;
-          
-          // Tertiary match: same deal name and project
-          const nameProjectMatch = existing.deal_name === record.deal_name && 
-                                 existing.project_name && record.project_name &&
-                                 existing.project_name === record.project_name;
-
-          return nameStageMatch || nameCustomerMatch || nameProjectMatch;
-        });
-
-        if (exactMatch) {
-          console.log(`Exact duplicate found:`, exactMatch);
-          return true;
-        }
-
-        console.log('No exact duplicates found');
-        return false;
-      }
-      
-      // For other tables, use original logic
-      const keyFields = tableName === 'contacts_module' || tableName === 'contacts' 
-        ? ['email', 'contact_name'] 
-        : tableName === 'leads'
-        ? ['email', 'lead_name']
-        : tableName === 'meetings'
-        ? ['title', 'start_time']
-        : ['deal_name'];
-
-      // Use any type to avoid complex Supabase type inference
-      let query = supabase.from(tableName as any).select('id');
-      
-      keyFields.forEach(field => {
-        if (record[field]) {
-          query = query.eq(field, record[field]);
-        }
-      });
-
-      const { data, error } = await query;
-      const isDuplicate = !error && data && data.length > 0;
-      
-      if (isDuplicate) {
-        console.log(`Duplicate found for record with ${keyFields.join(', ')}:`, keyFields.map(f => record[f]).join(', '));
-      }
-      
-      return isDuplicate;
-    } catch (error) {
-      console.error('Error checking duplicate:', error);
-      return false;
-    }
-  };
+  
+  // Create utility functions for this table
+  const mapHeader = createHeaderMapper(tableName);
+  const validateAndConvertValue = createValueValidator(tableName);
+  const checkDuplicate = createDuplicateChecker(tableName);
+  const validateImportRecord = createRecordValidator(tableName);
 
   const handleImport = async (file: File) => {
     try {
@@ -559,9 +70,8 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       }
       
       if (invalidHeaders.length > 0) {
-        const otherIgnored = invalidHeaders.filter(h => 
-          !['id', 'created_at', 'modified_at', 'created_by', 'modified_by'].includes(h.original)
-        );
+        const systemFields = ['id', 'created_at', 'modified_at', 'created_by', 'modified_by'];
+        const otherIgnored = invalidHeaders.filter(h => !systemFields.includes(h.original));
         
         if (otherIgnored.length > 0) {
           console.warn('Other ignored columns:', otherIgnored.map(h => h.original));
@@ -615,7 +125,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
               record.stage = 'Lead';
             }
             
-            // Set user ID for new records - ALWAYS set these automatically
+            // Set user ID for new records
             record.created_by = user?.id || '00000000-0000-0000-0000-000000000000';
             record.modified_by = user?.id || '00000000-0000-0000-0000-000000000000';
             
@@ -628,7 +138,12 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
               continue;
             }
             
-            // Enhanced duplicate checking - check BEFORE insert
+            // Enhanced duplicate checking - check BEFORE insert with delay for database consistency
+            console.log(`Checking for duplicates before inserting row ${i + 1}...`);
+            
+            // Add a small delay to ensure database consistency
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
             const isDuplicate = await checkDuplicate(record);
             if (isDuplicate) {
               console.log(`Skipping duplicate record ${i + 1}: ${record.deal_name}`);
@@ -682,12 +197,12 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           } else {
             const insertedCount = data?.length || 1;
             successCount += insertedCount;
-            console.log(`Successfully inserted record ${i + 1}`);
+            console.log(`Successfully inserted record ${i + 1}:`, data?.[0]?.id);
           }
 
           // Small delay to prevent overwhelming the database
           if (i % 5 === 0 && i > 0) {
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await new Promise(resolve => setTimeout(resolve, 300));
           }
 
         } catch (rowError: any) {
