@@ -135,33 +135,24 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         }
       },
       deals: {
-        // UPDATED: Only include ACTIVE fields that are currently in the Deal type
+        // EXACT MATCH with export fields in the exact order
         allowedColumns: [
-          // System fields
           'id',
           'created_at',
           'modified_at',
           'created_by',
           'modified_by',
-          
-          // Basic deal info (all stages)
           'deal_name',
           'stage',
           'internal_comment',
-          
-          // Lead stage fields
           'project_name',
           'lead_name',
           'customer_name',
           'region',
           'lead_owner',
           'priority',
-          
-          // Discussions stage fields
           'customer_need',
           'relationship_strength',
-          
-          // Qualified stage fields
           'budget',
           'probability',
           'expected_closing_date',
@@ -169,8 +160,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           'customer_challenges',
           'business_value',
           'decision_maker_level',
-          
-          // RFQ stage fields
           'total_contract_value',
           'currency_type',
           'start_date',
@@ -180,12 +169,8 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           'rfq_received_date',
           'proposal_due_date',
           'rfq_status',
-          
-          // Offered stage fields
           'current_status',
           'closing',
-          
-          // Won stage fields
           'won_reason',
           'quarterly_revenue_q1',
           'quarterly_revenue_q2',
@@ -195,12 +180,8 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           'signed_contract_date',
           'implementation_start_date',
           'handoff_status',
-          
-          // Lost stage fields
           'lost_reason',
           'need_improvement',
-          
-          // Dropped stage fields
           'drop_reason'
         ],
         required: ['deal_name', 'stage'],
@@ -212,7 +193,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           business_value: ['Open', 'Ongoing', 'Done'],
           decision_maker_level: ['Open', 'Ongoing', 'Done'],
           is_recurring: ['Yes', 'No', 'Unclear'],
-          customer_need: ['Open', 'Ongoing', 'Done'],
           rfq_status: ['Drafted', 'Submitted', 'Rejected', 'Accepted'],
           handoff_status: ['Not Started', 'In Progress', 'Complete']
         }
@@ -223,7 +203,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
 
   const config = getColumnConfig(tableName);
 
-  // Enhanced header mapping - UPDATED to only map active fields
+  // Enhanced header mapping - EXACT field matching for deals
   const mapHeader = (header: string): string | null => {
     const normalized = header.toLowerCase().trim().replace(/[\s_-]+/g, '_');
     
@@ -235,82 +215,22 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       return normalized;
     }
     
-    // For deals, comprehensive mapping for ALL ACTIVE fields only
+    // For deals, use EXACT mappings only
     if (tableName === 'deals') {
-      // UPDATED: Only map to fields that are currently active in Deal type
-      const exactMappings: Record<string, string> = {
-        // System fields
-        'id': 'id',
-        'created_at': 'created_at',
-        'modified_at': 'modified_at',
-        'created_by': 'created_by',
-        'modified_by': 'modified_by',
-        
-        // Basic deal info
-        'deal_name': 'deal_name',
-        'stage': 'stage',
-        'internal_comment': 'internal_comment',
-        
-        // Lead stage fields
-        'project_name': 'project_name',
-        'lead_name': 'lead_name',
-        'customer_name': 'customer_name',
-        'region': 'region',
-        'lead_owner': 'lead_owner',
-        'priority': 'priority',
-        
-        // Discussions stage fields
-        'customer_need': 'customer_need',
-        'relationship_strength': 'relationship_strength',
-        
-        // Qualified stage fields
-        'budget': 'budget',
-        'probability': 'probability',
-        'expected_closing_date': 'expected_closing_date',
-        'is_recurring': 'is_recurring',
-        'customer_challenges': 'customer_challenges',
-        'business_value': 'business_value',
-        'decision_maker_level': 'decision_maker_level',
-        
-        // RFQ stage fields
-        'total_contract_value': 'total_contract_value',
-        'currency_type': 'currency_type',
-        'start_date': 'start_date',
-        'end_date': 'end_date',
-        'project_duration': 'project_duration',
-        'action_items': 'action_items',
-        'rfq_received_date': 'rfq_received_date',
-        'proposal_due_date': 'proposal_due_date',
-        'rfq_status': 'rfq_status',
-        
-        // Offered stage fields
-        'current_status': 'current_status',
-        'closing': 'closing',
-        
-        // Won stage fields
-        'won_reason': 'won_reason',
-        'quarterly_revenue_q1': 'quarterly_revenue_q1',
-        'quarterly_revenue_q2': 'quarterly_revenue_q2',
-        'quarterly_revenue_q3': 'quarterly_revenue_q3',
-        'quarterly_revenue_q4': 'quarterly_revenue_q4',
-        'total_revenue': 'total_revenue',
-        'signed_contract_date': 'signed_contract_date',
-        'implementation_start_date': 'implementation_start_date',
-        'handoff_status': 'handoff_status',
-        
-        // Lost stage fields
-        'lost_reason': 'lost_reason',
-        'need_improvement': 'need_improvement',
-        
-        // Dropped stage fields
-        'drop_reason': 'drop_reason'
-      };
+      // Create exact mappings for all allowed columns
+      const exactMappings: Record<string, string> = {};
+      config.allowedColumns.forEach(field => {
+        exactMappings[field] = field;
+      });
       
-      // Check exact mapping first
       if (exactMappings[normalized]) {
         console.log(`Exact mapping found: ${normalized} -> ${exactMappings[normalized]}`);
         return exactMappings[normalized];
       }
+      
+      // No fallback mappings for deals - must match exactly
+      console.log(`No exact mapping found for deals field: ${normalized}`);
+      return null;
     }
     
     // Generic mappings for other tables
@@ -370,7 +290,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       return null;
     }
 
-    // Handle specific field types for deals - UPDATED to only process active fields
+    // Handle specific field types for deals
     if (tableName === 'deals') {
       switch (key) {
         case 'priority':
@@ -403,7 +323,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         case 'lost_reason':
         case 'drop_reason':
         case 'need_improvement':
-          // Text fields
+        case 'customer_need':
           return value.trim();
         
         case 'start_date':
@@ -523,7 +443,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
     console.log('Validating import record:', record);
     
     if (tableName === 'deals') {
-      // Only require deal_name and stage for deals - exactly as export structure requires
       const hasValidDealName = record.deal_name && record.deal_name.trim() !== '';
       const hasValidStage = record.stage && ['Lead', 'Discussions', 'Qualified', 'RFQ', 'Offered', 'Won', 'Lost', 'Dropped'].includes(record.stage);
       
@@ -531,7 +450,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       return hasValidDealName && hasValidStage;
     }
     
-    // For other tables, check basic required fields
     const isValid = config.required.every(field => {
       const value = record[field];
       return value !== undefined && value !== null && String(value).trim() !== '';
@@ -653,7 +571,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
             
             // Set required defaults based on table type
             if (tableName === 'deals') {
-              // Ensure required fields for deals - match export requirements exactly
               if (!record.deal_name && record.project_name) {
                 record.deal_name = record.project_name;
               }
@@ -664,7 +581,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
                 record.stage = 'Lead';
               }
               
-              // Use simplified validation for import records
               const isValid = validateImportRecord(record);
               
               if (!isValid) {
@@ -674,7 +590,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
                 continue;
               }
             } else {
-              // Handle other table types
               config.required.forEach(field => {
                 if (!record[field]) {
                   if (field === 'contact_name') {

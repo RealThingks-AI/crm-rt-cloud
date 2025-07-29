@@ -107,7 +107,6 @@ const Index = () => {
 
         setDeals(prev => [data as unknown as Deal, ...prev]);
       } else if (selectedDeal) {
-        // Prepare data for database update
         const updateData = {
           ...dealData,
           deal_name: dealData.project_name || selectedDeal.project_name || 'Untitled Deal',
@@ -119,7 +118,6 @@ const Index = () => {
         
         await handleUpdateDeal(selectedDeal.id, updateData);
         
-        // Refresh the deals list to ensure we have the latest data
         await fetchDeals();
       }
     } catch (error) {
@@ -159,17 +157,14 @@ const Index = () => {
       const processedDeals: Deal[] = [];
 
       for (const importDeal of importedDeals) {
-        // Remove shouldUpdate flag before database operations
         const { shouldUpdate, ...dealData } = importDeal;
         
-        // Look for existing deal by ID or name
         const existingDeal = deals.find(d => 
           (dealData.id && d.id === dealData.id) || 
           (dealData.project_name && d.project_name === dealData.project_name)
         );
 
         if (existingDeal) {
-          // Update existing deal with all fields from CSV
           const { data, error } = await supabase
             .from('deals')
             .update({
@@ -185,7 +180,6 @@ const Index = () => {
           processedDeals.push(data as Deal);
           updatedCount++;
         } else {
-          // Create new deal with stage from CSV or default to Lead
           const newDealData = {
             ...dealData,
             stage: dealData.stage || 'Lead' as const,
@@ -206,7 +200,6 @@ const Index = () => {
         }
       }
 
-      // Refresh deals list to ensure sync
       await fetchDeals();
       
       toast({
@@ -274,7 +267,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* Header - REMOVED DUPLICATE IMPORT/EXPORT BUTTONS */}
       <header className="sticky top-0 z-50 border-b bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-lg">
         <div className="w-full px-6 py-4">
           <div className="flex items-center justify-between w-full max-w-none">
@@ -283,17 +276,8 @@ const Index = () => {
               <h1 className="text-2xl lg:text-3xl font-bold">RealThingks Deals</h1>
             </div>
             
-            {/* Right side - All controls */}
+            {/* Right side - Controls without duplicate import/export */}
             <div className="flex items-center gap-2 lg:gap-4 flex-shrink-0">
-              {/* Import/Export */}
-              <ImportExportBar
-                deals={deals}
-                onImport={handleImportDeals}
-                onExport={() => {}}
-                selectedDeals={[]}
-                onRefresh={fetchDeals}
-              />
-              
               {/* View Toggle */}
               <div className="bg-white/10 rounded-lg p-1 flex">
                 <Button
@@ -322,7 +306,7 @@ const Index = () => {
                 New Deal
               </Button>
               
-              {/* Merged User Info with Sign Out */}
+              {/* User Info with Sign Out */}
               <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
                 <div className="text-right">
                   <p className="text-primary-foreground/90 text-sm font-medium">
@@ -377,7 +361,6 @@ const Index = () => {
             </CardContent>
           </Card>
         </div>
-
       </div>
 
       {/* Main Content - Full Width */}
