@@ -68,15 +68,8 @@ const Dashboard = () => {
 
   return (
     <div className="p-6 space-y-8">
-      {/* Yearly Revenue Summary Section */}
-      <YearlyRevenueSummary />
-
-      {/* Divider */}
-      <div className="border-t border-border" />
-
-      {/* Live Dashboard Content */}
+      {/* Dashboard Cards - Single Row */}
       <div className="space-y-6">
-        {/* Top Cards - All in Single Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <Card className="hover-scale">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -169,6 +162,12 @@ const Dashboard = () => {
           </Card>
         </div>
       </div>
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
+      {/* Yearly Revenue Summary Section */}
+      <YearlyRevenueSummary />
     </div>
   );
 };
