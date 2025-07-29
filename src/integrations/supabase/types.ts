@@ -131,7 +131,9 @@ export type Database = {
           budget_confirmed: string | null
           budget_holder: string | null
           business_value: string | null
+          closing: string | null
           closing_date: string | null
+          company_name: string | null
           created_at: string | null
           created_by: string | null
           currency: string | null
@@ -155,10 +157,13 @@ export type Database = {
           expected_closing_date: string | null
           expected_deal_timeline_end: string | null
           expected_deal_timeline_start: string | null
+          fax: string | null
+          handoff_status: string | null
           id: string
+          implementation_start_date: string | null
           internal_comment: string | null
           internal_notes: string | null
-          is_recurring: boolean | null
+          is_recurring: string | null
           lead_name: string | null
           lead_owner: string | null
           loss_reason: string | null
@@ -170,12 +175,19 @@ export type Database = {
           need_summary: string | null
           negotiation_notes: string | null
           negotiation_status: string | null
+          phone_no: string | null
           priority: number | null
           probability: number | null
           product_service_scope: string | null
+          project_duration: number | null
           project_name: string | null
           project_type: string | null
+          proposal_due_date: string | null
           proposal_sent_date: string | null
+          quarterly_revenue_q1: number | null
+          quarterly_revenue_q2: number | null
+          quarterly_revenue_q3: number | null
+          quarterly_revenue_q4: number | null
           region: string | null
           related_lead_id: string | null
           related_meeting_id: string | null
@@ -183,12 +195,17 @@ export type Database = {
           revenue: number | null
           rfq_confirmation_note: string | null
           rfq_document_url: string | null
+          rfq_received_date: string | null
+          rfq_status: string | null
           rfq_value: number | null
+          signed_contract_date: string | null
           stage: string
           start_date: string | null
           supplier_portal_access: string | null
           supplier_portal_required: boolean | null
           timeline: string | null
+          total_contract_value: number | null
+          total_revenue: number | null
           win_reason: string | null
           won_reason: string | null
         }
@@ -200,7 +217,9 @@ export type Database = {
           budget_confirmed?: string | null
           budget_holder?: string | null
           business_value?: string | null
+          closing?: string | null
           closing_date?: string | null
+          company_name?: string | null
           created_at?: string | null
           created_by?: string | null
           currency?: string | null
@@ -224,10 +243,13 @@ export type Database = {
           expected_closing_date?: string | null
           expected_deal_timeline_end?: string | null
           expected_deal_timeline_start?: string | null
+          fax?: string | null
+          handoff_status?: string | null
           id?: string
+          implementation_start_date?: string | null
           internal_comment?: string | null
           internal_notes?: string | null
-          is_recurring?: boolean | null
+          is_recurring?: string | null
           lead_name?: string | null
           lead_owner?: string | null
           loss_reason?: string | null
@@ -239,12 +261,19 @@ export type Database = {
           need_summary?: string | null
           negotiation_notes?: string | null
           negotiation_status?: string | null
+          phone_no?: string | null
           priority?: number | null
           probability?: number | null
           product_service_scope?: string | null
+          project_duration?: number | null
           project_name?: string | null
           project_type?: string | null
+          proposal_due_date?: string | null
           proposal_sent_date?: string | null
+          quarterly_revenue_q1?: number | null
+          quarterly_revenue_q2?: number | null
+          quarterly_revenue_q3?: number | null
+          quarterly_revenue_q4?: number | null
           region?: string | null
           related_lead_id?: string | null
           related_meeting_id?: string | null
@@ -252,12 +281,17 @@ export type Database = {
           revenue?: number | null
           rfq_confirmation_note?: string | null
           rfq_document_url?: string | null
+          rfq_received_date?: string | null
+          rfq_status?: string | null
           rfq_value?: number | null
+          signed_contract_date?: string | null
           stage?: string
           start_date?: string | null
           supplier_portal_access?: string | null
           supplier_portal_required?: boolean | null
           timeline?: string | null
+          total_contract_value?: number | null
+          total_revenue?: number | null
           win_reason?: string | null
           won_reason?: string | null
         }
@@ -269,7 +303,9 @@ export type Database = {
           budget_confirmed?: string | null
           budget_holder?: string | null
           business_value?: string | null
+          closing?: string | null
           closing_date?: string | null
+          company_name?: string | null
           created_at?: string | null
           created_by?: string | null
           currency?: string | null
@@ -293,10 +329,13 @@ export type Database = {
           expected_closing_date?: string | null
           expected_deal_timeline_end?: string | null
           expected_deal_timeline_start?: string | null
+          fax?: string | null
+          handoff_status?: string | null
           id?: string
+          implementation_start_date?: string | null
           internal_comment?: string | null
           internal_notes?: string | null
-          is_recurring?: boolean | null
+          is_recurring?: string | null
           lead_name?: string | null
           lead_owner?: string | null
           loss_reason?: string | null
@@ -308,12 +347,19 @@ export type Database = {
           need_summary?: string | null
           negotiation_notes?: string | null
           negotiation_status?: string | null
+          phone_no?: string | null
           priority?: number | null
           probability?: number | null
           product_service_scope?: string | null
+          project_duration?: number | null
           project_name?: string | null
           project_type?: string | null
+          proposal_due_date?: string | null
           proposal_sent_date?: string | null
+          quarterly_revenue_q1?: number | null
+          quarterly_revenue_q2?: number | null
+          quarterly_revenue_q3?: number | null
+          quarterly_revenue_q4?: number | null
           region?: string | null
           related_lead_id?: string | null
           related_meeting_id?: string | null
@@ -321,12 +367,17 @@ export type Database = {
           revenue?: number | null
           rfq_confirmation_note?: string | null
           rfq_document_url?: string | null
+          rfq_received_date?: string | null
+          rfq_status?: string | null
           rfq_value?: number | null
+          signed_contract_date?: string | null
           stage?: string
           start_date?: string | null
           supplier_portal_access?: string | null
           supplier_portal_required?: boolean | null
           timeline?: string | null
+          total_contract_value?: number | null
+          total_revenue?: number | null
           win_reason?: string | null
           won_reason?: string | null
         }
@@ -532,6 +583,33 @@ export type Database = {
           full_name?: string | null
           id?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      yearly_revenue_targets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          total_target: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          total_target?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          total_target?: number
+          updated_at?: string
+          year?: number
         }
         Relationships: []
       }
