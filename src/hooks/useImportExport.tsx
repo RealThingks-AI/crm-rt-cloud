@@ -185,10 +185,31 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           // Insert single record with proper type handling
           console.log(`Inserting record ${i + 1}:`, record);
           
-          const insertResult = await supabase
-            .from(tableName)
-            .insert([record])
-            .select('id');
+          // Type-safe table insertion
+          let insertResult;
+          if (tableName === 'deals') {
+            insertResult = await supabase
+              .from('deals')
+              .insert([record])
+              .select('id');
+          } else if (tableName === 'contacts' || tableName === 'contacts_module') {
+            insertResult = await supabase
+              .from('contacts')
+              .insert([record])
+              .select('id');
+          } else if (tableName === 'leads') {
+            insertResult = await supabase
+              .from('leads')
+              .insert([record])
+              .select('id');
+          } else if (tableName === 'meetings') {
+            insertResult = await supabase
+              .from('meetings')
+              .insert([record])
+              .select('id');
+          } else {
+            throw new Error(`Unsupported table: ${tableName}`);
+          }
 
           if (insertResult.error) {
             console.error(`Error inserting row ${i + 1}:`, insertResult.error);
