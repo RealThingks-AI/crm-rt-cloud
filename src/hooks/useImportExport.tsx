@@ -1,4 +1,3 @@
-
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -136,7 +135,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         }
       },
       deals: {
-        // EXACT MATCH with export fields in the exact order
+        // EXACT MATCH with export fields in the exact order from export
         allowedColumns: [
           'id',
           'created_at',
@@ -206,43 +205,46 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
 
   // Enhanced header mapping - EXACT field matching for deals
   const mapHeader = (header: string): string | null => {
-    const normalized = header.toLowerCase().trim().replace(/[\s_-]+/g, '_');
+    const trimmedHeader = header.trim();
     
-    console.log(`Mapping header: "${header}" -> normalized: "${normalized}"`);
+    console.log(`Mapping header: "${trimmedHeader}"`);
     
-    // Direct match first - EXACT field names from export
+    // For deals, use EXACT field name matching only
+    if (tableName === 'deals') {
+      if (config.allowedColumns.includes(trimmedHeader)) {
+        console.log(`Exact field match found: ${trimmedHeader}`);
+        return trimmedHeader;
+      }
+      
+      // No fallback mappings for deals - must match exactly
+      console.log(`No exact mapping found for deals field: ${trimmedHeader}`);
+      return null;
+    }
+    
+    // For other tables, use normalized matching
+    const normalized = trimmedHeader.toLowerCase().replace(/[\s_-]+/g, '_');
+    
+    // Direct match first
     if (config.allowedColumns.includes(normalized)) {
       console.log(`Direct match found: ${normalized}`);
       return normalized;
     }
     
-    // For deals, try exact matches with original header
-    if (tableName === 'deals') {
-      if (config.allowedColumns.includes(header)) {
-        console.log(`Exact header match found: ${header}`);
-        return header;
-      }
-      
-      // No fallback mappings for deals - must match exactly
-      console.log(`No exact mapping found for deals field: ${header}`);
-      return null;
-    }
-    
     // Generic mappings for other tables
     const mappings: Record<string, string> = {
-      'name': tableName === 'leads' ? 'lead_name' : tableName === 'deals' ? 'deal_name' : 'contact_name',
-      'full_name': tableName === 'leads' ? 'lead_name' : tableName === 'deals' ? 'deal_name' : 'contact_name',
+      'name': tableName === 'leads' ? 'lead_name' : 'contact_name',
+      'full_name': tableName === 'leads' ? 'lead_name' : 'contact_name',
       'contact': tableName === 'leads' ? 'lead_name' : 'contact_name',
       'company': 'company_name',
       'organization': 'company_name',
       'job_title': 'position',
-      'title': tableName === 'meetings' ? 'title' : tableName === 'deals' ? 'deal_name' : 'position',
+      'title': tableName === 'meetings' ? 'title' : 'position',
       'phone': 'phone_no',
       'telephone': 'phone_no',
       'mobile': 'mobile_no',
       'cell': 'mobile_no',
       'employees': 'no_of_employees',
-      'revenue': tableName === 'deals' ? 'total_revenue' : 'annual_revenue',
+      'revenue': 'annual_revenue',
       'source': 'contact_source',
       'status': tableName === 'meetings' ? 'status' : 'lead_status',
       'lead': 'lead_status'
@@ -289,14 +291,17 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
     if (tableName === 'deals') {
       switch (key) {
         case 'priority':
+          if (value === '' || value === 'null' || value === 'undefined') return null;
           const priority = parseInt(value);
           return isNaN(priority) ? null : Math.max(1, Math.min(5, priority));
         
         case 'probability':
+          if (value === '' || value === 'null' || value === 'undefined') return null;
           const prob = parseInt(value);
           return isNaN(prob) ? null : Math.max(0, Math.min(100, prob));
         
         case 'project_duration':
+          if (value === '' || value === 'null' || value === 'undefined') return null;
           const duration = parseInt(value);
           return isNaN(duration) ? null : Math.max(0, duration);
         
@@ -306,20 +311,9 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         case 'quarterly_revenue_q3':
         case 'quarterly_revenue_q4':
         case 'total_revenue':
+          if (value === '' || value === 'null' || value === 'undefined') return null;
           const revenue = parseFloat(value.replace(/[€$,]/g, ''));
           return isNaN(revenue) ? null : Math.max(0, revenue);
-        
-        case 'budget':
-        case 'internal_comment':
-        case 'action_items':
-        case 'current_status':
-        case 'closing':
-        case 'won_reason':
-        case 'lost_reason':
-        case 'drop_reason':
-        case 'need_improvement':
-        case 'customer_need':
-          return value.trim();
         
         case 'start_date':
         case 'end_date':
@@ -328,29 +322,46 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         case 'proposal_due_date':
         case 'signed_contract_date':
         case 'implementation_start_date':
+          if (value === '' || value === 'null' || value === 'undefined') return null;
+          // Handle exported date format (YYYY-MM-DD)
           const date = new Date(value);
           return isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
         
         case 'created_at':
         case 'modified_at':
+          if (value === '' || value === 'null' || value === 'undefined') return null;
+          // Handle exported timestamp format (ISO string)
           const timestamp = new Date(value);
           return isNaN(timestamp.getTime()) ? null : timestamp.toISOString();
         
-        case 'project_name':
-        case 'lead_name':
-        case 'customer_name':
-        case 'region':
-        case 'lead_owner':
-        case 'deal_name':
-          return value.trim();
-        
-        // Skip system fields that shouldn't be imported
+        // Skip system fields during import - they will be set automatically
         case 'id':
         case 'created_by':
         case 'modified_by':
           return null;
         
+        // Text fields
+        case 'deal_name':
+        case 'project_name':
+        case 'lead_name':
+        case 'customer_name':
+        case 'region':
+        case 'lead_owner':
+        case 'budget':
+        case 'internal_comment':
+        case 'customer_need':
+        case 'action_items':
+        case 'current_status':
+        case 'closing':
+        case 'won_reason':
+        case 'lost_reason':
+        case 'need_improvement':
+        case 'drop_reason':
+          if (value === '' || value === 'null' || value === 'undefined') return null;
+          return value.trim();
+        
         default:
+          if (value === '' || value === 'null' || value === 'undefined') return null;
           return value.trim();
       }
     }
@@ -405,7 +416,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
     }
   };
 
-  // Simplified validation function specifically for import records
+  // Enhanced validation function specifically for import records
   const validateImportRecord = (record: any): boolean => {
     console.log('Validating import record:', record);
     
@@ -414,7 +425,18 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       const hasValidStage = record.stage && ['Lead', 'Discussions', 'Qualified', 'RFQ', 'Offered', 'Won', 'Lost', 'Dropped'].includes(record.stage);
       
       console.log(`Import validation - deal_name: ${record.deal_name}, stage: ${record.stage}, valid: ${hasValidDealName && hasValidStage}`);
-      return hasValidDealName && hasValidStage;
+      
+      if (!hasValidDealName) {
+        console.error('Invalid deal: missing deal_name');
+        return false;
+      }
+      
+      if (!hasValidStage) {
+        console.error(`Invalid deal: invalid stage "${record.stage}"`);
+        return false;
+      }
+      
+      return true;
     }
     
     const isValid = config.required.every(field => {
@@ -428,6 +450,23 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
 
   const checkDuplicate = async (record: any): Promise<boolean> => {
     try {
+      if (tableName === 'deals') {
+        // For deals, check by deal_name and stage combination
+        const { data, error } = await supabase
+          .from('deals')
+          .select('id')
+          .eq('deal_name', record.deal_name)
+          .eq('stage', record.stage);
+
+        const isDuplicate = !error && data && data.length > 0;
+        
+        if (isDuplicate) {
+          console.log(`Duplicate deal found: ${record.deal_name} in stage ${record.stage}`);
+        }
+        
+        return isDuplicate;
+      }
+      
       const keyFields = tableName === 'contacts_module' || tableName === 'contacts' 
         ? ['email', 'contact_name'] 
         : tableName === 'leads'
@@ -477,6 +516,27 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         console.log('First data row:', dataRows[0]);
         console.log('First data row length:', dataRows[0].length);
         console.log('Headers length:', headers.length);
+      }
+
+      // Validate headers for deals
+      if (tableName === 'deals') {
+        const expectedHeaders = config.allowedColumns;
+        const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
+        const extraHeaders = headers.filter(h => !expectedHeaders.includes(h));
+        
+        if (missingHeaders.length > 0) {
+          console.warn('Missing expected headers:', missingHeaders);
+        }
+        
+        if (extraHeaders.length > 0) {
+          console.warn('Extra headers found:', extraHeaders);
+        }
+        
+        // Check if we have minimum required headers
+        const hasRequiredHeaders = headers.includes('deal_name') && headers.includes('stage');
+        if (!hasRequiredHeaders) {
+          throw new Error('Missing required headers: deal_name and stage are required for deals import');
+        }
       }
 
       const mappedHeaders = headers.map(header => ({
@@ -538,17 +598,20 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
             
             // Set required defaults based on table type
             if (tableName === 'deals') {
+              // Ensure required fields have values
               if (!record.deal_name && record.project_name) {
                 record.deal_name = record.project_name;
               }
               if (!record.deal_name) {
-                record.deal_name = `Deal ${batchStart + i + 1}`;
+                errors.push(`Row ${batchStart + i + 1}: Missing deal_name`);
+                errorCount++;
+                continue;
               }
               if (!record.stage) {
                 record.stage = 'Lead';
               }
               
-              // Set user ID for new records
+              // Set user ID for new records - always override system fields
               record.created_by = user?.id || '00000000-0000-0000-0000-000000000000';
               record.modified_by = user?.id || '00000000-0000-0000-0000-000000000000';
               
@@ -590,7 +653,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
 
             const isDuplicate = await checkDuplicate(record);
             if (isDuplicate) {
-              console.log(`Skipping duplicate record: ${record.contact_name || record.lead_name || record.deal_name || 'Unknown'}`);
+              console.log(`Skipping duplicate record: ${record.deal_name || record.contact_name || record.lead_name || 'Unknown'}`);
               duplicateCount++;
               continue;
             }
@@ -642,11 +705,16 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         });
       }
 
-      if (errorCount > 0 || duplicateCount > 0) {
-        console.log('Import summary:', { successCount, duplicateCount, errorCount, errors: errors.slice(0, 10) });
+      if (errorCount > 0) {
+        console.log('Import errors:', errors.slice(0, 10));
         toast({
-          variant: duplicateCount > 0 && errorCount === 0 ? "default" : "destructive",
-          title: "Import completed with warnings",
+          variant: "destructive",
+          title: "Import completed with errors",
+          description: `${message}. Check console for details.`,
+        });
+      } else if (duplicateCount > 0) {
+        toast({
+          title: "Import completed with duplicates",
           description: message,
         });
       }
