@@ -436,25 +436,64 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
     return isValid;
   };
 
+  // IMPROVED duplicate detection logic - use more comprehensive matching
   const checkDuplicate = async (record: any): Promise<boolean> => {
     try {
       if (tableName === 'deals') {
-        // For deals, check by deal_name and stage combination
-        const { data, error } = await supabase
-          .from('deals')
-          .select('id')
-          .eq('deal_name', record.deal_name)
-          .eq('stage', record.stage);
+        // Enhanced duplicate checking for deals - use multiple fields for better accuracy
+        console.log('Checking for duplicate deal:', {
+          deal_name: record.deal_name,
+          stage: record.stage,
+          customer_name: record.customer_name,
+          project_name: record.project_name
+        });
 
-        const isDuplicate = !error && data && data.length > 0;
+        // First check: exact deal_name match (case-insensitive)
+        let query = supabase
+          .from('deals')
+          .select('id, deal_name, stage, customer_name, project_name')
+          .ilike('deal_name', record.deal_name);
+
+        const { data: nameMatches, error: nameError } = await query;
         
-        if (isDuplicate) {
-          console.log(`Duplicate deal found: ${record.deal_name} in stage ${record.stage}`);
+        if (nameError) {
+          console.error('Error checking deal name duplicates:', nameError);
+          return false;
         }
-        
-        return isDuplicate;
+
+        if (nameMatches && nameMatches.length > 0) {
+          // Additional checks for better duplicate detection
+          const exactMatches = nameMatches.filter(existing => {
+            // Exact deal name match
+            const nameMatch = existing.deal_name.toLowerCase() === record.deal_name.toLowerCase();
+            
+            // Same stage match
+            const stageMatch = existing.stage === record.stage;
+            
+            // Customer or project name match (if available)
+            const customerMatch = record.customer_name && existing.customer_name && 
+              existing.customer_name.toLowerCase() === record.customer_name.toLowerCase();
+            
+            const projectMatch = record.project_name && existing.project_name && 
+              existing.project_name.toLowerCase() === record.project_name.toLowerCase();
+
+            // Consider it a duplicate if:
+            // 1. Same name and same stage, OR
+            // 2. Same name and same customer, OR  
+            // 3. Same name and same project
+            return nameMatch && (stageMatch || customerMatch || projectMatch);
+          });
+
+          if (exactMatches.length > 0) {
+            console.log(`Duplicate deal found:`, exactMatches[0]);
+            return true;
+          }
+        }
+
+        return false;
       }
       
+      // For other tables, use original logic
       const keyFields = tableName === 'contacts_module' || tableName === 'contacts' 
         ? ['email', 'contact_name'] 
         : tableName === 'leads'
@@ -571,119 +610,111 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       let duplicateCount = 0;
       const errors: string[] = [];
 
-      const BATCH_SIZE = 50;
-      for (let batchStart = 0; batchStart < dataRows.length; batchStart += BATCH_SIZE) {
-        const batch = dataRows.slice(batchStart, Math.min(batchStart + BATCH_SIZE, dataRows.length));
-        const batchRecords: any[] = [];
-
-        console.log(`Processing batch ${Math.floor(batchStart / BATCH_SIZE) + 1}/${Math.ceil(dataRows.length / BATCH_SIZE)}`);
-
-        for (let i = 0; i < batch.length; i++) {
-          try {
-            const row = batch[i];
-            const record: any = {};
+      // Process records one by one to ensure proper duplicate checking
+      for (let i = 0; i < dataRows.length; i++) {
+        try {
+          const row = dataRows[i];
+          const record: any = {};
+          
+          mappedHeaders.forEach((headerMap, index) => {
+            if (headerMap.mapped && index < row.length) {
+              const rawValue = row[index];
+              if (rawValue && rawValue.trim() !== '') {
+                const validatedValue = validateAndConvertValue(headerMap.mapped, rawValue);
+                if (validatedValue !== null) {
+                  record[headerMap.mapped] = validatedValue;
+                }
+              }
+            }
+          });
+          
+          console.log(`Row ${i + 1} processed record:`, record);
+          
+          // Set required defaults based on table type
+          if (tableName === 'deals') {
+            // Ensure required fields have values
+            if (!record.deal_name && record.project_name) {
+              record.deal_name = record.project_name;
+            }
+            if (!record.deal_name) {
+              errors.push(`Row ${i + 1}: Missing deal_name`);
+              errorCount++;
+              continue;
+            }
+            if (!record.stage) {
+              record.stage = 'Lead';
+            }
             
-            mappedHeaders.forEach((headerMap, index) => {
-              if (headerMap.mapped && index < row.length) {
-                const rawValue = row[index];
-                if (rawValue && rawValue.trim() !== '') {
-                  const validatedValue = validateAndConvertValue(headerMap.mapped, rawValue);
-                  if (validatedValue !== null) {
-                    record[headerMap.mapped] = validatedValue;
-                  }
+            // Set user ID for new records - ALWAYS set these automatically
+            record.created_by = user?.id || '00000000-0000-0000-0000-000000000000';
+            record.modified_by = user?.id || '00000000-0000-0000-0000-000000000000';
+            
+            const isValid = validateImportRecord(record);
+            
+            if (!isValid) {
+              errors.push(`Row ${i + 1}: Invalid deal data - missing deal_name or invalid stage`);
+              console.log(`Row ${i + 1}: Validation failed for deal`, record);
+              errorCount++;
+              continue;
+            }
+          } else {
+            config.required.forEach(field => {
+              if (!record[field]) {
+                if (field === 'contact_name') {
+                  record[field] = `Contact ${i + 1}`;
+                } else if (field === 'lead_name') {
+                  record[field] = `Lead ${i + 1}`;
+                } else if (field === 'title') {
+                  record[field] = `Meeting ${i + 1}`;
+                } else if (field === 'contact_owner') {
+                  throw new Error(`Contact Owner is required.`);
+                } else if (field === 'start_time' || field === 'end_time') {
+                  throw new Error(`Missing required field: ${field}`);
                 }
               }
             });
             
-            console.log(`Row ${batchStart + i + 1} processed record:`, record);
-            
-            // Set required defaults based on table type
-            if (tableName === 'deals') {
-              // Ensure required fields have values
-              if (!record.deal_name && record.project_name) {
-                record.deal_name = record.project_name;
-              }
-              if (!record.deal_name) {
-                errors.push(`Row ${batchStart + i + 1}: Missing deal_name`);
-                errorCount++;
-                continue;
-              }
-              if (!record.stage) {
-                record.stage = 'Lead';
-              }
-              
-              // Set user ID for new records - ALWAYS set these automatically
-              record.created_by = user?.id || '00000000-0000-0000-0000-000000000000';
-              record.modified_by = user?.id || '00000000-0000-0000-0000-000000000000';
-              
-              const isValid = validateImportRecord(record);
-              
-              if (!isValid) {
-                errors.push(`Row ${batchStart + i + 1}: Invalid deal data - missing deal_name or invalid stage`);
-                console.log(`Row ${batchStart + i + 1}: Validation failed for deal`, record);
-                errorCount++;
-                continue;
-              }
-            } else {
-              config.required.forEach(field => {
-                if (!record[field]) {
-                  if (field === 'contact_name') {
-                    record[field] = `Contact ${batchStart + i + 1}`;
-                  } else if (field === 'lead_name') {
-                    record[field] = `Lead ${batchStart + i + 1}`;
-                  } else if (field === 'title') {
-                    record[field] = `Meeting ${batchStart + i + 1}`;
-                  } else if (field === 'contact_owner') {
-                    throw new Error(`Contact Owner is required.`);
-                  } else if (field === 'start_time' || field === 'end_time') {
-                    throw new Error(`Missing required field: ${field}`);
-                  }
-                }
-              });
-              
-              record.created_by = user?.id || '00000000-0000-0000-0000-000000000000';
-              if (tableName !== 'meetings') {
-                record.modified_by = user?.id || null;
-              }
+            record.created_by = user?.id || '00000000-0000-0000-0000-000000000000';
+            if (tableName !== 'meetings') {
+              record.modified_by = user?.id || null;
             }
-
-            const isDuplicate = await checkDuplicate(record);
-            if (isDuplicate) {
-              console.log(`Skipping duplicate record: ${record.deal_name || record.contact_name || record.lead_name || 'Unknown'}`);
-              duplicateCount++;
-              continue;
-            }
-
-            batchRecords.push(record);
-
-          } catch (rowError: any) {
-            console.error(`Error processing row ${batchStart + i + 1}:`, rowError);
-            errors.push(`Row ${batchStart + i + 1}: ${rowError.message}`);
-            errorCount++;
           }
-        }
 
-        if (batchRecords.length > 0) {
-          console.log(`Inserting batch of ${batchRecords.length} records...`, batchRecords);
+          // Check for duplicates before insertion
+          const isDuplicate = await checkDuplicate(record);
+          if (isDuplicate) {
+            console.log(`Skipping duplicate record: ${record.deal_name || record.contact_name || record.lead_name || 'Unknown'}`);
+            duplicateCount++;
+            continue;
+          }
+
+          // Insert single record
+          console.log(`Inserting record ${i + 1}:`, record);
           
           const { data, error } = await supabase
             .from(tableName as any)
-            .insert(batchRecords)
+            .insert([record])
             .select('id');
 
           if (error) {
-            console.error(`Error inserting batch starting at row ${batchStart + 1}:`, error);
-            errors.push(`Batch ${Math.floor(batchStart / BATCH_SIZE) + 1}: ${error.message}`);
-            errorCount += batchRecords.length;
+            console.error(`Error inserting row ${i + 1}:`, error);
+            errors.push(`Row ${i + 1}: ${error.message}`);
+            errorCount++;
           } else {
-            const insertedCount = data?.length || batchRecords.length;
+            const insertedCount = data?.length || 1;
             successCount += insertedCount;
-            console.log(`Successfully inserted ${insertedCount} records in batch ${Math.floor(batchStart / BATCH_SIZE) + 1}`);
+            console.log(`Successfully inserted record ${i + 1}`);
           }
-        }
 
-        if (batchStart + BATCH_SIZE < dataRows.length) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          // Small delay to prevent overwhelming the database
+          if (i % 10 === 0 && i > 0) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+
+        } catch (rowError: any) {
+          console.error(`Error processing row ${i + 1}:`, rowError);
+          errors.push(`Row ${i + 1}: ${rowError.message}`);
+          errorCount++;
         }
       }
 
