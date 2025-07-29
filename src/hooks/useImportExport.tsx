@@ -135,7 +135,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         }
       },
       deals: {
-        // COMPLETE field list covering ALL stages and recent additions
+        // UPDATED: Only include ACTIVE fields that are currently in the Deal type
         allowedColumns: [
           // System fields
           'id',
@@ -147,7 +147,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           // Basic deal info (all stages)
           'deal_name',
           'stage',
-          'description',
           'internal_comment',
           
           // Lead stage fields
@@ -157,9 +156,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           'region',
           'lead_owner',
           'priority',
-          'company_name',
-          'phone_no',
-          'fax',
           
           // Discussions stage fields
           'customer_need',
@@ -184,15 +180,10 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           'rfq_received_date',
           'proposal_due_date',
           'rfq_status',
-          'rfq_document_url',
-          'product_service_scope',
-          'rfq_confirmation_note',
           
           // Offered stage fields
           'current_status',
           'closing',
-          'negotiation_status',
-          'negotiation_notes',
           
           // Won stage fields
           'won_reason',
@@ -210,42 +201,12 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           'need_improvement',
           
           // Dropped stage fields
-          'drop_reason',
-          
-          // Additional legacy/database fields
-          'project_type',
-          'duration',
-          'revenue',
-          'currency',
-          'amount',
-          'closing_date',
-          'customer_need_identified',
-          'decision_maker_present',
-          'expected_deal_timeline_start',
-          'expected_deal_timeline_end',
-          'nda_signed',
-          'rfq_value',
-          'proposal_sent_date',
-          'decision_expected_date',
-          'execution_started',
-          'begin_execution_date',
-          'supplier_portal_required',
-          'internal_notes',
-          'budget_holder',
-          'decision_makers',
-          'timeline',
-          'win_reason',
-          'loss_reason',
-          'need_summary',
-          'customer_agreed_on_need',
-          'budget_confirmed',
-          'supplier_portal_access'
+          'drop_reason'
         ],
         required: ['deal_name', 'stage'],
         enums: {
           stage: ['Lead', 'Discussions', 'Qualified', 'RFQ', 'Offered', 'Won', 'Lost', 'Dropped'],
           currency_type: ['EUR', 'USD', 'INR'],
-          currency: ['EUR', 'USD', 'INR'],
           customer_challenges: ['Open', 'Ongoing', 'Done'],
           relationship_strength: ['Low', 'Medium', 'High'],
           business_value: ['Open', 'Ongoing', 'Done'],
@@ -253,10 +214,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           is_recurring: ['Yes', 'No', 'Unclear'],
           customer_need: ['Open', 'Ongoing', 'Done'],
           rfq_status: ['Drafted', 'Submitted', 'Rejected', 'Accepted'],
-          handoff_status: ['Not Started', 'In Progress', 'Complete'],
-          customer_agreed_on_need: ['Open', 'Ongoing', 'Done'],
-          budget_confirmed: ['Open', 'Ongoing', 'Done'],
-          supplier_portal_access: ['Open', 'Ongoing', 'Done']
+          handoff_status: ['Not Started', 'In Progress', 'Complete']
         }
       }
     };
@@ -265,18 +223,21 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
 
   const config = getColumnConfig(tableName);
 
-  // Enhanced header mapping with COMPLETE field coverage
+  // Enhanced header mapping - UPDATED to only map active fields
   const mapHeader = (header: string): string | null => {
     const normalized = header.toLowerCase().trim().replace(/[\s_-]+/g, '_');
     
+    console.log(`Mapping header: "${header}" -> normalized: "${normalized}"`);
+    
     // Direct match first - EXACT field names from export
     if (config.allowedColumns.includes(normalized)) {
+      console.log(`Direct match found: ${normalized}`);
       return normalized;
     }
     
-    // For deals, comprehensive mapping for ALL fields
+    // For deals, comprehensive mapping for ALL ACTIVE fields only
     if (tableName === 'deals') {
-      // Complete field mappings covering ALL recent additions
+      // UPDATED: Only map to fields that are currently active in Deal type
       const exactMappings: Record<string, string> = {
         // System fields
         'id': 'id',
@@ -288,7 +249,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         // Basic deal info
         'deal_name': 'deal_name',
         'stage': 'stage',
-        'description': 'description',
         'internal_comment': 'internal_comment',
         
         // Lead stage fields
@@ -298,9 +258,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         'region': 'region',
         'lead_owner': 'lead_owner',
         'priority': 'priority',
-        'company_name': 'company_name',
-        'phone_no': 'phone_no',
-        'fax': 'fax',
         
         // Discussions stage fields
         'customer_need': 'customer_need',
@@ -325,17 +282,12 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         'rfq_received_date': 'rfq_received_date',
         'proposal_due_date': 'proposal_due_date',
         'rfq_status': 'rfq_status',
-        'rfq_document_url': 'rfq_document_url',
-        'product_service_scope': 'product_service_scope',
-        'rfq_confirmation_note': 'rfq_confirmation_note',
         
         // Offered stage fields
         'current_status': 'current_status',
         'closing': 'closing',
-        'negotiation_status': 'negotiation_status',
-        'negotiation_notes': 'negotiation_notes',
         
-        // Won stage fields - INCLUDING ALL NEW FIELDS
+        // Won stage fields
         'won_reason': 'won_reason',
         'quarterly_revenue_q1': 'quarterly_revenue_q1',
         'quarterly_revenue_q2': 'quarterly_revenue_q2',
@@ -351,40 +303,12 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         'need_improvement': 'need_improvement',
         
         // Dropped stage fields
-        'drop_reason': 'drop_reason',
-        
-        // Additional legacy fields
-        'project_type': 'project_type',
-        'duration': 'duration',
-        'revenue': 'revenue',
-        'currency': 'currency',
-        'amount': 'amount',
-        'closing_date': 'closing_date',
-        'customer_need_identified': 'customer_need_identified',
-        'decision_maker_present': 'decision_maker_present',
-        'expected_deal_timeline_start': 'expected_deal_timeline_start',
-        'expected_deal_timeline_end': 'expected_deal_timeline_end',
-        'nda_signed': 'nda_signed',
-        'rfq_value': 'rfq_value',
-        'proposal_sent_date': 'proposal_sent_date',
-        'decision_expected_date': 'decision_expected_date',
-        'execution_started': 'execution_started',
-        'begin_execution_date': 'begin_execution_date',
-        'supplier_portal_required': 'supplier_portal_required',
-        'internal_notes': 'internal_notes',
-        'budget_holder': 'budget_holder',
-        'decision_makers': 'decision_makers',
-        'timeline': 'timeline',
-        'win_reason': 'win_reason',
-        'loss_reason': 'loss_reason',
-        'need_summary': 'need_summary',
-        'customer_agreed_on_need': 'customer_agreed_on_need',
-        'budget_confirmed': 'budget_confirmed',
-        'supplier_portal_access': 'supplier_portal_access'
+        'drop_reason': 'drop_reason'
       };
       
       // Check exact mapping first
       if (exactMappings[normalized]) {
+        console.log(`Exact mapping found: ${normalized} -> ${exactMappings[normalized]}`);
         return exactMappings[normalized];
       }
     }
@@ -409,11 +333,20 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       'lead': 'lead_status'
     };
     
-    return mappings[normalized] || null;
+    const mapped = mappings[normalized] || null;
+    if (mapped) {
+      console.log(`Generic mapping found: ${normalized} -> ${mapped}`);
+    } else {
+      console.log(`No mapping found for: ${normalized}`);
+    }
+    
+    return mapped;
   };
 
   const validateAndConvertValue = (key: string, value: string) => {
     if (!value || value.trim() === '') return null;
+
+    console.log(`Validating field ${key} with value: ${value}`);
 
     // Handle enum validations with exact matching
     if (key in config.enums) {
@@ -433,10 +366,11 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         return null;
       }
       // For other enums, return null to avoid setting invalid values
+      console.warn(`Invalid enum value for ${key}: ${value}, available values: ${enumValues.join(', ')}`);
       return null;
     }
 
-    // Handle specific field types for deals - COMPLETE processing including new fields
+    // Handle specific field types for deals - UPDATED to only process active fields
     if (tableName === 'deals') {
       switch (key) {
         case 'priority':
@@ -448,7 +382,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           return isNaN(prob) ? null : Math.max(0, Math.min(100, prob));
         
         case 'project_duration':
-        case 'duration':
           const duration = parseInt(value);
           return isNaN(duration) ? null : Math.max(0, duration);
         
@@ -458,16 +391,11 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         case 'quarterly_revenue_q3':
         case 'quarterly_revenue_q4':
         case 'total_revenue':
-        case 'revenue':
-        case 'amount':
-        case 'rfq_value':
           const revenue = parseFloat(value.replace(/[€$,]/g, ''));
           return isNaN(revenue) ? null : Math.max(0, revenue);
         
         case 'budget':
         case 'internal_comment':
-        case 'internal_notes':
-        case 'description':
         case 'action_items':
         case 'current_status':
         case 'closing':
@@ -475,14 +403,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         case 'lost_reason':
         case 'drop_reason':
         case 'need_improvement':
-        case 'rfq_document_url':
-        case 'product_service_scope':
-        case 'rfq_confirmation_note':
-        case 'negotiation_notes':
-        case 'budget_holder':
-        case 'decision_makers':
-        case 'timeline':
-        case 'need_summary':
           // Text fields
           return value.trim();
         
@@ -493,12 +413,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         case 'proposal_due_date':
         case 'signed_contract_date':
         case 'implementation_start_date':
-        case 'closing_date':
-        case 'proposal_sent_date':
-        case 'decision_expected_date':
-        case 'begin_execution_date':
-        case 'expected_deal_timeline_start':
-        case 'expected_deal_timeline_end':
           const date = new Date(value);
           return isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
         
@@ -507,27 +421,12 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           const timestamp = new Date(value);
           return isNaN(timestamp.getTime()) ? null : timestamp.toISOString();
         
-        // Boolean fields
-        case 'customer_need_identified':
-        case 'decision_maker_present':
-        case 'nda_signed':
-        case 'supplier_portal_required':
-        case 'execution_started':
-          return ['yes', 'true', '1', 'on', 'checked'].includes(value.toLowerCase());
-        
-        case 'phone_no':
-        case 'fax':
-        case 'company_name':
         case 'project_name':
         case 'lead_name':
         case 'customer_name':
         case 'region':
         case 'lead_owner':
-        case 'project_type':
         case 'deal_name':
-        case 'negotiation_status':
-        case 'win_reason':
-        case 'loss_reason':
           return value.trim();
         
         default:
@@ -621,6 +520,8 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
 
   // Simplified validation function specifically for import records
   const validateImportRecord = (record: any): boolean => {
+    console.log('Validating import record:', record);
+    
     if (tableName === 'deals') {
       // Only require deal_name and stage for deals - exactly as export structure requires
       const hasValidDealName = record.deal_name && record.deal_name.trim() !== '';
@@ -631,10 +532,13 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
     }
     
     // For other tables, check basic required fields
-    return config.required.every(field => {
+    const isValid = config.required.every(field => {
       const value = record[field];
       return value !== undefined && value !== null && String(value).trim() !== '';
     });
+    
+    console.log(`Import validation for ${tableName}:`, isValid);
+    return isValid;
   };
 
   const checkDuplicate = async (record: any): Promise<boolean> => {
@@ -657,8 +561,15 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       });
 
       const { data, error } = await query;
-      return !error && data && data.length > 0;
-    } catch {
+      const isDuplicate = !error && data && data.length > 0;
+      
+      if (isDuplicate) {
+        console.log(`Duplicate found for record with ${keyFields.join(', ')}:`, keyFields.map(f => record[f]).join(', '));
+      }
+      
+      return isDuplicate;
+    } catch (error) {
+      console.error('Error checking duplicate:', error);
       return false;
     }
   };
@@ -667,6 +578,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
     try {
       console.log(`Starting import of ${file.name} (${file.size} bytes) into ${tableName}`);
       console.log('Import config:', { moduleName: moduleName, tableName: tableName });
+      console.log('Expected columns for deals:', config.allowedColumns);
       
       const text = await file.text();
       console.log('File content loaded, length:', text.length);
@@ -689,6 +601,9 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
 
       const validHeaders = mappedHeaders.filter(h => h.mapped !== null);
       const invalidHeaders = mappedHeaders.filter(h => h.mapped === null);
+      
+      console.log('Valid headers:', validHeaders);
+      console.log('Invalid headers:', invalidHeaders);
       
       if (validHeaders.length === 0) {
         throw new Error('No valid headers found. Please ensure CSV headers match export field names exactly.');
@@ -733,6 +648,8 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
                 }
               }
             });
+            
+            console.log(`Row ${batchStart + i + 1} processed record:`, record);
             
             // Set required defaults based on table type
             if (tableName === 'deals') {
@@ -797,7 +714,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         }
 
         if (batchRecords.length > 0) {
-          console.log(`Inserting batch of ${batchRecords.length} records...`);
+          console.log(`Inserting batch of ${batchRecords.length} records...`, batchRecords);
           
           const { data, error } = await supabase
             .from(tableName as any)
@@ -821,6 +738,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       }
 
       console.log(`Import completed - Success: ${successCount}, Errors: ${errorCount}, Duplicates: ${duplicateCount}`);
+      console.log('Import errors:', errors);
 
       let message = `Import completed: ${successCount} records imported`;
       if (duplicateCount > 0) message += `, ${duplicateCount} duplicates skipped`;
@@ -884,9 +802,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       return;
     }
 
-    const headers = tableName === 'deals' ? 
-      config.allowedColumns : 
-      config.allowedColumns;
+    const headers = config.allowedColumns;
 
     console.log('Exporting with headers:', headers);
     console.log('Sample data:', data[0]);

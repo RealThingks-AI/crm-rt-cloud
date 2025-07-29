@@ -51,7 +51,9 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRe
       return;
     }
 
-    // Only include active fields used in the deals pipeline (removed all the specified fields)
+    console.log('Starting export with deals:', dealsToExport.length);
+
+    // Only include ACTIVE fields used in the deals pipeline - updated to match current Deal type
     const exportFields = [
       // System fields
       'id',
@@ -120,6 +122,8 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRe
       'drop_reason'
     ];
 
+    console.log('Export fields to include:', exportFields);
+
     const validDeals = dealsToExport.filter(deal => {
       const hasBasicData = deal.id && deal.stage && deal.deal_name;
       if (!hasBasicData) {
@@ -143,8 +147,9 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRe
 
     const headers = exportFields.join(',');
     
-    const rows = validDeals.map(deal => 
-      exportFields.map(field => {
+    const rows = validDeals.map((deal, index) => {
+      console.log(`Processing deal ${index + 1}:`, deal.deal_name);
+      return exportFields.map(field => {
         const value = deal[field as keyof Deal];
         if (value === null || value === undefined || value === '') return '';
         
@@ -181,10 +186,11 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRe
         }
         
         return stringValue;
-      }).join(',')
-    );
+      }).join(',');
+    });
 
     const csvContent = [headers, ...rows].join('\n');
+    console.log('Generated CSV content preview:', csvContent.substring(0, 500) + '...');
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -198,6 +204,7 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRe
     link.click();
     document.body.removeChild(link);
 
+    console.log(`Export completed: ${validDeals.length} deals exported`);
     toast({
       title: "Export successful",
       description: `Exported ${validDeals.length} deals to CSV`,
@@ -208,6 +215,7 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRe
     const file = event.target.files?.[0];
     if (file) {
       setImportFile(file);
+      console.log('File selected for import:', file.name, 'Size:', file.size);
     }
   };
 
