@@ -135,7 +135,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         }
       },
       deals: {
-        // REMOVED system metadata fields - NO MORE created_at, modified_at, created_by, modified_by
         allowedColumns: [
           'deal_name',
           'stage',
@@ -198,7 +197,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
 
   const config = getColumnConfig(tableName);
 
-  // Enhanced header mapping - EXACT field matching for deals (NO system fields)
+  // Enhanced header mapping - EXACT field matching for deals
   const mapHeader = (header: string): string | null => {
     const trimmedHeader = header.trim();
     
@@ -206,18 +205,11 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
     
     // For deals, use EXACT field name matching only
     if (tableName === 'deals') {
-      // REJECT system metadata fields completely
-      if (['id', 'created_at', 'modified_at', 'created_by', 'modified_by'].includes(trimmedHeader)) {
-        console.log(`Rejecting system field: ${trimmedHeader}`);
-        return null;
-      }
-      
       if (config.allowedColumns.includes(trimmedHeader)) {
         console.log(`Exact field match found: ${trimmedHeader}`);
         return trimmedHeader;
       }
       
-      // No fallback mappings for deals - must match exactly
       console.log(`No exact mapping found for deals field: ${trimmedHeader}`);
       return null;
     }
@@ -288,7 +280,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       return null;
     }
 
-    // Handle specific field types for deals (REMOVED system field handling)
+    // Handle specific field types for deals
     if (tableName === 'deals') {
       switch (key) {
         case 'priority':
@@ -436,60 +428,57 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
     return isValid;
   };
 
-  // IMPROVED duplicate detection logic - use more comprehensive matching
+  // COMPLETELY REWRITTEN duplicate detection logic - more robust
   const checkDuplicate = async (record: any): Promise<boolean> => {
     try {
       if (tableName === 'deals') {
-        // Enhanced duplicate checking for deals - use multiple fields for better accuracy
         console.log('Checking for duplicate deal:', {
           deal_name: record.deal_name,
           stage: record.stage,
-          customer_name: record.customer_name,
-          project_name: record.project_name
+          customer_name: record.customer_name
         });
 
-        // First check: exact deal_name match (case-insensitive)
-        let query = supabase
+        // Use multiple criteria for more accurate duplicate detection
+        const { data: existingDeals, error } = await supabase
           .from('deals')
-          .select('id, deal_name, stage, customer_name, project_name')
-          .ilike('deal_name', record.deal_name);
+          .select('id, deal_name, stage, customer_name, project_name, lead_name')
+          .eq('deal_name', record.deal_name);
 
-        const { data: nameMatches, error: nameError } = await query;
-        
-        if (nameError) {
-          console.error('Error checking deal name duplicates:', nameError);
+        if (error) {
+          console.error('Error checking deal duplicates:', error);
           return false;
         }
 
-        if (nameMatches && nameMatches.length > 0) {
-          // Additional checks for better duplicate detection
-          const exactMatches = nameMatches.filter(existing => {
-            // Exact deal name match
-            const nameMatch = existing.deal_name.toLowerCase() === record.deal_name.toLowerCase();
-            
-            // Same stage match
-            const stageMatch = existing.stage === record.stage;
-            
-            // Customer or project name match (if available)
-            const customerMatch = record.customer_name && existing.customer_name && 
-              existing.customer_name.toLowerCase() === record.customer_name.toLowerCase();
-            
-            const projectMatch = record.project_name && existing.project_name && 
-              existing.project_name.toLowerCase() === record.project_name.toLowerCase();
-
-            // Consider it a duplicate if:
-            // 1. Same name and same stage, OR
-            // 2. Same name and same customer, OR  
-            // 3. Same name and same project
-            return nameMatch && (stageMatch || customerMatch || projectMatch);
-          });
-
-          if (exactMatches.length > 0) {
-            console.log(`Duplicate deal found:`, exactMatches[0]);
-            return true;
-          }
+        if (!existingDeals || existingDeals.length === 0) {
+          console.log('No existing deals found with same name');
+          return false;
         }
 
+        // Check for exact matches based on multiple criteria
+        const exactMatch = existingDeals.find(existing => {
+          // Primary match: same deal name and stage
+          const nameStageMatch = existing.deal_name === record.deal_name && 
+                                existing.stage === record.stage;
+          
+          // Secondary match: same deal name and customer
+          const nameCustomerMatch = existing.deal_name === record.deal_name && 
+                                  existing.customer_name && record.customer_name &&
+                                  existing.customer_name === record.customer_name;
+          
+          // Tertiary match: same deal name and project
+          const nameProjectMatch = existing.deal_name === record.deal_name && 
+                                 existing.project_name && record.project_name &&
+                                 existing.project_name === record.project_name;
+
+          return nameStageMatch || nameCustomerMatch || nameProjectMatch;
+        });
+
+        if (exactMatch) {
+          console.log(`Exact duplicate found:`, exactMatch);
+          return true;
+        }
+
+        console.log('No exact duplicates found');
         return false;
       }
       
@@ -529,7 +518,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
     try {
       console.log(`Starting import of ${file.name} (${file.size} bytes) into ${tableName}`);
       console.log('Import config:', { moduleName: moduleName, tableName: tableName });
-      console.log('Expected columns for deals (NO system fields):', config.allowedColumns);
+      console.log('Expected columns for deals:', config.allowedColumns);
       
       const text = await file.text();
       console.log('File content loaded, length:', text.length);
@@ -545,20 +534,8 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         console.log('Headers length:', headers.length);
       }
 
-      // Validate headers for deals (NO system fields expected)
+      // Validate headers for deals
       if (tableName === 'deals') {
-        const expectedHeaders = config.allowedColumns;
-        const systemFields = ['id', 'created_at', 'modified_at', 'created_by', 'modified_by'];
-        const hasSystemFields = headers.some(h => systemFields.includes(h));
-        
-        if (hasSystemFields) {
-          console.warn('CSV contains system fields that will be ignored:', headers.filter(h => systemFields.includes(h)));
-          toast({
-            title: "System fields detected",
-            description: "System metadata fields will be ignored during import.",
-          });
-        }
-        
         // Check if we have minimum required headers
         const hasRequiredHeaders = headers.includes('deal_name') && headers.includes('stage');
         if (!hasRequiredHeaders) {
@@ -582,16 +559,9 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       }
       
       if (invalidHeaders.length > 0) {
-        const systemFieldsIgnored = invalidHeaders.filter(h => 
-          ['id', 'created_at', 'modified_at', 'created_by', 'modified_by'].includes(h.original)
-        );
         const otherIgnored = invalidHeaders.filter(h => 
           !['id', 'created_at', 'modified_at', 'created_by', 'modified_by'].includes(h.original)
         );
-        
-        if (systemFieldsIgnored.length > 0) {
-          console.log('System fields ignored (expected):', systemFieldsIgnored.map(h => h.original));
-        }
         
         if (otherIgnored.length > 0) {
           console.warn('Other ignored columns:', otherIgnored.map(h => h.original));
@@ -610,7 +580,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       let duplicateCount = 0;
       const errors: string[] = [];
 
-      // Process records one by one to ensure proper duplicate checking
+      // Process records one by one with enhanced duplicate checking
       for (let i = 0; i < dataRows.length; i++) {
         try {
           const row = dataRows[i];
@@ -657,6 +627,15 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
               errorCount++;
               continue;
             }
+            
+            // Enhanced duplicate checking - check BEFORE insert
+            const isDuplicate = await checkDuplicate(record);
+            if (isDuplicate) {
+              console.log(`Skipping duplicate record ${i + 1}: ${record.deal_name}`);
+              duplicateCount++;
+              continue;
+            }
+            
           } else {
             config.required.forEach(field => {
               if (!record[field]) {
@@ -678,14 +657,14 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
             if (tableName !== 'meetings') {
               record.modified_by = user?.id || null;
             }
-          }
 
-          // Check for duplicates before insertion
-          const isDuplicate = await checkDuplicate(record);
-          if (isDuplicate) {
-            console.log(`Skipping duplicate record: ${record.deal_name || record.contact_name || record.lead_name || 'Unknown'}`);
-            duplicateCount++;
-            continue;
+            // Check for duplicates before insertion
+            const isDuplicate = await checkDuplicate(record);
+            if (isDuplicate) {
+              console.log(`Skipping duplicate record: ${record.contact_name || record.lead_name || 'Unknown'}`);
+              duplicateCount++;
+              continue;
+            }
           }
 
           // Insert single record
@@ -707,8 +686,8 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           }
 
           // Small delay to prevent overwhelming the database
-          if (i % 10 === 0 && i > 0) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+          if (i % 5 === 0 && i > 0) {
+            await new Promise(resolve => setTimeout(resolve, 200));
           }
 
         } catch (rowError: any) {
