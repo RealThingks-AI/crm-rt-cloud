@@ -1,3 +1,4 @@
+
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -215,21 +216,15 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       return normalized;
     }
     
-    // For deals, use EXACT mappings only
+    // For deals, try exact matches with original header
     if (tableName === 'deals') {
-      // Create exact mappings for all allowed columns
-      const exactMappings: Record<string, string> = {};
-      config.allowedColumns.forEach(field => {
-        exactMappings[field] = field;
-      });
-      
-      if (exactMappings[normalized]) {
-        console.log(`Exact mapping found: ${normalized} -> ${exactMappings[normalized]}`);
-        return exactMappings[normalized];
+      if (config.allowedColumns.includes(header)) {
+        console.log(`Exact header match found: ${header}`);
+        return header;
       }
       
       // No fallback mappings for deals - must match exactly
-      console.log(`No exact mapping found for deals field: ${normalized}`);
+      console.log(`No exact mapping found for deals field: ${header}`);
       return null;
     }
     
@@ -349,12 +344,18 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         case 'deal_name':
           return value.trim();
         
+        // Skip system fields that shouldn't be imported
+        case 'id':
+        case 'created_by':
+        case 'modified_by':
+          return null;
+        
         default:
           return value.trim();
       }
     }
 
-    // Handle specific field types
+    // Handle specific field types for other tables
     switch (key) {
       case 'no_of_employees':
         const employees = parseInt(value);
@@ -370,46 +371,12 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(value) ? value : null;
       
-      // Date fields for deals
-      case 'expected_closing_date':
-      case 'start_date':
-      case 'end_date':
-        if (tableName === 'deals') {
-          const date = new Date(value);
-          return isNaN(date.getTime()) ? null : date.toISOString().split('T')[0]; // Return date only (YYYY-MM-DD)
-        }
-        return value.trim();
-      
       // Time fields for meetings
       case 'start_time':
       case 'end_time':
         if (tableName === 'meetings') {
           const date = new Date(value);
           return isNaN(date.getTime()) ? null : date.toISOString();
-        }
-        return value.trim();
-      
-      case 'probability':
-        const prob = parseInt(value);
-        return isNaN(prob) ? null : Math.max(0, Math.min(100, prob));
-      
-      case 'priority':
-        const priority = parseInt(value);
-        return isNaN(priority) ? null : Math.max(1, Math.min(5, priority));
-      
-      case 'project_duration':
-      case 'duration':
-        const duration = parseInt(value);
-        return isNaN(duration) ? null : duration;
-      
-      // Boolean fields for deals
-      case 'customer_need_identified':
-      case 'decision_maker_present':
-      case 'nda_signed':
-      case 'supplier_portal_required':
-      case 'execution_started':
-        if (tableName === 'deals') {
-          return ['yes', 'true', '1', 'on'].includes(value.toLowerCase());
         }
         return value.trim();
       
@@ -581,6 +548,15 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
                 record.stage = 'Lead';
               }
               
+              // Set user ID for new records
+              record.created_by = user?.id || '00000000-0000-0000-0000-000000000000';
+              record.modified_by = user?.id || '00000000-0000-0000-0000-000000000000';
+              
+              // Remove system fields that shouldn't be imported
+              delete record.id;
+              delete record.created_at;
+              delete record.modified_at;
+              
               const isValid = validateImportRecord(record);
               
               if (!isValid) {
@@ -605,11 +581,11 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
                   }
                 }
               });
-            }
-
-            record.created_by = user?.id || '00000000-0000-0000-0000-000000000000';
-            if (tableName !== 'meetings') {
-              record.modified_by = user?.id || null;
+              
+              record.created_by = user?.id || '00000000-0000-0000-0000-000000000000';
+              if (tableName !== 'meetings') {
+                record.modified_by = user?.id || null;
+              }
             }
 
             const isDuplicate = await checkDuplicate(record);
