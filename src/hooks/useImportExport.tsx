@@ -182,22 +182,22 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
             }
           }
 
-          // Insert single record
+          // Insert single record with proper type handling
           console.log(`Inserting record ${i + 1}:`, record);
           
-          const { data, error } = await supabase
-            .from(tableName as any)
+          const insertResult = await supabase
+            .from(tableName)
             .insert([record])
             .select('id');
 
-          if (error) {
-            console.error(`Error inserting row ${i + 1}:`, error);
-            errors.push(`Row ${i + 1}: ${error.message}`);
+          if (insertResult.error) {
+            console.error(`Error inserting row ${i + 1}:`, insertResult.error);
+            errors.push(`Row ${i + 1}: ${insertResult.error.message}`);
             errorCount++;
-          } else {
-            const insertedCount = data?.length || 1;
+          } else if (insertResult.data) {
+            const insertedCount = insertResult.data.length;
             successCount += insertedCount;
-            console.log(`Successfully inserted record ${i + 1}:`, data?.[0]?.id);
+            console.log(`Successfully inserted record ${i + 1}:`, insertResult.data[0]?.id);
           }
 
           // Small delay to prevent overwhelming the database
