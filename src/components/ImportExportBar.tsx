@@ -53,15 +53,8 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRe
 
     console.log('Starting export with deals:', dealsToExport.length);
 
-    // Only include ACTIVE fields used in the deals pipeline - updated to match current Deal type
+    // Export fields - REMOVED system metadata fields
     const exportFields = [
-      // System fields
-      'id',
-      'created_at',
-      'modified_at',
-      'created_by',
-      'modified_by',
-      
       // Basic deal info (all stages)
       'deal_name',
       'stage',
@@ -125,7 +118,7 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRe
     console.log('Export fields to include:', exportFields);
 
     const validDeals = dealsToExport.filter(deal => {
-      const hasBasicData = deal.id && deal.stage && deal.deal_name;
+      const hasBasicData = deal.stage && deal.deal_name;
       if (!hasBasicData) {
         console.warn("Skipping invalid deal during export:", deal);
       }
@@ -160,14 +153,6 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRe
           const date = new Date(value);
           if (!isNaN(date.getTime())) {
             stringValue = date.toISOString().split('T')[0]; // YYYY-MM-DD format
-          }
-        }
-        
-        // Format timestamps
-        if ((field === 'created_at' || field === 'modified_at') && value) {
-          const date = new Date(value);
-          if (!isNaN(date.getTime())) {
-            stringValue = date.toISOString();
           }
         }
         

@@ -135,13 +135,8 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         }
       },
       deals: {
-        // EXACT MATCH with export fields in the exact order from export
+        // REMOVED system metadata fields - NO MORE created_at, modified_at, created_by, modified_by
         allowedColumns: [
-          'id',
-          'created_at',
-          'modified_at',
-          'created_by',
-          'modified_by',
           'deal_name',
           'stage',
           'internal_comment',
@@ -203,7 +198,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
 
   const config = getColumnConfig(tableName);
 
-  // Enhanced header mapping - EXACT field matching for deals
+  // Enhanced header mapping - EXACT field matching for deals (NO system fields)
   const mapHeader = (header: string): string | null => {
     const trimmedHeader = header.trim();
     
@@ -211,6 +206,12 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
     
     // For deals, use EXACT field name matching only
     if (tableName === 'deals') {
+      // REJECT system metadata fields completely
+      if (['id', 'created_at', 'modified_at', 'created_by', 'modified_by'].includes(trimmedHeader)) {
+        console.log(`Rejecting system field: ${trimmedHeader}`);
+        return null;
+      }
+      
       if (config.allowedColumns.includes(trimmedHeader)) {
         console.log(`Exact field match found: ${trimmedHeader}`);
         return trimmedHeader;
@@ -287,7 +288,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       return null;
     }
 
-    // Handle specific field types for deals
+    // Handle specific field types for deals (REMOVED system field handling)
     if (tableName === 'deals') {
       switch (key) {
         case 'priority':
@@ -326,19 +327,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           // Handle exported date format (YYYY-MM-DD)
           const date = new Date(value);
           return isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
-        
-        case 'created_at':
-        case 'modified_at':
-          if (value === '' || value === 'null' || value === 'undefined') return null;
-          // Handle exported timestamp format (ISO string)
-          const timestamp = new Date(value);
-          return isNaN(timestamp.getTime()) ? null : timestamp.toISOString();
-        
-        // Skip system fields during import - they will be set automatically
-        case 'id':
-        case 'created_by':
-        case 'modified_by':
-          return null;
         
         // Text fields
         case 'deal_name':
@@ -502,7 +490,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
     try {
       console.log(`Starting import of ${file.name} (${file.size} bytes) into ${tableName}`);
       console.log('Import config:', { moduleName: moduleName, tableName: tableName });
-      console.log('Expected columns for deals:', config.allowedColumns);
+      console.log('Expected columns for deals (NO system fields):', config.allowedColumns);
       
       const text = await file.text();
       console.log('File content loaded, length:', text.length);
@@ -518,18 +506,18 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         console.log('Headers length:', headers.length);
       }
 
-      // Validate headers for deals
+      // Validate headers for deals (NO system fields expected)
       if (tableName === 'deals') {
         const expectedHeaders = config.allowedColumns;
-        const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
-        const extraHeaders = headers.filter(h => !expectedHeaders.includes(h));
+        const systemFields = ['id', 'created_at', 'modified_at', 'created_by', 'modified_by'];
+        const hasSystemFields = headers.some(h => systemFields.includes(h));
         
-        if (missingHeaders.length > 0) {
-          console.warn('Missing expected headers:', missingHeaders);
-        }
-        
-        if (extraHeaders.length > 0) {
-          console.warn('Extra headers found:', extraHeaders);
+        if (hasSystemFields) {
+          console.warn('CSV contains system fields that will be ignored:', headers.filter(h => systemFields.includes(h)));
+          toast({
+            title: "System fields detected",
+            description: "System metadata fields will be ignored during import.",
+          });
         }
         
         // Check if we have minimum required headers
@@ -555,11 +543,24 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       }
       
       if (invalidHeaders.length > 0) {
-        console.warn('Ignored columns:', invalidHeaders.map(h => h.original));
-        toast({
-          title: "Column Warning",
-          description: `Ignoring ${invalidHeaders.length} unrecognized column(s): ${invalidHeaders.map(h => h.original).join(', ')}`,
-        });
+        const systemFieldsIgnored = invalidHeaders.filter(h => 
+          ['id', 'created_at', 'modified_at', 'created_by', 'modified_by'].includes(h.original)
+        );
+        const otherIgnored = invalidHeaders.filter(h => 
+          !['id', 'created_at', 'modified_at', 'created_by', 'modified_by'].includes(h.original)
+        );
+        
+        if (systemFieldsIgnored.length > 0) {
+          console.log('System fields ignored (expected):', systemFieldsIgnored.map(h => h.original));
+        }
+        
+        if (otherIgnored.length > 0) {
+          console.warn('Other ignored columns:', otherIgnored.map(h => h.original));
+          toast({
+            title: "Column Warning",
+            description: `Ignoring ${otherIgnored.length} unrecognized column(s): ${otherIgnored.map(h => h.original).join(', ')}`,
+          });
+        }
       }
 
       console.log('Header mappings:', mappedHeaders);
@@ -611,14 +612,9 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
                 record.stage = 'Lead';
               }
               
-              // Set user ID for new records - always override system fields
+              // Set user ID for new records - ALWAYS set these automatically
               record.created_by = user?.id || '00000000-0000-0000-0000-000000000000';
               record.modified_by = user?.id || '00000000-0000-0000-0000-000000000000';
-              
-              // Remove system fields that shouldn't be imported
-              delete record.id;
-              delete record.created_at;
-              delete record.modified_at;
               
               const isValid = validateImportRecord(record);
               
