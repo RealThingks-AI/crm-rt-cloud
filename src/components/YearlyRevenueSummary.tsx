@@ -32,7 +32,8 @@ const YearlyRevenueSummary = () => {
   };
 
   const getProgressPercentage = (actual: number, target: number) => {
-    return target > 0 ? (actual / target) * 100 : 0;
+    if (target === 0) return 0;
+    return (actual / target) * 100;
   };
 
   const handleSaveTarget = async () => {
@@ -73,13 +74,11 @@ const YearlyRevenueSummary = () => {
     if (type === 'actual') {
       params.append('stage', 'Won');
     } else {
-      params.append('stage', 'Discussions,Qualified,RFQ,Offered');
+      params.append('stage', 'RFQ');
     }
     
     if (quarter) {
       const quarterNum = parseInt(quarter.replace('q', ''));
-      const startMonth = (quarterNum - 1) * 3 + 1;
-      const endMonth = quarterNum * 3;
       params.append('quarter', quarterNum.toString());
       params.append('year', selectedYear.toString());
     }
@@ -197,7 +196,7 @@ const YearlyRevenueSummary = () => {
             <div className="text-2xl font-bold text-blue-600">
               {formatCurrency(revenueData?.totalProjected || 0)}
             </div>
-            <p className="text-xs text-muted-foreground">From open deals</p>
+            <p className="text-xs text-muted-foreground">From RFQ deals</p>
           </CardContent>
         </Card>
 

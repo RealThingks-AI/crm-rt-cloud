@@ -19,12 +19,12 @@ interface YearlyRevenueData {
   totalProjected: number;
 }
 
-// No longer using stage probabilities - using specific logic for Won and RFQ stages
-
 export const useYearlyRevenueData = (selectedYear: number) => {
   const { data: revenueData, isLoading, error } = useQuery({
     queryKey: ['yearly-revenue', selectedYear],
     queryFn: async (): Promise<YearlyRevenueData> => {
+      console.log('Fetching revenue data for year:', selectedYear);
+
       // Get yearly target
       const { data: targetData } = await supabase
         .from('yearly_revenue_targets')
@@ -32,27 +32,34 @@ export const useYearlyRevenueData = (selectedYear: number) => {
         .eq('year', selectedYear)
         .single();
 
+      console.log('Target data:', targetData);
+
       // Get all deals for the selected year
       const { data: deals } = await supabase
         .from('deals')
         .select('*')
         .or(`closing_date.gte.${selectedYear}-01-01,closing_date.lte.${selectedYear}-12-31`);
 
+      console.log('Deals for year:', deals);
+
       const actualRevenue: QuarterlyData = { q1: 0, q2: 0, q3: 0, q4: 0 };
       const projectedRevenue: QuarterlyData = { q1: 0, q2: 0, q3: 0, q4: 0 };
 
-      // Calculate actual and projected revenue
       let totalActualRevenue = 0;
       let totalProjectedRevenue = 0;
 
       deals?.forEach(deal => {
+        console.log('Processing deal:', deal.deal_name, 'Stage:', deal.stage);
+        
+        // 1. Actual Revenue: Sum of Total Revenue from all Won stage deals
         if (deal.stage === 'Won') {
-          // For actual revenue total, use total_revenue field
           if (deal.total_revenue) {
-            totalActualRevenue += Number(deal.total_revenue);
+            const revenue = Number(deal.total_revenue);
+            totalActualRevenue += revenue;
+            console.log('Adding actual revenue:', revenue, 'Total now:', totalActualRevenue);
           }
           
-          // For quarterly breakdown, use quarterly revenue fields
+          // Quarterly breakdown for actual revenue (Q1-Q4 Revenue from Won deals)
           if (deal.quarterly_revenue_q1) {
             actualRevenue.q1 += Number(deal.quarterly_revenue_q1);
           }
@@ -65,31 +72,38 @@ export const useYearlyRevenueData = (selectedYear: number) => {
           if (deal.quarterly_revenue_q4) {
             actualRevenue.q4 += Number(deal.quarterly_revenue_q4);
           }
-        } else if (deal.stage === 'RFQ' && deal.total_contract_value) {
-          // For projected revenue total, use total_contract_value
-          const contractValue = Number(deal.total_contract_value);
-          totalProjectedRevenue += contractValue;
-          
-          // For quarterly breakdown, distribute based on closing_date if available
-          if (deal.closing_date) {
-            const closingDate = new Date(deal.closing_date);
-            const quarter = Math.ceil((closingDate.getMonth() + 1) / 3) as 1 | 2 | 3 | 4;
-            const quarterKey = `q${quarter}` as keyof QuarterlyData;
-            projectedRevenue[quarterKey] += contractValue;
+        }
+        
+        // 2. Projected Revenue: Sum of Total Contract Value from all RFQ stage deals
+        else if (deal.stage === 'RFQ') {
+          if (deal.total_contract_value) {
+            const contractValue = Number(deal.total_contract_value);
+            totalProjectedRevenue += contractValue;
+            console.log('Adding projected revenue:', contractValue, 'Total now:', totalProjectedRevenue);
+            
+            // Quarterly breakdown for projected revenue (distribute based on closing_date)
+            if (deal.closing_date) {
+              const closingDate = new Date(deal.closing_date);
+              const quarter = Math.ceil((closingDate.getMonth() + 1) / 3) as 1 | 2 | 3 | 4;
+              const quarterKey = `q${quarter}` as keyof QuarterlyData;
+              projectedRevenue[quarterKey] += contractValue;
+              console.log(`Adding ${contractValue} to projected Q${quarter}`);
+            }
           }
         }
       });
 
-      const totalActual = totalActualRevenue;
-      const totalProjected = totalProjectedRevenue;
+      console.log('Final totals - Actual:', totalActualRevenue, 'Projected:', totalProjectedRevenue);
+      console.log('Quarterly actual:', actualRevenue);
+      console.log('Quarterly projected:', projectedRevenue);
 
       return {
         year: selectedYear,
         target: targetData?.total_target || 0,
         actualRevenue,
         projectedRevenue,
-        totalActual,
-        totalProjected
+        totalActual: totalActualRevenue,
+        totalProjected: totalProjectedRevenue
       };
     },
   });
