@@ -3,7 +3,7 @@ import { ContactTable } from "@/components/ContactTable";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Settings, Download, Upload, Plus, Trash2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,49 +14,28 @@ const Contacts = () => {
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
-  const [contacts, setContacts] = useState<any[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Add debugging
-  useEffect(() => {
-    console.log('Contacts page mounted');
-    setIsLoading(false);
-  }, []);
+  console.log('Contacts page: Rendering');
 
-  // Use the robust import/export hook
+  // Use the import/export hook
   const { handleImport, handleExportAll } = useImportExport({
     moduleName: 'contacts',
     tableName: 'contacts',
     onRefresh: () => {
-      console.log('Import hook triggering refresh...');
+      console.log('Contacts page: Import hook triggering refresh...');
       setRefreshTrigger(prev => prev + 1);
     }
   });
-
-  const fetchContacts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('*')
-        .order('created_time', { ascending: false });
-
-      if (error) throw error;
-      setContacts(data || []);
-    } catch (error) {
-      console.error('Error fetching contacts:', error);
-    }
-  };
 
   const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    console.log('Starting CSV import with file:', file.name);
+    console.log('Contacts page: Starting CSV import with file:', file.name);
     
     try {
       await handleImport(file);
-      // Reset the input
       event.target.value = '';
     } catch (error) {
       console.error('Import error:', error);
@@ -70,7 +49,6 @@ const Contacts = () => {
 
   const handleExportContacts = async () => {
     try {
-      // Fetch all contacts from database
       const { data: contacts, error } = await supabase
         .from('contacts')
         .select('*')
@@ -118,6 +96,7 @@ const Contacts = () => {
       });
       
       setSelectedContacts([]);
+      setRefreshTrigger(prev => prev + 1);
     } catch (error) {
       toast({
         title: "Error",
@@ -126,20 +105,6 @@ const Contacts = () => {
       });
     }
   };
-
-  // Show loading state or error boundary
-  if (isLoading) {
-    return (
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading contacts...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-6 space-y-6">
@@ -207,7 +172,7 @@ const Contacts = () => {
         setShowColumnCustomizer={setShowColumnCustomizer}
         showModal={showModal}
         setShowModal={setShowModal}
-        onExportReady={() => {}} // No longer needed
+        onExportReady={() => {}}
         selectedContacts={selectedContacts}
         setSelectedContacts={setSelectedContacts}
         refreshTrigger={refreshTrigger}
