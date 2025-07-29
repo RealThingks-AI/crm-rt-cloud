@@ -68,107 +68,104 @@ const Dashboard = () => {
 
   return (
     <div className="p-6 space-y-8">
-      {/* Yearly Revenue Summary Section */}
-      <YearlyRevenueSummary />
+      {/* Top Cards - All in Single Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <Card className="hover-scale">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Annual Target</CardTitle>
+            <Target className="w-4 h-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            {isDataLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className="text-2xl font-bold">{formatCurrency(currentYearData?.annualTarget || 0)}</div>
+            )}
+            <p className="text-xs text-muted-foreground">{currentYear} target</p>
+          </CardContent>
+        </Card>
+
+        <Card className="hover-scale">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <Euro className="w-4 h-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            {isDataLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className="text-2xl font-bold">{formatCurrency(stats?.totalRevenue || 0)}</div>
+            )}
+            <p className="text-xs text-muted-foreground">From Won deals</p>
+          </CardContent>
+        </Card>
+
+        <Card className="hover-scale">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Projected Revenue</CardTitle>
+            <TrendingUp className="w-4 h-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            {isDataLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className="text-2xl font-bold">{formatCurrency(currentYearData?.projectedRevenue || 0)}</div>
+            )}
+            <p className="text-xs text-muted-foreground">From RFQ deals</p>
+          </CardContent>
+        </Card>
+
+        <Card className="hover-scale">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Forecast</CardTitle>
+            <BarChart3 className="w-4 h-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            {isDataLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className="text-2xl font-bold">{formatCurrency(currentYearData?.totalForecast || 0)}</div>
+            )}
+            <p className="text-xs text-muted-foreground">Won + RFQ total</p>
+          </CardContent>
+        </Card>
+
+        <Card className="hover-scale">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Deals</CardTitle>
+            <Users className="w-4 h-4 text-indigo-600" />
+          </CardHeader>
+          <CardContent>
+            {isDataLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold">{stats?.totalDeals || 0}</div>
+            )}
+            <p className="text-xs text-muted-foreground">All pipeline stages</p>
+          </CardContent>
+        </Card>
+
+        <Card className="hover-scale">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Won Deals</CardTitle>
+            <Calendar className="w-4 h-4 text-emerald-600" />
+          </CardHeader>
+          <CardContent>
+            {isDataLoading ? (
+              <Skeleton className="h-8 w-12" />
+            ) : (
+              <div className="text-2xl font-bold">{stats?.wonDeals || 0}</div>
+            )}
+            <p className="text-xs text-muted-foreground">Closed successfully</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Divider */}
       <div className="border-t border-border" />
 
-      {/* Live Dashboard Content */}
-      <div className="space-y-6">
-        {/* Top Cards - All in Single Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <Card className="hover-scale">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Annual Target</CardTitle>
-              <Target className="w-4 h-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              {isDataLoading ? (
-                <Skeleton className="h-8 w-20" />
-              ) : (
-                <div className="text-2xl font-bold">{formatCurrency(currentYearData?.annualTarget || 0)}</div>
-              )}
-              <p className="text-xs text-muted-foreground">{currentYear} target</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover-scale">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-              <Euro className="w-4 h-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              {isDataLoading ? (
-                <Skeleton className="h-8 w-20" />
-              ) : (
-                <div className="text-2xl font-bold">{formatCurrency(stats?.totalRevenue || 0)}</div>
-              )}
-              <p className="text-xs text-muted-foreground">From Won deals</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover-scale">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Projected Revenue</CardTitle>
-              <TrendingUp className="w-4 h-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              {isDataLoading ? (
-                <Skeleton className="h-8 w-20" />
-              ) : (
-                <div className="text-2xl font-bold">{formatCurrency(currentYearData?.projectedRevenue || 0)}</div>
-              )}
-              <p className="text-xs text-muted-foreground">From RFQ deals</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover-scale">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Forecast</CardTitle>
-              <BarChart3 className="w-4 h-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              {isDataLoading ? (
-                <Skeleton className="h-8 w-20" />
-              ) : (
-                <div className="text-2xl font-bold">{formatCurrency(currentYearData?.totalForecast || 0)}</div>
-              )}
-              <p className="text-xs text-muted-foreground">Won + RFQ total</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover-scale">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Deals</CardTitle>
-              <Users className="w-4 h-4 text-indigo-600" />
-            </CardHeader>
-            <CardContent>
-              {isDataLoading ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                <div className="text-2xl font-bold">{stats?.totalDeals || 0}</div>
-              )}
-              <p className="text-xs text-muted-foreground">All pipeline stages</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover-scale">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Won Deals</CardTitle>
-              <Calendar className="w-4 h-4 text-emerald-600" />
-            </CardHeader>
-            <CardContent>
-              {isDataLoading ? (
-                <Skeleton className="h-8 w-12" />
-              ) : (
-                <div className="text-2xl font-bold">{stats?.wonDeals || 0}</div>
-              )}
-              <p className="text-xs text-muted-foreground">Closed successfully</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      {/* Yearly Revenue Summary Section */}
+      <YearlyRevenueSummary />
     </div>
   );
 };
