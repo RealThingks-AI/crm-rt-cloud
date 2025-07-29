@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -52,12 +51,10 @@ export const useYearlyRevenueData = (selectedYear: number) => {
         console.log('Processing deal:', deal.deal_name, 'Stage:', deal.stage);
         
         // 1. Actual Revenue: Sum of Total Revenue from all Won stage deals
-        if (deal.stage === 'Won') {
-          if (deal.total_revenue) {
-            const revenue = Number(deal.total_revenue);
-            totalActualRevenue += revenue;
-            console.log('Adding actual revenue:', revenue, 'Total now:', totalActualRevenue);
-          }
+        if (deal.stage === 'Won' && deal.total_revenue) {
+          const revenue = Number(deal.total_revenue);
+          totalActualRevenue += revenue;
+          console.log('Adding actual revenue from Won deal:', revenue, 'Total now:', totalActualRevenue);
           
           // Quarterly breakdown for actual revenue (Q1-Q4 Revenue from Won deals)
           if (deal.quarterly_revenue_q1) {
@@ -75,20 +72,18 @@ export const useYearlyRevenueData = (selectedYear: number) => {
         }
         
         // 2. Projected Revenue: Sum of Total Contract Value from all RFQ stage deals
-        else if (deal.stage === 'RFQ') {
-          if (deal.total_contract_value) {
-            const contractValue = Number(deal.total_contract_value);
-            totalProjectedRevenue += contractValue;
-            console.log('Adding projected revenue:', contractValue, 'Total now:', totalProjectedRevenue);
-            
-            // Quarterly breakdown for projected revenue (distribute based on closing_date)
-            if (deal.closing_date) {
-              const closingDate = new Date(deal.closing_date);
-              const quarter = Math.ceil((closingDate.getMonth() + 1) / 3) as 1 | 2 | 3 | 4;
-              const quarterKey = `q${quarter}` as keyof QuarterlyData;
-              projectedRevenue[quarterKey] += contractValue;
-              console.log(`Adding ${contractValue} to projected Q${quarter}`);
-            }
+        else if (deal.stage === 'RFQ' && deal.total_contract_value) {
+          const contractValue = Number(deal.total_contract_value);
+          totalProjectedRevenue += contractValue;
+          console.log('Adding projected revenue from RFQ deal:', contractValue, 'Total now:', totalProjectedRevenue);
+          
+          // Quarterly breakdown for projected revenue (distribute based on closing_date)
+          if (deal.closing_date) {
+            const closingDate = new Date(deal.closing_date);
+            const quarter = Math.ceil((closingDate.getMonth() + 1) / 3) as 1 | 2 | 3 | 4;
+            const quarterKey = `q${quarter}` as keyof QuarterlyData;
+            projectedRevenue[quarterKey] += contractValue;
+            console.log(`Adding ${contractValue} to projected Q${quarter}`);
           }
         }
       });
