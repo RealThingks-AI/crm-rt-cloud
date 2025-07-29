@@ -1,3 +1,4 @@
+
 export type DealStage = 'Lead' | 'Discussions' | 'Qualified' | 'RFQ' | 'Offered' | 'Won' | 'Lost' | 'Dropped';
 
 export interface Deal {
@@ -7,10 +8,8 @@ export interface Deal {
   created_by: string | null;
   modified_by: string | null;
   
-  // Legacy field mapping
-  deal_name?: string;
-  
-  // Stage
+  // Basic deal info
+  deal_name: string;
   stage: DealStage;
   
   // Lead stage fields
@@ -19,37 +18,47 @@ export interface Deal {
   lead_name?: string;
   lead_owner?: string;
   region?: string;
-  priority?: number;
-  probability?: number;
-  internal_comment?: string; // Use internal_comment instead of comment
+  priority?: number; // 1-5 range enforced by DB constraint
+  probability?: number; // 0-100 range enforced by DB constraint
+  internal_comment?: string;
   
   // Discussions stage fields
   expected_closing_date?: string;
   customer_need?: string;
-  customer_challenges?: string;
+  customer_challenges?: 'Open' | 'Ongoing' | 'Done';
   relationship_strength?: 'Low' | 'Medium' | 'High';
   
   // Qualified stage fields
   budget?: string;
-  business_value?: 'Low' | 'Medium' | 'High';
-  decision_maker_level?: 'Not Identified' | 'Identified' | 'Done';
+  business_value?: 'Open' | 'Ongoing' | 'Done';
+  decision_maker_level?: 'Open' | 'Ongoing' | 'Done';
+  is_recurring?: 'Yes' | 'No' | 'Unclear';
   
   // RFQ stage fields
-  is_recurring?: boolean;
-  project_type?: string;
-  duration?: number;
-  revenue?: number;
-  start_date?: string;
-  end_date?: string;
-  
-  // Offered stage fields
   total_contract_value?: number;
   currency_type?: 'EUR' | 'USD' | 'INR';
+  start_date?: string;
+  end_date?: string;
+  project_duration?: number;
   action_items?: string;
+  rfq_received_date?: string;
+  proposal_due_date?: string;
+  rfq_status?: 'Drafted' | 'Submitted' | 'Rejected' | 'Accepted';
+  
+  // Offered stage fields
   current_status?: string;
+  closing?: string;
   
   // Won stage fields
   won_reason?: string;
+  quarterly_revenue_q1?: number;
+  quarterly_revenue_q2?: number;
+  quarterly_revenue_q3?: number;
+  quarterly_revenue_q4?: number;
+  total_revenue?: number;
+  signed_contract_date?: string;
+  implementation_start_date?: string;
+  handoff_status?: 'Not Started' | 'In Progress' | 'Complete';
   
   // Lost stage fields
   lost_reason?: string;
@@ -57,6 +66,11 @@ export interface Deal {
   
   // Dropped stage fields
   drop_reason?: string;
+  
+  // Legacy fields (keeping for backward compatibility)
+  project_type?: string;
+  duration?: number;
+  revenue?: number;
 }
 
 export const DEAL_STAGES: DealStage[] = ['Lead', 'Discussions', 'Qualified', 'RFQ', 'Offered', 'Won', 'Lost', 'Dropped'];
@@ -80,15 +94,15 @@ export const getFieldsForStage = (stage: DealStage): string[] => {
   const stageIndex = getStageIndex(stage);
   const allStages = [
     // Lead fields
-    ['project_name', 'customer_name', 'lead_name', 'lead_owner', 'region', 'priority', 'probability', 'internal_comment'],
+    ['project_name', 'lead_name', 'customer_name', 'region', 'lead_owner', 'priority'],
     // Discussions fields  
-    ['expected_closing_date', 'customer_need', 'customer_challenges', 'relationship_strength'],
+    ['customer_need', 'relationship_strength', 'internal_comment'],
     // Qualified fields
-    ['budget', 'business_value', 'decision_maker_level'],
+    ['budget', 'business_value', 'decision_maker_level', 'customer_challenges', 'probability', 'expected_closing_date', 'is_recurring'],
     // RFQ fields
-    ['is_recurring', 'project_type', 'duration', 'revenue', 'start_date', 'end_date'],
+    ['total_contract_value', 'currency_type', 'start_date', 'end_date', 'project_duration', 'rfq_received_date', 'proposal_due_date', 'rfq_status', 'action_items'],
     // Offered fields
-    ['total_contract_value', 'currency_type', 'action_items', 'current_status'],
+    ['business_value', 'decision_maker_level', 'current_status', 'closing'],
   ];
   
   let availableFields: string[] = [];
@@ -98,14 +112,14 @@ export const getFieldsForStage = (stage: DealStage): string[] => {
   
   // Add final stage-specific reason fields based on the current stage
   if (stage === 'Won') {
-    availableFields.push('won_reason');
+    availableFields.push('won_reason', 'quarterly_revenue_q1', 'quarterly_revenue_q2', 'quarterly_revenue_q3', 'quarterly_revenue_q4', 'total_revenue', 'signed_contract_date', 'implementation_start_date', 'handoff_status');
   } else if (stage === 'Lost') {
     availableFields.push('lost_reason', 'need_improvement');
   } else if (stage === 'Dropped') {
     availableFields.push('drop_reason');
   }
   
-  // Always include comment field
+  // Always include internal_comment field
   if (!availableFields.includes('internal_comment')) {
     availableFields.push('internal_comment');
   }
@@ -120,12 +134,12 @@ export const getEditableFieldsForStage = (stage: DealStage): string[] => {
 
 export const getRequiredFieldsForStage = (stage: DealStage): string[] => {
   const requiredFields = {
-    Lead: ['project_name', 'customer_name', 'lead_name', 'lead_owner', 'probability'],
-    Discussions: ['expected_closing_date', 'customer_need', 'customer_challenges', 'relationship_strength'],
-    Qualified: ['budget', 'business_value', 'decision_maker_level'],
-    RFQ: ['is_recurring', 'project_type', 'duration', 'revenue', 'start_date', 'end_date'],
-    Offered: ['total_contract_value', 'currency_type', 'action_items', 'current_status'],
-    Won: ['won_reason', 'start_date'],
+    Lead: ['project_name', 'lead_name', 'customer_name', 'region', 'lead_owner', 'priority'],
+    Discussions: ['customer_need', 'relationship_strength', 'internal_comment'],
+    Qualified: ['customer_challenges', 'budget', 'probability', 'expected_closing_date', 'is_recurring', 'internal_comment'],
+    RFQ: ['total_contract_value', 'currency_type', 'start_date', 'end_date', 'rfq_received_date', 'proposal_due_date', 'rfq_status', 'action_items', 'internal_comment'],
+    Offered: ['business_value', 'decision_maker_level', 'current_status', 'closing'],
+    Won: ['won_reason', 'start_date', 'total_revenue', 'signed_contract_date', 'handoff_status'],
     Lost: ['lost_reason', 'need_improvement'],
     Dropped: ['drop_reason'],
   };

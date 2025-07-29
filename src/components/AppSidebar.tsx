@@ -1,3 +1,4 @@
+
 import { 
   Home, 
   Users, 
@@ -6,16 +7,18 @@ import {
   BarChart3, 
   Activity, 
   Settings,
-  LogOut
+  LogOut,
+  Pin,
+  PinOff
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
-import { useAuth } from "@/supabase/auth";
+import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/common/ui/tooltip";
+} from "@/components/ui/tooltip";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: Home },
@@ -29,6 +32,7 @@ const menuItems = [
 
 export function AppSidebar() {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
   const location = useLocation();
   const { user, signOut } = useAuth();
   const currentPath = location.pathname;
@@ -49,6 +53,25 @@ export function AppSidebar() {
     return user?.user_metadata?.full_name || user?.email || 'User';
   };
 
+  const togglePin = () => {
+    setIsPinned(!isPinned);
+    if (!isPinned) {
+      setIsExpanded(true);
+    }
+  };
+
+  const handleMouseEnter = () => {
+    if (!isPinned) {
+      setIsExpanded(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!isPinned) {
+      setIsExpanded(false);
+    }
+  };
+
   return (
     <div 
       className="h-screen flex flex-col border-r border-gray-200"
@@ -57,12 +80,12 @@ export function AppSidebar() {
         backgroundColor: '#ffffff',
         transition: 'width 0.3s ease-in-out'
       }}
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* Header */}
-      <div className="flex items-center p-4 border-b border-gray-300 relative">
-        <div className="flex items-center" style={{ position: 'absolute', left: '14px' }}>
+      <div className="flex items-center justify-between border-b border-gray-300 relative" style={{ height: '72px', padding: '0 16px' }}>
+        <div className="flex items-center">
           <img 
             src="/lovable-uploads/12bdcc4a-a1c8-4ccf-ba6a-931fd566d3c8.png" 
             alt="Logo" 
@@ -74,6 +97,25 @@ export function AppSidebar() {
             </span>
           )}
         </div>
+        {isExpanded && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={togglePin}
+                className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
+                  isPinned 
+                    ? 'text-blue-700 bg-blue-100 hover:bg-blue-200' 
+                    : 'text-gray-500 hover:text-blue-700 hover:bg-blue-50'
+                }`}
+              >
+                {isPinned ? <Pin className="w-4 h-4" /> : <PinOff className="w-4 h-4" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>{isPinned ? 'Unpin sidebar' : 'Pin sidebar'}</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       {/* Menu Items */}

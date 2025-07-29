@@ -6,29 +6,29 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/common/ui/dialog";
-import { Button } from "@/components/common/ui/button";
-import { Input } from "@/components/common/ui/input";
-import { Label } from "@/components/common/ui/label";
-import { Textarea } from "@/components/common/ui/textarea";
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/common/ui/select";
-import { Calendar } from "@/components/common/ui/calendar";
+} from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/common/ui/popover";
+} from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-import { Checkbox } from "@/components/common/ui/checkbox";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Meeting {
   id: string;
@@ -135,6 +135,67 @@ export const MeetingModal = ({ isOpen, onClose, meeting, leads }: MeetingModalPr
     setLoading(true);
 
     try {
+      let teamsLink = "";
+
+      // Create Teams meeting for new meetings only
+      if (!meeting) {
+        toast({
+          title: "Creating meeting...",
+          description: "Setting up Microsoft Teams meeting",
+        });
+
+        // Calculate meeting end time
+        const startDateTime = new Date(`${formData.date.toISOString().split('T')[0]}T${formData.start_time}:00`);
+        const durationInMinutes = formData.duration === "30 min" ? 30 : 
+                                  formData.duration === "1 hour" ? 60 :
+                                  formData.duration === "1.5 hours" ? 90 : 120;
+        const endDateTime = new Date(startDateTime.getTime() + (durationInMinutes * 60000));
+
+        try {
+          const { data: teamsData, error: teamsError } = await supabase.functions.invoke('create-teams-meeting', {
+            body: {
+              title: formData.meeting_title,
+              startDateTime: startDateTime.toISOString(),
+              endDateTime: endDateTime.toISOString(),
+              subject: formData.meeting_title,
+              bodyContent: formData.description || formData.meeting_title,
+            },
+          });
+
+          if (teamsError) {
+            console.error("Teams meeting creation error:", teamsError);
+            toast({
+              title: "Error",
+              description: "Failed to create Microsoft Teams meeting. Meeting saved without Teams link.",
+              variant: "destructive",
+            });
+            teamsLink = ""; // Don't include Teams link if creation failed
+          } else if (teamsData?.success && teamsData?.joinUrl) {
+            teamsLink = teamsData.joinUrl;
+            toast({
+              title: "Teams meeting created",
+              description: "Microsoft Teams meeting link generated successfully",
+            });
+          } else {
+            console.error("Invalid response from Teams API:", teamsData);
+            toast({
+              title: "Warning",
+              description: "Meeting created but Teams link could not be generated",
+              variant: "destructive",
+            });
+            teamsLink = "";
+          }
+        } catch (teamsError) {
+          console.error("Teams meeting creation failed:", teamsError);
+          toast({
+            title: "Error",
+            description: "Failed to create Microsoft Teams meeting. Meeting saved without Teams link.",
+            variant: "destructive",
+          });
+          teamsLink = "";
+        }
+      }
+
       const meetingData = {
         meeting_title: formData.meeting_title,
         date: formData.date.toISOString().split('T')[0],
@@ -144,7 +205,7 @@ export const MeetingModal = ({ isOpen, onClose, meeting, leads }: MeetingModalPr
         timezone: formData.timezone,
         description: formData.description,
         participants: formData.participants,
-        teams_link: "", // Will be populated by Teams API integration
+        teams_link: meeting ? meeting.teams_link : teamsLink, // Keep existing link for updates
         ...(meeting ? {} : { created_by: user.id }),
       };
 
@@ -169,7 +230,7 @@ export const MeetingModal = ({ isOpen, onClose, meeting, leads }: MeetingModalPr
 
         toast({
           title: "Success",
-          description: "Meeting created successfully",
+          description: teamsLink ? "Meeting created with Teams link" : "Meeting created successfully",
         });
       }
 

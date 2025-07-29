@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Input } from "@/components/common/ui/input";
-import { Textarea } from "@/components/common/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/common/ui/select";
-import { Switch } from "@/components/common/ui/switch";
-import { Button } from "@/components/common/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import { Check, X, Edit3 } from "lucide-react";
 import { Deal, DealStage, DEAL_STAGES } from "@/types/deal";
 

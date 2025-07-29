@@ -53,8 +53,8 @@ All colors MUST be HSL.
     --stage-discussions-foreground: 180 84% 25%;
     --stage-qualified: 188 95% 85%;
     --stage-qualified-foreground: 188 95% 25%;
-    --stage-rfq: 54 91% 85%;
-    --stage-rfq-foreground: 54 91% 25%;
+    --stage-rfq: 204 30% 85%;
+    --stage-rfq-foreground: 204 30% 25%;
     --stage-offered: 25 95% 85%;
     --stage-offered-foreground: 25 95% 25%;
     --stage-won: 142 71% 85%;
@@ -157,7 +157,7 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground font-sans;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   }
 }
 

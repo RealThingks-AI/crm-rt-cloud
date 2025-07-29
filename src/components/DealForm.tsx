@@ -1,16 +1,13 @@
+
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/common/ui/dialog";
-import { Button } from "@/components/common/ui/button";
-import { Input } from "@/components/common/ui/input";
-import { Label } from "@/components/common/ui/label";
-import { Textarea } from "@/components/common/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/common/ui/select";
-import { Switch } from "@/components/common/ui/switch";
-import { Badge } from "@/components/common/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/common/ui/card";
-import { Deal, DealStage, getFieldsForStage, getRequiredFieldsForStage, getNextStage, getFinalStageOptions, getStageIndex } from "@/types/deal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Deal, DealStage, getNextStage, getFinalStageOptions, getStageIndex } from "@/types/deal";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowRight } from "lucide-react";
+import { validateRequiredFields, getFieldErrors, validateDateLogic, validateRevenueSum } from "./deal-form/validation";
+import { DealStageForm } from "./deal-form/DealStageForm";
 
 interface DealFormProps {
   deal: Deal | null;
@@ -26,59 +23,131 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
   const [formData, setFormData] = useState<Partial<Deal>>({});
   const [loading, setLoading] = useState(false);
   const [showPreviousStages, setShowPreviousStages] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     if (deal) {
       console.log("Setting form data from deal:", deal);
-      setFormData(deal);
+      // Initialize revenue fields with 0 if they are null
+      const initializedDeal = {
+        ...deal,
+        quarterly_revenue_q1: deal.quarterly_revenue_q1 ?? 0,
+        quarterly_revenue_q2: deal.quarterly_revenue_q2 ?? 0,
+        quarterly_revenue_q3: deal.quarterly_revenue_q3 ?? 0,
+        quarterly_revenue_q4: deal.quarterly_revenue_q4 ?? 0,
+      };
+      setFormData(initializedDeal);
+      // Hide validation errors for existing deals initially - only show after Save is clicked
+      setShowValidationErrors(false);
     } else if (isCreating && initialStage) {
-      setFormData({ stage: initialStage });
+      // Set default values for new deals
+      const defaultData: Partial<Deal> = {
+        stage: initialStage,
+        currency_type: 'EUR', // Default to EUR
+        quarterly_revenue_q1: 0,
+        quarterly_revenue_q2: 0,
+        quarterly_revenue_q3: 0,
+        quarterly_revenue_q4: 0,
+      };
+      setFormData(defaultData);
+      // Hide validation errors for new deals initially
+      setShowValidationErrors(false);
     }
-    // Reset the toggle state when the dialog opens/closes
     setShowPreviousStages(false);
   }, [deal, isCreating, initialStage, isOpen]);
 
   const currentStage = formData.stage || 'Lead';
-  
-  // Calculate available fields based on toggle state
-  const getAvailableFields = () => {
-    if (showPreviousStages) {
-      // Show all fields from all stages up to current stage (use existing function)
-      return getFieldsForStage(currentStage);
-    } else {
-      // Show only fields specific to the current stage
-      const stageSpecificFields = {
-        'Lead': ['project_name', 'customer_name', 'lead_name', 'lead_owner', 'region', 'priority', 'probability', 'internal_comment'],
-        'Discussions': ['expected_closing_date', 'customer_need', 'customer_challenges', 'relationship_strength'],
-        'Qualified': ['budget', 'business_value', 'decision_maker_level'],
-        'RFQ': ['is_recurring', 'project_type', 'duration', 'revenue', 'start_date', 'end_date'],
-        'Offered': ['total_contract_value', 'currency_type', 'action_items', 'current_status'],
-        'Won': ['won_reason'],
-        'Lost': ['lost_reason', 'need_improvement'],
-        'Dropped': ['drop_reason']
-      };
-      
-      return stageSpecificFields[currentStage] || [];
+
+  // Update field errors when form data changes, but only show them if validation should be displayed
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const errors = getFieldErrors(formData, currentStage);
+      setFieldErrors(showValidationErrors ? errors : {});
+    }, 50);
+    
+    return () => clearTimeout(timeoutId);
+  }, [formData, currentStage, showValidationErrors]);
+
+  const handleFieldChange = (field: string, value: any) => {
+    console.log(`=== FIELD UPDATE DEBUG ===`);
+    console.log(`Updating field: ${field}`);
+    console.log(`New value:`, value, `(type: ${typeof value})`);
+    console.log(`Current formData before update:`, formData);
+    
+    setFormData(prev => {
+      const updated = { ...prev };
+      // Use type assertion to bypass strict type checking for dynamic assignment
+      (updated as any)[field] = value;
+      return updated;
+    });
+    
+    // Clear field error when user updates the field (only if validation is showing)
+    if (showValidationErrors && fieldErrors[field]) {
+      setFieldErrors(prev => {
+        const { [field]: _, ...rest } = prev;
+        return rest;
+      });
     }
   };
-  
-  const availableFields = getAvailableFields();
 
-  // Update available fields when stage or toggle changes
-  useEffect(() => {
-    console.log(`Stage: ${currentStage}, Show all stages: ${showPreviousStages}, Available fields:`, availableFields);
-    console.log("Field count comparison - Current stage only:", getFieldsForStage(currentStage).length, "All stages:", getAvailableFields().length);
-  }, [currentStage, showPreviousStages, availableFields]);
+  const handleLeadSelect = (lead: any) => {
+    console.log("Selected lead:", lead);
+    // The lead selection is handled in the FormFieldRenderer component
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      console.log("Saving deal data:", formData);
+      console.log("=== DEAL FORM SUBMIT DEBUG ===");
+      console.log("Current stage:", currentStage);
+      console.log("Form data before save:", formData);
       
-      // Prepare the data for saving
+      // Show validation errors when Save is clicked
+      setShowValidationErrors(true);
+      
+      // Validate date logic first
+      const dateValidation = validateDateLogic(formData);
+      if (!dateValidation.isValid) {
+        console.error("Date validation failed:", dateValidation.error);
+        toast({
+          title: "Validation Error",
+          description: dateValidation.error,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Validate revenue sum for Won stage
+      if (currentStage === 'Won') {
+        const revenueValidation = validateRevenueSum(formData);
+        if (!revenueValidation.isValid) {
+          console.error("Revenue validation failed:", revenueValidation.error);
+          toast({
+            title: "Validation Error",
+            description: revenueValidation.error,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      
+      const validationResult = validateRequiredFields(formData, currentStage);
+      console.log("Validation result:", validationResult);
+      
+      if (!validationResult) {
+        console.error("Required fields validation failed");
+        toast({
+          title: "Validation Error",
+          description: "Please fill in all required fields before saving.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       const saveData = {
         ...formData,
         deal_name: formData.project_name || formData.deal_name || 'Untitled Deal',
@@ -86,10 +155,11 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
         modified_by: deal?.created_by || formData.created_by
       };
       
-      console.log("Prepared save data:", saveData);
+      console.log("Save data:", saveData);
       
       await onSave(saveData);
       
+      console.log("Save successful");
       toast({
         title: "Success",
         description: isCreating ? "Deal created successfully" : "Deal updated successfully",
@@ -97,12 +167,13 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
       
       onClose();
       
-      // Refresh the data
       if (onRefresh) {
-        setTimeout(onRefresh, 100); // Small delay to ensure database update completes
+        setTimeout(onRefresh, 100);
       }
     } catch (error) {
-      console.error("Error saving deal:", error);
+      console.error("=== DEAL FORM SAVE ERROR ===");
+      console.error("Error details:", error);
+      
       toast({
         title: "Error",
         description: `Failed to save deal: ${error.message || 'Unknown error'}`,
@@ -123,7 +194,6 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
       if (nextStage) {
         console.log(`Moving deal from ${currentStage} to ${nextStage}`);
         
-        // Save all form data with the new stage in one operation
         const updatedData = {
           ...formData,
           stage: nextStage,
@@ -132,8 +202,6 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
           modified_by: deal?.created_by || formData.created_by
         };
         
-        console.log("Saving data with new stage:", updatedData);
-        
         await onSave(updatedData);
         
         toast({
@@ -141,7 +209,6 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
           description: `Deal moved to ${nextStage} stage`,
         });
         
-        // Close modal and refresh
         onClose();
         if (onRefresh) {
           setTimeout(() => onRefresh(), 200);
@@ -165,7 +232,6 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
     try {
       console.log(`Moving deal to final stage: ${finalStage}`);
       
-      // Update form data immediately to show the appropriate reason fields
       const updatedData = {
         ...formData,
         stage: finalStage,
@@ -174,9 +240,7 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
         modified_by: deal?.created_by || formData.created_by
       };
       
-      // Update the form state first to show relevant fields
       setFormData(updatedData);
-      
       await onSave(updatedData);
       
       toast({
@@ -184,7 +248,6 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
         description: `Deal moved to ${finalStage} stage`,
       });
       
-      // Close modal and refresh
       onClose();
       if (onRefresh) {
         setTimeout(() => onRefresh(), 200);
@@ -241,41 +304,6 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
     }
   };
 
-  const updateField = (field: string, value: any) => {
-    console.log(`Updating field ${field} with value:`, value, "Type:", typeof value);
-    setFormData(prev => {
-      const updated = { ...prev, [field]: value };
-      console.log("Updated form data:", updated);
-      return updated;
-    });
-  };
-
-  const validateRequiredFields = (): boolean => {
-    const requiredFields = getRequiredFieldsForStage(currentStage);
-    
-    const isValid = requiredFields.every(field => {
-      const value = formData[field as keyof Deal];
-      
-      // Handle boolean fields specifically
-      if (field === 'is_recurring') {
-        return value !== undefined && value !== null;
-      }
-      
-      // For other fields, check for non-empty values
-      const isFieldValid = value !== undefined && 
-                          value !== null && 
-                          value !== '' &&
-                          String(value).trim() !== '';
-      
-      console.log(`Validating field ${field}: value = "${value}", isValid = ${isFieldValid}`);
-      return isFieldValid;
-    });
-    
-    console.log(`Overall validation for stage ${currentStage}: ${isValid}. Required fields:`, requiredFields);
-    return isValid;
-  };
-
-  // Get available stages for the "Move to" dropdown (with backward movement allowed)
   const getAvailableStagesForMoveTo = (): DealStage[] => {
     const currentIndex = getStageIndex(currentStage);
     const allStages: DealStage[] = ['Lead', 'Discussions', 'Qualified', 'RFQ', 'Offered', 'Won', 'Lost', 'Dropped'];
@@ -289,12 +317,15 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
     
     // Add next stage if it exists and requirements are met
     const nextStage = getNextStage(currentStage);
-    if (nextStage && validateRequiredFields()) {
+    if (nextStage && validateRequiredFields(formData, currentStage) && 
+        validateDateLogic(formData).isValid && 
+        (currentStage !== 'Won' || validateRevenueSum(formData).isValid)) {
       availableStages.push(nextStage);
     }
     
     // Add final stages if in Offered stage and requirements are met
-    if (currentStage === 'Offered' && validateRequiredFields()) {
+    if (currentStage === 'Offered' && validateRequiredFields(formData, currentStage) && 
+        validateDateLogic(formData).isValid) {
       availableStages.push('Won', 'Lost', 'Dropped');
     }
     
@@ -308,286 +339,18 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
 
   const canMoveToNextStage = !isCreating && 
     getNextStage(currentStage) !== null && 
-    validateRequiredFields();
+    validateRequiredFields(formData, currentStage) &&
+    validateDateLogic(formData).isValid &&
+    (currentStage !== 'Won' || validateRevenueSum(formData).isValid);
 
   const canMoveToFinalStage = !isCreating && 
     currentStage === 'Offered' && 
-    validateRequiredFields();
+    validateRequiredFields(formData, currentStage) &&
+    validateDateLogic(formData).isValid;
 
-  // Add a state to track if save was successful for enabling "Move to Next Stage"
-  const [lastSaveSuccessful, setLastSaveSuccessful] = useState(true);
-
-  const getFieldLabel = (field: string) => {
-    const labels: Record<string, string> = {
-      project_name: 'Project Name',
-      customer_name: 'Customer Name',
-      lead_name: 'Lead Name',
-      lead_owner: 'Lead Owner',
-      region: 'Region',
-      priority: 'Priority',
-      probability: 'Probability (%)',
-      internal_comment: 'Comment',
-      expected_closing_date: 'Expected Closing Date',
-      customer_need: 'Customer Need',
-      customer_challenges: 'Customer Challenges',
-      relationship_strength: 'Relationship Strength',
-      budget: 'Budget',
-      business_value: 'Business Value',
-      decision_maker_level: 'Decision Maker Level',
-      is_recurring: 'Is Recurring?',
-      project_type: 'Project Type',
-      duration: 'Duration (months)',
-      revenue: 'Revenue',
-      start_date: 'Start Date',
-      end_date: 'End Date',
-      total_contract_value: 'Total Contract Value',
-      currency_type: 'Currency',
-      action_items: 'Action Items',
-      current_status: 'Current Status',
-      
-      won_reason: 'Won Reason',
-      lost_reason: 'Lost Reason',
-      need_improvement: 'Need Improvement',
-      drop_reason: 'Drop Reason',
-    };
-    return labels[field] || field;
-  };
-
-  const renderField = (field: string) => {
-    const value = formData[field as keyof Deal];
-    console.log(`Rendering field ${field} with value:`, value, "Type:", typeof value);
-
-    // Helper function to safely convert values to strings for text inputs
-    const getStringValue = (val: any): string => {
-      if (val === null || val === undefined) return '';
-      return String(val);
-    };
-
-    switch (field) {
-      case 'priority':
-        return (
-          <div key={field} className="space-y-2">
-            <Label>{getFieldLabel(field)}</Label>
-            <Select
-              value={value?.toString() || ''}
-              onValueChange={(val) => updateField(field, parseInt(val))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select priority" />
-              </SelectTrigger>
-              <SelectContent>
-                {[1, 2, 3, 4, 5].map(num => (
-                  <SelectItem key={num} value={num.toString()}>
-                    Priority {num} {num === 1 ? '(Highest)' : num === 2 ? '(High)' : num === 3 ? '(Medium)' : num === 4 ? '(Low)' : '(Lowest)'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        );
-
-      case 'probability':
-        return (
-          <div key={field} className="space-y-2">
-            <Label>{getFieldLabel(field)}</Label>
-            <Input
-              type="number"
-              min="0"
-              max="100"
-              value={value?.toString() || ''}
-              onChange={(e) => updateField(field, parseInt(e.target.value) || 0)}
-              placeholder="0-100"
-            />
-          </div>
-        );
-
-      case 'region':
-        return (
-          <div key={field} className="space-y-2">
-            <Label>{getFieldLabel(field)}</Label>
-            <Select
-              value={value?.toString() || ''}
-              onValueChange={(val) => updateField(field, val)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select region" />
-              </SelectTrigger>
-              <SelectContent>
-                {['EU', 'US', 'APAC', 'MEA', 'LATAM'].map(region => (
-                  <SelectItem key={region} value={region}>
-                    {region}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        );
-
-      case 'relationship_strength':
-        return (
-          <div key={field} className="space-y-2">
-            <Label>{getFieldLabel(field)}</Label>
-            <Select
-              value={value?.toString() || ''}
-              onValueChange={(val) => updateField(field, val)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select strength" />
-              </SelectTrigger>
-              <SelectContent>
-                {['Low', 'Medium', 'High'].map(strength => (
-                  <SelectItem key={strength} value={strength}>
-                    {strength}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        );
-
-      case 'business_value':
-        return (
-          <div key={field} className="space-y-2">
-            <Label>{getFieldLabel(field)}</Label>
-            <Select
-              value={value?.toString() || ''}
-              onValueChange={(val) => updateField(field, val)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select business value" />
-              </SelectTrigger>
-              <SelectContent>
-                {['Low', 'Medium', 'High'].map(val => (
-                  <SelectItem key={val} value={val}>
-                    {val}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        );
-
-      case 'decision_maker_level':
-        return (
-          <div key={field} className="space-y-2">
-            <Label>{getFieldLabel(field)}</Label>
-            <Select
-              value={value?.toString() || ''}
-              onValueChange={(val) => updateField(field, val)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select decision maker level" />
-              </SelectTrigger>
-              <SelectContent>
-                {['Not Identified', 'Identified', 'Done'].map(level => (
-                  <SelectItem key={level} value={level}>
-                    {level}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        );
-
-      case 'currency_type':
-        return (
-          <div key={field} className="space-y-2">
-            <Label>{getFieldLabel(field)}</Label>
-            <Select
-              value={value?.toString() || 'EUR'}
-              onValueChange={(val) => updateField(field, val)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select currency" />
-              </SelectTrigger>
-              <SelectContent>
-                {[
-                  { value: 'EUR', label: '€ EUR' },
-                  { value: 'USD', label: '$ USD' },
-                  { value: 'INR', label: '₹ INR' },
-                ].map(currency => (
-                  <SelectItem key={currency.value} value={currency.value}>
-                    {currency.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        );
-
-      case 'is_recurring':
-        return (
-          <div key={field} className="flex items-center space-x-2">
-            <Switch
-              checked={Boolean(value)}
-              onCheckedChange={(checked) => updateField(field, checked)}
-            />
-            <Label>{getFieldLabel(field)}</Label>
-          </div>
-        );
-
-      case 'expected_closing_date':
-      case 'start_date':
-      case 'end_date':
-        return (
-          <div key={field} className="space-y-2">
-            <Label>{getFieldLabel(field)}</Label>
-            <Input
-              type="date"
-              value={getStringValue(value)}
-              onChange={(e) => updateField(field, e.target.value)}
-            />
-          </div>
-        );
-
-      case 'duration':
-      case 'revenue':
-      case 'total_contract_value':
-        return (
-          <div key={field} className="space-y-2">
-            <Label>{getFieldLabel(field)}</Label>
-            <Input
-              type="number"
-              value={getStringValue(value)}
-              onChange={(e) => updateField(field, parseFloat(e.target.value) || 0)}
-            />
-          </div>
-        );
-
-      case 'internal_comment':
-      case 'customer_need':
-      case 'customer_challenges':
-      case 'budget':
-      case 'action_items':
-      case 'won_reason':
-      case 'lost_reason':
-      case 'need_improvement':
-      case 'drop_reason':
-        return (
-          <div key={field} className="space-y-2">
-            <Label>{getFieldLabel(field)}</Label>
-            <Textarea
-              value={getStringValue(value)}
-              onChange={(e) => updateField(field, e.target.value)}
-              rows={3}
-              placeholder={`Enter ${getFieldLabel(field).toLowerCase()}...`}
-            />
-          </div>
-        );
-
-      default:
-        return (
-          <div key={field} className="space-y-2">
-            <Label>{getFieldLabel(field)}</Label>
-            <Input
-              value={getStringValue(value)}
-              onChange={(e) => updateField(field, e.target.value)}
-              placeholder={`Enter ${getFieldLabel(field).toLowerCase()}...`}
-            />
-          </div>
-        );
-    }
-  };
+  const canSave = validateRequiredFields(formData, currentStage) && 
+    validateDateLogic(formData).isValid &&
+    (currentStage !== 'Won' || validateRevenueSum(formData).isValid);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -621,17 +384,14 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Current Stage Fields */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Current Stage: {currentStage}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {availableFields.map(field => renderField(field))}
-              </div>
-            </CardContent>
-          </Card>
+          <DealStageForm
+            formData={formData}
+            onFieldChange={handleFieldChange}
+            onLeadSelect={handleLeadSelect}
+            fieldErrors={fieldErrors}
+            stage={currentStage}
+            showPreviousStages={showPreviousStages}
+          />
 
           {/* Action Buttons */}
           <div className="flex justify-between items-center">
@@ -674,9 +434,16 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
               )}
               
               {/* Validation Message */}
-              {!isCreating && !validateRequiredFields() && (
+              {!isCreating && (!validateRequiredFields(formData, currentStage) || 
+                !validateDateLogic(formData).isValid || 
+                (currentStage === 'Won' && !validateRevenueSum(formData).isValid)) && (
                 <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-md border border-red-200">
-                  Complete all required fields to enable stage progression
+                  {!validateDateLogic(formData).isValid ? 
+                    validateDateLogic(formData).error : 
+                    (currentStage === 'Won' && !validateRevenueSum(formData).isValid) ?
+                      validateRevenueSum(formData).error :
+                      "Complete all required fields to enable stage progression"
+                  }
                 </div>
               )}
             </div>

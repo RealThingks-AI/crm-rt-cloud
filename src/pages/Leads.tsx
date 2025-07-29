@@ -1,9 +1,9 @@
 import { LeadTable } from "@/components/LeadTable";
-import { Button } from "@/components/common/ui/button";
+import { Button } from "@/components/ui/button";
 import { Settings, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 
 const Leads = () => {
   const { toast } = useToast();

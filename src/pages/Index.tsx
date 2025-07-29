@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/supabase/client";
-import { useAuth } from "@/supabase/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Deal, DealStage } from "@/types/deal";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { ListView } from "@/components/ListView";
 import { DealForm } from "@/components/DealForm";
-import { Button } from "@/components/common/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/common/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/common/ui/card";
-import { Badge } from "@/components/common/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ImportExportBar } from "@/components/ImportExportBar";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, Plus, BarChart3, Users, Euro } from "lucide-react";
@@ -291,6 +291,7 @@ const Index = () => {
                 onImport={handleImportDeals}
                 onExport={() => {}}
                 selectedDeals={[]}
+                onRefresh={fetchDeals}
               />
               
               {/* View Toggle */}
@@ -390,6 +391,7 @@ const Index = () => {
               onCreateDeal={handleCreateDeal}
               onDeleteDeals={handleDeleteDeals}
               onImportDeals={handleImportDeals}
+              onRefresh={fetchDeals}
             />
           </div>
         ) : (

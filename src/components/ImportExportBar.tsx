@@ -1,24 +1,36 @@
+
 import { useState } from "react";
-import { Button } from "@/components/common/ui/button";
-import { Input } from "@/components/common/ui/input";
-import { Label } from "@/components/common/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/common/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/common/ui/dialog";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/common/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Upload, Download, FileSpreadsheet } from "lucide-react";
 import { Deal } from "@/types/deal";
 import { useToast } from "@/hooks/use-toast";
+import { useImportExport } from "@/hooks/useImportExport";
+
+type ImportedDeal = Partial<Deal> & { shouldUpdate?: boolean };
 
 interface ImportExportBarProps {
   deals: Deal[];
-  onImport: (deals: (Partial<Deal> & { shouldUpdate?: boolean })[]) => void;
+  onImport: (deals: ImportedDeal[]) => void;
   onExport: (selectedDeals?: Deal[]) => void;
   selectedDeals?: Deal[];
+  onRefresh: () => void;
 }
 
-export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals }: ImportExportBarProps) => {
+export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRefresh }: ImportExportBarProps) => {
   const [importFile, setImportFile] = useState<File | null>(null);
   const { toast } = useToast();
+  
+  // Use the centralized import/export logic
+  const { handleImport, handleExportAll, handleExportSelected } = useImportExport({
+    moduleName: 'deals',
+    onRefresh,
+    tableName: 'deals'
+  });
 
   const generateFileName = (prefix: string) => {
     const now = new Date();
@@ -39,16 +51,118 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals }: Im
       return;
     }
 
-    // Filter out deals that don't have basic required data
-    const validDeals = dealsToExport.filter(deal => {
-      const hasBasicData = deal.id && 
-                          deal.stage && 
-                          (deal.project_name || deal.customer_name || deal.lead_name);
+    // Complete field list covering ALL stages - updated with all recent additions
+    const exportFields = [
+      // System fields
+      'id',
+      'created_at',
+      'modified_at',
+      'created_by',
+      'modified_by',
       
+      // Basic deal info (all stages)
+      'deal_name',
+      'stage',
+      'description',
+      'internal_comment',
+      
+      // Lead stage fields
+      'project_name',
+      'lead_name',
+      'customer_name',
+      'region',
+      'lead_owner',
+      'priority',
+      'company_name',
+      'phone_no',
+      'fax',
+      
+      // Discussions stage fields
+      'customer_need',
+      'relationship_strength',
+      
+      // Qualified stage fields
+      'budget',
+      'probability',
+      'expected_closing_date',
+      'is_recurring',
+      'customer_challenges',
+      'business_value',
+      'decision_maker_level',
+      
+      // RFQ stage fields
+      'total_contract_value',
+      'currency_type',
+      'start_date',
+      'end_date',
+      'project_duration',
+      'action_items',
+      'rfq_received_date',
+      'proposal_due_date',
+      'rfq_status',
+      'rfq_document_url',
+      'product_service_scope',
+      'rfq_confirmation_note',
+      
+      // Offered stage fields
+      'current_status',
+      'closing',
+      'negotiation_status',
+      'negotiation_notes',
+      
+      // Won stage fields
+      'won_reason',
+      'quarterly_revenue_q1',
+      'quarterly_revenue_q2',
+      'quarterly_revenue_q3',
+      'quarterly_revenue_q4',
+      'total_revenue',
+      'signed_contract_date',
+      'implementation_start_date',
+      'handoff_status',
+      
+      // Lost stage fields
+      'lost_reason',
+      'need_improvement',
+      
+      // Dropped stage fields
+      'drop_reason',
+      
+      // Additional fields from database schema
+      'project_type',
+      'duration',
+      'revenue',
+      'currency',
+      'amount',
+      'closing_date',
+      'customer_need_identified',
+      'decision_maker_present',
+      'expected_deal_timeline_start',
+      'expected_deal_timeline_end',
+      'nda_signed',
+      'rfq_value',
+      'proposal_sent_date',
+      'decision_expected_date',
+      'execution_started',
+      'begin_execution_date',
+      'supplier_portal_required',
+      'internal_notes',
+      'budget_holder',
+      'decision_makers',
+      'timeline',
+      'win_reason',
+      'loss_reason',
+      'need_summary',
+      'customer_agreed_on_need',
+      'budget_confirmed',
+      'supplier_portal_access'
+    ];
+
+    const validDeals = dealsToExport.filter(deal => {
+      const hasBasicData = deal.id && deal.stage && deal.deal_name;
       if (!hasBasicData) {
         console.warn("Skipping invalid deal during export:", deal);
       }
-      
       return hasBasicData;
     });
 
@@ -65,55 +179,41 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals }: Im
       console.warn(`Filtered out ${dealsToExport.length - validDeals.length} invalid deals during export`);
     }
 
-    // Export all fields exactly matching the app field names for full sync
-    const exportFields = [
-      'id',
-      'project_name',
-      'customer_name',
-      'lead_owner',
-      'stage',
-      'priority',
-      'total_contract_value',
-      'expected_closing_date',
-      'lead_name',
-      'region',
-      'probability',
-      'customer_need',
-      'customer_challenges',
-      'relationship_strength',
-      'budget',
-      'business_value',
-      'decision_maker_level',
-      'is_recurring',
-      'project_type',
-      'duration',
-      'revenue',
-      'start_date',
-      'end_date',
-      'total_contract_value',
-      'currency_type',
-      'action_items',
-      'current_status',
-      'won_reason',
-      'lost_reason',
-      'need_improvement',
-      'drop_reason',
-      'internal_comment'
-    ];
-
-    // Create CSV headers
     const headers = exportFields.join(',');
     
-    // Create CSV rows with better validation
     const rows = validDeals.map(deal => 
       exportFields.map(field => {
         const value = deal[field as keyof Deal];
         if (value === null || value === undefined || value === '') return '';
         
-        // Convert to string and handle special characters
         let stringValue = String(value);
         
-        // Escape quotes and wrap in quotes if contains comma, newline, or quote
+        // Format dates consistently
+        if (field.includes('date') && !field.includes('_id') && value) {
+          const date = new Date(value);
+          if (!isNaN(date.getTime())) {
+            stringValue = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+          }
+        }
+        
+        // Format timestamps
+        if ((field === 'created_at' || field === 'modified_at') && value) {
+          const date = new Date(value);
+          if (!isNaN(date.getTime())) {
+            stringValue = date.toISOString();
+          }
+        }
+        
+        // Handle boolean values
+        if (typeof value === 'boolean') {
+          stringValue = value ? 'true' : 'false';
+        }
+        
+        // Handle arrays
+        if (Array.isArray(value)) {
+          stringValue = value.join(', ');
+        }
+        
         if (stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('"')) {
           return `"${stringValue.replace(/"/g, '""')}"`;
         }
@@ -122,16 +222,14 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals }: Im
       }).join(',')
     );
 
-    // Combine headers and rows
     const csvContent = [headers, ...rows].join('\n');
     
-    // Create and download file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     
     link.setAttribute('href', url);
-    link.setAttribute('download', generateFileName('Export'));
+    link.setAttribute('download', generateFileName('Deals_Export'));
     link.style.visibility = 'hidden';
     
     document.body.appendChild(link);
@@ -140,7 +238,7 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals }: Im
 
     toast({
       title: "Export successful",
-      description: `Exported ${validDeals.length} valid deals to CSV`,
+      description: `Exported ${validDeals.length} deals to CSV`,
     });
   };
 
@@ -151,172 +249,22 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals }: Im
     }
   };
 
-  const parseCsvLine = (line: string): string[] => {
-    const result: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          // Escaped quote
-          current += '"';
-          i++; // Skip next quote
-        } else {
-          // Toggle quote state
-          inQuotes = !inQuotes;
-        }
-      } else if (char === ',' && !inQuotes) {
-        // End of field
-        result.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    
-    // Add the last field
-    result.push(current.trim());
-    return result;
-  };
-
-  const isValidValue = (value: string): boolean => {
-    return value && 
-           value.trim() !== '' && 
-           value !== 'undefined' && 
-           value !== 'null' && 
-           value !== 'NULL' &&
-           value !== 'NaN';
-  };
-
-  const isValidUUID = (str: string): boolean => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(str);
-  };
-
-  const handleImport = async () => {
+  const handleImportClick = async () => {
     if (!importFile) return;
 
     try {
-      const text = await importFile.text();
-      const lines = text.split('\n').filter(line => line.trim());
-      
-      if (lines.length < 2) {
-        toast({
-          title: "Invalid file",
-          description: "CSV file must have headers and at least one data row.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const headers = parseCsvLine(lines[0]).map(h => h.replace(/^"|"$/g, '').trim());
-      const data: (Partial<Deal> & { shouldUpdate?: boolean })[] = [];
-
-      console.log('CSV headers:', headers);
-      console.log('Expected number of columns:', headers.length);
-
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
-        console.log(`Processing line ${i}:`, line);
-        
-        const values = parseCsvLine(line).map(v => v.replace(/^"|"$/g, '').trim());
-        console.log(`Parsed values for line ${i}:`, values);
-        console.log(`Values count: ${values.length}, Headers count: ${headers.length}`);
-        
-        // Skip lines that don't have the right number of columns
-        if (values.length !== headers.length) {
-          console.warn(`Skipping line ${i} - column count mismatch. Expected ${headers.length}, got ${values.length}`);
-          continue;
-        }
-        
-        const deal: Partial<Deal> & { shouldUpdate?: boolean } = {};
-        let hasValidData = false;
-        
-        headers.forEach((header, index) => {
-          const value = values[index];
-          
-          if (isValidValue(value)) {
-            // Handle ID field - include valid UUIDs for updating existing records
-            if (header === 'id') {
-              if (isValidUUID(value)) {
-                (deal as any)[header] = value;
-                hasValidData = true;
-                console.log(`Including ID field for record matching: ${value}`);
-              } else {
-                console.warn(`Invalid UUID for line ${i}: ${value}`);
-              }
-              return;
-            }
-            // Handle different data types based on field type
-            else if (['priority', 'probability', 'duration'].includes(header)) {
-              const numValue = parseInt(value);
-              if (!isNaN(numValue) && numValue >= 0) {
-                (deal as any)[header] = numValue;
-                hasValidData = true;
-              }
-            } else if (['total_contract_value', 'revenue'].includes(header)) {
-              const numValue = parseFloat(value);
-              if (!isNaN(numValue) && numValue >= 0) {
-                (deal as any)[header] = numValue;
-                hasValidData = true;
-              }
-            } else if (header === 'is_recurring') {
-              (deal as any)[header] = value.toLowerCase() === 'true';
-              hasValidData = true;
-            } else if (['expected_closing_date', 'start_date', 'end_date'].includes(header)) {
-              // Handle date fields - validate date format
-              const dateValue = new Date(value);
-              if (!isNaN(dateValue.getTime())) {
-                (deal as any)[header] = value;
-                hasValidData = true;
-              }
-            } else if (['relationship_strength', 'business_value', 'decision_maker_level', 'currency_type', 'stage'].includes(header)) {
-              // Validate enum/important string values
-              (deal as any)[header] = value;
-              hasValidData = true;
-            } else {
-              // Regular string fields
-              (deal as any)[header] = value;
-              hasValidData = true;
-            }
-          }
-        });
-
-        // Only add deals that have meaningful data and essential fields
-        if (hasValidData && (deal.project_name || deal.customer_name || deal.lead_name)) {
-          deal.shouldUpdate = true;
-          data.push(deal);
-          console.log('Added deal:', deal);
-        } else {
-          console.log('Skipped invalid deal row:', deal);
-        }
-      }
-
-      if (data.length === 0) {
-        toast({
-          title: "No valid data found",
-          description: "The CSV file contains no valid deal data. Please ensure the file has proper headers and data.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('Final import data:', data);
-      onImport(data);
+      console.log('Starting import with centralized logic...');
+      await handleImport(importFile);
       setImportFile(null);
       
-      toast({
-        title: "Import successful",
-        description: `Processed ${data.length} deals from CSV`,
-      });
+      // Refresh the deals data after successful import
+      onRefresh();
+      
     } catch (error) {
-      console.error('Import error:', error);
+      console.error('Import failed:', error);
       toast({
         title: "Import failed",
-        description: `Failed to parse CSV file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: "destructive",
       });
     }
@@ -377,7 +325,7 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals }: Im
               
               <div className="flex justify-end gap-2">
                 <Button
-                  onClick={handleImport}
+                  onClick={handleImportClick}
                   disabled={!importFile}
                   className="hover-scale"
                 >

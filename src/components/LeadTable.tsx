@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
-import { Card } from "@/components/common/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/common/ui/table";
-import { Button } from "@/components/common/ui/button";
-import { Input } from "@/components/common/ui/input";
-import { Checkbox } from "@/components/common/ui/checkbox";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/common/ui/alert-dialog";
-import { Badge } from "@/components/common/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { 
   Search, 
   Edit, 
@@ -165,9 +165,9 @@ export const LeadTable = ({
 
   const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
 
-  // Get unique lead owner IDs for fetching display names
-  const leadOwnerIds = [...new Set(leads.map(l => l.contact_owner).filter(Boolean))];
-  const { displayNames } = useUserDisplayNames(leadOwnerIds);
+  // Get unique created_by IDs for fetching display names (always show creator as lead owner)
+  const createdByIds = [...new Set(leads.map(l => l.created_by).filter(Boolean))];
+  const { displayNames } = useUserDisplayNames(createdByIds);
 
   const visibleColumns = columns.filter(col => col.visible);
   const pageLeads = getCurrentPageLeads();
@@ -251,8 +251,8 @@ export const LeadTable = ({
                           {lead[column.field as keyof Lead]}
                         </button>
                       ) : column.field === 'contact_owner' ? (
-                        lead.contact_owner 
-                          ? displayNames[lead.contact_owner] || "Unknown"
+                        lead.created_by 
+                          ? displayNames[lead.created_by] || "Unknown"
                           : '-'
                       ) : column.field === 'lead_status' && lead.lead_status ? (
                         <Badge variant={lead.lead_status === 'Qualified' ? 'default' : 'secondary'}>

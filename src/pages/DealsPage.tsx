@@ -1,14 +1,14 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/supabase/client";
-import { useAuth } from "@/supabase/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Deal, DealStage } from "@/types/deal";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { ListView } from "@/components/ListView";
 import { DealForm } from "@/components/DealForm";
-import { Button } from "@/components/common/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/common/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/common/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ImportExportBar } from "@/components/ImportExportBar";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, BarChart3, Users, Euro } from "lucide-react";
@@ -25,18 +25,6 @@ const DealsPage = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [initialStage, setInitialStage] = useState<DealStage>('Lead');
   const [activeView, setActiveView] = useState<'kanban' | 'list'>('kanban');
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
-
-  useEffect(() => {
-    if (user) {
-      fetchDeals();
-    }
-  }, [user]);
 
   const fetchDeals = async () => {
     try {
@@ -236,6 +224,18 @@ const DealsPage = () => {
     return { totalDeals, totalValue, wonDeals };
   };
 
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchDeals();
+    }
+  }, [user]);
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -254,85 +254,92 @@ const DealsPage = () => {
   const stats = getStats();
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Deals Pipeline</h1>
-          <p className="text-muted-foreground">Manage your sales pipeline and track deals</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <ImportExportBar
-            deals={deals}
-            onImport={handleImportDeals}
-            onExport={() => {}}
-            selectedDeals={[]}
-          />
-          <div className="bg-muted rounded-lg p-1 flex">
-            <Button
-              variant={activeView === 'kanban' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setActiveView('kanban')}
-              className={activeView === 'kanban' ? 'bg-primary text-primary-foreground' : ''}
-            >
-              Kanban
-            </Button>
-            <Button
-              variant={activeView === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setActiveView('list')}
-              className={activeView === 'list' ? 'bg-primary text-primary-foreground' : ''}
-            >
-              List
-            </Button>
-          </div>
-          <Button 
-            onClick={() => handleCreateDeal('Lead')}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New Deal
-          </Button>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="animate-fade-in hover-scale">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Deals</CardTitle>
-            <BarChart3 className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalDeals}</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="animate-fade-in hover-scale">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
-            <Euro className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              €{stats.totalValue.toLocaleString()}
+    <div className="w-full h-screen overflow-hidden bg-background">
+      {/* Fixed Header */}
+      <div className="w-full bg-background border-b">
+        <div className="w-full px-4 py-4">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-2">Deals Pipeline</h1>
+              <p className="text-muted-foreground">Manage your sales pipeline and track deals</p>
             </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="animate-fade-in hover-scale">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Won Deals</CardTitle>
-            <Users className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.wonDeals}</div>
-          </CardContent>
-        </Card>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-shrink-0">
+              <div className="hidden sm:block">
+                <ImportExportBar
+                  deals={deals}
+                  onImport={handleImportDeals}
+                  onExport={() => {}}
+                  selectedDeals={[]}
+                  onRefresh={fetchDeals}
+                />
+              </div>
+              <div className="bg-muted rounded-lg p-1 flex">
+                <Button
+                  variant={activeView === 'kanban' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setActiveView('kanban')}
+                  className={activeView === 'kanban' ? 'bg-primary text-primary-foreground' : ''}
+                >
+                  Kanban
+                </Button>
+                <Button
+                  variant={activeView === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setActiveView('list')}
+                  className={activeView === 'list' ? 'bg-primary text-primary-foreground' : ''}
+                >
+                  List
+                </Button>
+              </div>
+              <Button 
+                onClick={() => handleCreateDeal('Lead')}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">New Deal</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Fixed Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="animate-fade-in hover-scale">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Total Deals</CardTitle>
+                <BarChart3 className="w-4 h-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalDeals}</div>
+              </CardContent>
+            </Card>
+            
+            <Card className="animate-fade-in hover-scale">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+                <Euro className="w-4 h-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  €{stats.totalValue.toLocaleString()}
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="animate-fade-in hover-scale">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Won Deals</CardTitle>
+                <Users className="w-4 h-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.wonDeals}</div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1">
+      {/* Main Content Area */}
+      <div className="w-full" style={{ height: 'calc(100vh - 250px)' }}>
         {activeView === 'kanban' ? (
           <KanbanBoard
             deals={deals}
@@ -341,15 +348,18 @@ const DealsPage = () => {
             onCreateDeal={handleCreateDeal}
             onDeleteDeals={handleDeleteDeals}
             onImportDeals={handleImportDeals}
+            onRefresh={fetchDeals}
           />
         ) : (
-          <ListView
-            deals={deals}
-            onDealClick={handleDealClick}
-            onUpdateDeal={handleUpdateDeal}
-            onDeleteDeals={handleDeleteDeals}
-            onImportDeals={handleImportDeals}
-          />
+          <div className="h-full overflow-y-auto p-4">
+            <ListView
+              deals={deals}
+              onDealClick={handleDealClick}
+              onUpdateDeal={handleUpdateDeal}
+              onDeleteDeals={handleDeleteDeals}
+              onImportDeals={handleImportDeals}
+            />
+          </div>
         )}
       </div>
 

@@ -1,0 +1,175 @@
+
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+
+interface QuarterlyData {
+  q1: number;
+  q2: number;
+  q3: number;
+  q4: number;
+}
+
+interface YearlyRevenueData {
+  year: number;
+  target: number;
+  actualRevenue: QuarterlyData;
+  projectedRevenue: QuarterlyData;
+  totalActual: number;
+  totalProjected: number;
+}
+
+// No longer using stage probabilities - using specific logic for Won and RFQ stages
+
+export const useYearlyRevenueData = (selectedYear: number) => {
+  const { data: revenueData, isLoading, error } = useQuery({
+    queryKey: ['yearly-revenue', selectedYear],
+    queryFn: async (): Promise<YearlyRevenueData> => {
+      // Get yearly target
+      const { data: targetData } = await supabase
+        .from('yearly_revenue_targets')
+        .select('total_target')
+        .eq('year', selectedYear)
+        .single();
+
+      // Get all deals for the selected year
+      const { data: deals } = await supabase
+        .from('deals')
+        .select('*')
+        .or(`closing_date.gte.${selectedYear}-01-01,closing_date.lte.${selectedYear}-12-31`);
+
+      const actualRevenue: QuarterlyData = { q1: 0, q2: 0, q3: 0, q4: 0 };
+      const projectedRevenue: QuarterlyData = { q1: 0, q2: 0, q3: 0, q4: 0 };
+
+      // Calculate actual and projected revenue
+      let totalActualRevenue = 0;
+      let totalProjectedRevenue = 0;
+
+      deals?.forEach(deal => {
+        if (deal.stage === 'Won') {
+          // For actual revenue total, use total_revenue field
+          if (deal.total_revenue) {
+            totalActualRevenue += Number(deal.total_revenue);
+          }
+          
+          // For quarterly breakdown, use quarterly revenue fields
+          if (deal.quarterly_revenue_q1) {
+            actualRevenue.q1 += Number(deal.quarterly_revenue_q1);
+          }
+          if (deal.quarterly_revenue_q2) {
+            actualRevenue.q2 += Number(deal.quarterly_revenue_q2);
+          }
+          if (deal.quarterly_revenue_q3) {
+            actualRevenue.q3 += Number(deal.quarterly_revenue_q3);
+          }
+          if (deal.quarterly_revenue_q4) {
+            actualRevenue.q4 += Number(deal.quarterly_revenue_q4);
+          }
+        } else if (deal.stage === 'RFQ' && deal.total_contract_value) {
+          // For projected revenue total, use total_contract_value
+          const contractValue = Number(deal.total_contract_value);
+          totalProjectedRevenue += contractValue;
+          
+          // For quarterly breakdown, distribute based on closing_date if available
+          if (deal.closing_date) {
+            const closingDate = new Date(deal.closing_date);
+            const quarter = Math.ceil((closingDate.getMonth() + 1) / 3) as 1 | 2 | 3 | 4;
+            const quarterKey = `q${quarter}` as keyof QuarterlyData;
+            projectedRevenue[quarterKey] += contractValue;
+          }
+        }
+      });
+
+      const totalActual = totalActualRevenue;
+      const totalProjected = totalProjectedRevenue;
+
+      return {
+        year: selectedYear,
+        target: targetData?.total_target || 0,
+        actualRevenue,
+        projectedRevenue,
+        totalActual,
+        totalProjected
+      };
+    },
+  });
+
+  return { revenueData, isLoading, error };
+};
+
+export const useAvailableYears = () => {
+  const { data: years, isLoading } = useQuery({
+    queryKey: ['available-years'],
+    queryFn: async (): Promise<number[]> => {
+      // Get years from deals
+      const { data: deals } = await supabase
+        .from('deals')
+        .select('closing_date')
+        .not('closing_date', 'is', null);
+
+      // Get years from targets
+      const { data: targets } = await supabase
+        .from('yearly_revenue_targets')
+        .select('year');
+
+      const yearSet = new Set<number>();
+      
+      // Add current year
+      yearSet.add(new Date().getFullYear());
+      
+      // Add years from deals
+      deals?.forEach(deal => {
+        if (deal.closing_date) {
+          const year = new Date(deal.closing_date).getFullYear();
+          yearSet.add(year);
+        }
+      });
+
+      // Add years from targets
+      targets?.forEach(target => {
+        yearSet.add(target.year);
+      });
+
+      return Array.from(yearSet).sort((a, b) => b - a);
+    },
+  });
+
+  return { years: years || [], isLoading };
+};
+
+// Hook to get live dashboard stats
+export const useDashboardStats = () => {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      const { data: deals } = await supabase
+        .from('deals')
+        .select('*');
+
+      const { data: meetings } = await supabase
+        .from('meetings')
+        .select('*')
+        .eq('date', new Date().toISOString().split('T')[0]);
+
+      const totalDeals = deals?.length || 0;
+      // Calculate total revenue from Won deals using total_revenue field
+      const totalRevenue = deals?.reduce((sum, deal) => {
+        if (deal.stage === 'Won' && deal.total_revenue) {
+          return sum + Number(deal.total_revenue);
+        }
+        return sum;
+      }, 0) || 0;
+      const wonDeals = deals?.filter(deal => deal.stage === 'Won').length || 0;
+      const todayMeetings = meetings?.length || 0;
+
+      return {
+        totalDeals,
+        totalRevenue,
+        wonDeals,
+        todayMeetings
+      };
+    },
+  });
+
+  return { stats, isLoading };
+};

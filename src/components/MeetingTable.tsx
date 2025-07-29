@@ -9,17 +9,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/common/ui/table";
-import { Button } from "@/components/common/ui/button";
-import { Input } from "@/components/common/ui/input";
-import { Checkbox } from "@/components/common/ui/checkbox";
-import { 
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/common/ui/dropdown-menu";
-import { Badge } from "@/components/common/ui/badge";
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2, Search, Plus, MoreHorizontal, FileUp, FileDown } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
@@ -34,7 +34,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/common/ui/alert-dialog";
+} from "@/components/ui/alert-dialog";
 
 interface Meeting {
   id: string;
@@ -330,6 +330,18 @@ export const MeetingTable = () => {
                 <TableCell>{displayNames[meeting.created_by] || "Unknown"}</TableCell>
                 <TableCell className="max-w-[200px] truncate">
                   {getParticipantNames(meeting.participants)}
+                  {meeting.teams_link && (
+                    <div className="mt-1">
+                      <a 
+                        href={meeting.teams_link} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 text-xs underline"
+                      >
+                        Join Teams Meeting
+                      </a>
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Badge variant={getMeetingStatus(meeting.date, meeting.start_time) === "Completed" ? "secondary" : "default"}>

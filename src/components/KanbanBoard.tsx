@@ -2,10 +2,10 @@ import { useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Deal, DealStage, DEAL_STAGES, STAGE_COLORS, getRequiredFieldsForStage, getStageIndex, getNextStage } from "@/types/deal";
 import { DealCard } from "./DealCard";
-import { Button } from "@/components/common/ui/button";
-import { Checkbox } from "@/components/common/ui/checkbox";
-import { Input } from "@/components/common/ui/input";
-import { Plus, Trash2, Download, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Plus, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { BulkActionsBar } from "./BulkActionsBar";
 import { ImportExportBar } from "./ImportExportBar";
@@ -17,6 +17,7 @@ interface KanbanBoardProps {
   onCreateDeal: (stage: DealStage) => void;
   onDeleteDeals: (dealIds: string[]) => void;
   onImportDeals: (deals: Partial<Deal>[]) => void;
+  onRefresh: () => void;
 }
 
 export const KanbanBoard = ({ 
@@ -25,7 +26,8 @@ export const KanbanBoard = ({
   onDealClick, 
   onCreateDeal, 
   onDeleteDeals, 
-  onImportDeals 
+  onImportDeals,
+  onRefresh 
 }: KanbanBoardProps) => {
   const [draggedDeal, setDraggedDeal] = useState<string | null>(null);
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
@@ -82,12 +84,10 @@ export const KanbanBoard = ({
     return requiredFields.every(field => {
       const value = deal[field as keyof Deal];
       
-      // Handle boolean fields specifically
       if (field === 'is_recurring') {
         return value !== undefined && value !== null;
       }
       
-      // For other fields, check for non-empty values
       return value !== undefined && 
              value !== null && 
              value !== '' &&
@@ -99,12 +99,10 @@ export const KanbanBoard = ({
     const currentStageIndex = getStageIndex(deal.stage);
     const targetStageIndex = getStageIndex(targetStage);
     
-    // Allow backward movement
     if (targetStageIndex < currentStageIndex) {
-      return true; // Allow moving backward to any previous stage
+      return true;
     }
     
-    // Can only move to next stage or final stages from Offered
     const nextStage = getNextStage(deal.stage);
     const finalStages: DealStage[] = ['Won', 'Lost', 'Dropped'];
     
@@ -130,7 +128,6 @@ export const KanbanBoard = ({
     
     if (!deal || deal.stage === newStage) return;
 
-    // Validate stage progression rules
     if (!canMoveToStage(deal, newStage)) {
       const requiredFields = getRequiredFieldsForStage(deal.stage);
       const missingFields = requiredFields.filter(field => {
@@ -226,152 +223,176 @@ export const KanbanBoard = ({
   };
 
   return (
-    <div className="relative">
-      {/* Header with actions */}
-      <div className="px-6 pb-4 flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between border-b bg-background/95 backdrop-blur sticky top-16 z-40">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              placeholder="Search all deal details..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 transition-all hover:border-primary/50 focus:border-primary"
+    <div className="w-full h-full flex flex-col">
+      {/* Fixed Search and Selection Controls */}
+      <div className="w-full px-4 py-4 bg-background border-b">
+        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1 min-w-0">
+            <div className="relative flex-1 min-w-[200px] max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                placeholder="Search all deal details..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 transition-all hover:border-primary/50 focus:border-primary w-full"
+              />
+            </div>
+            
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button
+                variant={selectionMode ? "default" : "outline"}
+                size="sm"
+                onClick={toggleSelectionMode}
+                className="hover-scale transition-all whitespace-nowrap"
+              >
+                {selectionMode ? "Exit Selection" : "Select Deals"}
+              </Button>
+              
+              {selectionMode && selectedDeals.size > 0 && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+                  <span className="font-medium">{selectedDeals.size} selected</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Add ImportExportBar */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <ImportExportBar
+              deals={deals}
+              onImport={onImportDeals}
+              onExport={(selectedDeals) => {
+                // Handle export logic
+              }}
+              selectedDeals={selectedDeals && selectedDeals.size > 0 ? Array.from(selectedDeals).map(id => deals.find(d => d.id === id)!).filter(Boolean) : undefined}
+              onRefresh={onRefresh}
             />
           </div>
-          
-          <Button
-            variant={selectionMode ? "default" : "outline"}
-            size="sm"
-            onClick={toggleSelectionMode}
-            className="hover-scale transition-all"
-          >
-            {selectionMode ? "Exit Selection" : "Select Deals"}
-          </Button>
-          
-          {selectionMode && selectedDeals.size > 0 && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="font-medium">{selectedDeals.size} selected</span>
-            </div>
-          )}
         </div>
       </div>
 
-      <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
-        <div className="flex w-full overflow-x-auto gap-6 px-6 pb-6 pt-4">
-          {DEAL_STAGES.map((stage) => {
-            const stageDeals = getDealsByStage(stage);
-            const selectedInStage = stageDeals.filter(deal => selectedDeals.has(deal.id)).length;
-            const allSelected = selectedInStage === stageDeals.length && stageDeals.length > 0;
-            
-            return (
-              <div key={stage} className="min-w-[280px] flex-grow animate-fade-in">
-                <div className={`p-4 rounded-lg border-2 ${STAGE_COLORS[stage]} mb-4 transition-all hover:shadow-md`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {selectionMode && (
-                        <Checkbox
-                          checked={allSelected}
-                          onCheckedChange={(checked) => handleSelectAllInStage(stage, Boolean(checked))}
-                          className="transition-colors"
-                        />
-                      )}
-                      <h3 className="font-semibold text-lg">{stage}</h3>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        {stageDeals.length}
-                        {selectionMode && selectedInStage > 0 && (
-                          <span className="text-primary ml-1">({selectedInStage})</span>
+      {/* Kanban Pipeline - Single Row Flex Layout */}
+      <div className="flex-1 p-4 overflow-hidden">
+        <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
+          <div className="flex items-start gap-3 h-full w-full" style={{ flexWrap: 'nowrap' }}>
+            {DEAL_STAGES.map((stage) => {
+              const stageDeals = getDealsByStage(stage);
+              const selectedInStage = stageDeals.filter(deal => selectedDeals.has(deal.id)).length;
+              const allSelected = selectedInStage === stageDeals.length && stageDeals.length > 0;
+              
+              return (
+                <div key={stage} className="flex flex-col animate-fade-in flex-1 min-w-0 h-full">
+                  <div className={`p-2 rounded-lg border-2 ${STAGE_COLORS[stage]} mb-3 transition-all hover:shadow-md flex-shrink-0`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {selectionMode && (
+                          <Checkbox
+                            checked={allSelected}
+                            onCheckedChange={(checked) => handleSelectAllInStage(stage, Boolean(checked))}
+                            className="transition-colors flex-shrink-0"
+                          />
                         )}
-                      </span>
-                      {stage === 'Lead' && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => onCreateDeal(stage)}
-                          className="hover-scale"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </Button>
-                      )}
+                        <h3 className="font-semibold text-sm truncate">{stage}</h3>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-xs font-medium whitespace-nowrap">
+                          {stageDeals.length}
+                          {selectionMode && selectedInStage > 0 && (
+                            <span className="text-primary ml-1">({selectedInStage})</span>
+                          )}
+                        </span>
+                        {stage === 'Lead' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => onCreateDeal(stage)}
+                            className="hover-scale flex-shrink-0 p-1 h-6 w-6"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  
+                  <Droppable droppableId={stage}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={`flex-1 space-y-2 p-2 rounded-lg transition-all overflow-y-auto ${
+                          snapshot.isDraggingOver ? 'bg-muted/50 shadow-inner' : ''
+                        }`}
+                        style={{ minHeight: '200px' }}
+                      >
+                        {stageDeals.map((deal, index) => (
+                          <Draggable 
+                            key={deal.id} 
+                            draggableId={deal.id} 
+                            index={index}
+                            isDragDisabled={selectionMode}
+                          >
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...(!selectionMode ? provided.dragHandleProps : {})}
+                                className="relative group"
+                              >
+                                {selectionMode && (
+                                  <div className="absolute top-2 left-2 z-10">
+                                    <Checkbox
+                                      checked={selectedDeals.has(deal.id)}
+                                      onCheckedChange={(checked) => handleSelectDeal(deal.id, Boolean(checked))}
+                                      className="bg-background border-2 transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                  </div>
+                                )}
+                                <DealCard
+                                  deal={deal}
+                                  onClick={(e) => {
+                                    if (selectionMode) {
+                                      handleSelectDeal(deal.id, !selectedDeals.has(deal.id), e);
+                                    } else {
+                                      onDealClick(deal);
+                                    }
+                                  }}
+                                  isDragging={snapshot.isDragging}
+                                  isSelected={selectedDeals.has(deal.id)}
+                                  selectionMode={selectionMode}
+                                  onDelete={(dealId) => {
+                                    onDeleteDeals([dealId]);
+                                    toast({
+                                      title: "Deal deleted",
+                                      description: `Successfully deleted ${deal.project_name || 'deal'}`,
+                                    });
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
                 </div>
-                
-                <Droppable droppableId={stage}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={`min-h-[200px] space-y-3 p-2 rounded-lg transition-all ${
-                        snapshot.isDraggingOver ? 'bg-muted/50 shadow-inner' : ''
-                      }`}
-                    >
-                      {stageDeals.map((deal, index) => (
-                        <Draggable 
-                          key={deal.id} 
-                          draggableId={deal.id} 
-                          index={index}
-                          isDragDisabled={selectionMode}
-                        >
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...(!selectionMode ? provided.dragHandleProps : {})}
-                              className="relative group"
-                            >
-                              {selectionMode && (
-                                <div className="absolute top-2 left-2 z-10">
-                                  <Checkbox
-                                    checked={selectedDeals.has(deal.id)}
-                                    onCheckedChange={(checked) => handleSelectDeal(deal.id, Boolean(checked))}
-                                    className="bg-background border-2 transition-colors"
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                </div>
-                              )}
-                              <DealCard
-                                deal={deal}
-                                onClick={(e) => {
-                                  if (selectionMode) {
-                                    handleSelectDeal(deal.id, !selectedDeals.has(deal.id), e);
-                                  } else {
-                                    onDealClick(deal);
-                                  }
-                                }}
-                                isDragging={snapshot.isDragging}
-                                isSelected={selectedDeals.has(deal.id)}
-                                selectionMode={selectionMode}
-                                onDelete={(dealId) => {
-                                  onDeleteDeals([dealId]);
-                                  toast({
-                                    title: "Deal deleted",
-                                    description: `Successfully deleted ${deal.project_name || 'deal'}`,
-                                  });
-                                }}
-                              />
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </div>
-            );
-          })}
-        </div>
-      </DragDropContext>
+              );
+            })}
+          </div>
+        </DragDropContext>
+      </div>
 
-      <BulkActionsBar
-        selectedCount={selectedDeals.size}
-        onDelete={handleBulkDelete}
-        onExport={handleBulkExport}
-        onClearSelection={() => setSelectedDeals(new Set())}
-      />
+      {/* Fixed Bulk Actions Bar */}
+      <div>
+        <BulkActionsBar
+          selectedCount={selectedDeals.size}
+          onDelete={handleBulkDelete}
+          onExport={handleBulkExport}
+          onClearSelection={() => setSelectedDeals(new Set())}
+        />
+      </div>
     </div>
   );
 };

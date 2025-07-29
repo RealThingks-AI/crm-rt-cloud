@@ -1,82 +1,55 @@
 import { ContactTable } from "@/components/ContactTable";
-import { Button } from "@/components/common/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/common/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Settings, Download, Upload, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Input } from "@/components/common/ui/input";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/supabase/client";
-import { exportContactsToCSV, downloadCSV, parseCSVFile } from "@/utils/csvUtils";
+import { supabase } from "@/integrations/supabase/client";
+import { useImportExport } from "@/hooks/useImportExport";
 
 const Contacts = () => {
   const { toast } = useToast();
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [handleExport, setHandleExport] = useState<(() => void) | null>(null);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Use the robust import/export hook
+  const { handleImport, handleExportAll } = useImportExport({
+    moduleName: 'contacts',
+    tableName: 'contacts',
+    onRefresh: () => {
+      console.log('Import hook triggering refresh...');
+      setRefreshTrigger(prev => prev + 1);
+    }
+  });
+
+  const fetchContacts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .order('created_time', { ascending: false });
+
+      if (error) throw error;
+      setContacts(data || []);
+    } catch (error) {
+      console.error('Error fetching contacts:', error);
+    }
+  };
 
   const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    console.log('Starting CSV import with file:', file.name);
+    
     try {
-      console.log('Starting CSV import...');
-      
-      // Parse the CSV file
-      const csvData = await parseCSVFile(file);
-      
-      if (csvData.length === 0) {
-        toast({
-          title: "Import Error",
-          description: "No valid contacts found in the CSV file",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('Parsed CSV data:', csvData);
-
-      // Convert CSV data to database format
-      const user = await supabase.auth.getUser();
-      const contactsToInsert = csvData.map(row => ({
-        contact_name: row['Contact Name'],
-        company_name: row['Company Name'] || null,
-        position: row['Position'] || null,
-        email: row['Email'] || null,
-        phone_no: row['Phone'] || null,
-        mobile_no: row['Mobile'] || null,
-        country: row['Region'] || null,
-        city: row['City'] || null,
-        industry: row['Industry'] || null,
-        contact_source: row['Contact Source'] || null,
-        linkedin: row['LinkedIn'] || null,
-        website: row['Website'] || null,
-        description: row['Description'] || null,
-        contact_owner: row['Contact Owner'] || user.data.user?.id, // Auto-map to current user if not specified
-        created_by: user.data.user?.id
-      })).filter(contact => contact.contact_name); // Only include contacts with names
-
-      console.log('Contacts to insert:', contactsToInsert);
-
-      // Insert into database
-      const { error } = await supabase
-        .from('contacts')
-        .insert(contactsToInsert);
-
-      if (error) {
-        console.error('Database insert error:', error);
-        throw error;
-      }
-
-      toast({
-        title: "Import Successful",
-        description: `Successfully imported ${contactsToInsert.length} contacts`,
-      });
-      
-      // Reset the input and refresh data by triggering a page refresh
+      await handleImport(file);
+      // Reset the input
       event.target.value = '';
-      window.location.reload();
-      
     } catch (error) {
       console.error('Import error:', error);
       toast({
@@ -89,8 +62,6 @@ const Contacts = () => {
 
   const handleExportContacts = async () => {
     try {
-      console.log('Starting export process...');
-      
       // Fetch all contacts from database
       const { data: contacts, error } = await supabase
         .from('contacts')
@@ -111,115 +82,7 @@ const Contacts = () => {
         return;
       }
 
-      console.log('Fetched contacts for export:', contacts.length);
-
-      // Use the CSV utility function for consistent export
-      const csvContent = exportContactsToCSV(contacts);
-
-      console.log('CSV content created');
-
-      const filename = `contacts_export_${new Date().toISOString().split('T')[0]}.csv`;
-      
-      // Open CSV content in new window (works reliably in iframes)
-      const newWindow = window.open('', '_blank');
-      if (newWindow) {
-        newWindow.document.write(`
-          <html>
-            <head>
-              <title>${filename}</title>
-              <style>
-                body { font-family: Arial, sans-serif; padding: 20px; }
-                .header { margin-bottom: 20px; }
-                .download-btn { 
-                  background: #007bff; 
-                  color: white; 
-                  padding: 10px 20px; 
-                  border: none; 
-                  border-radius: 5px; 
-                  cursor: pointer; 
-                  margin-right: 10px;
-                }
-                .copy-btn { 
-                  background: #28a745; 
-                  color: white; 
-                  padding: 10px 20px; 
-                  border: none; 
-                  border-radius: 5px; 
-                  cursor: pointer; 
-                }
-                pre { 
-                  background: #f8f9fa; 
-                  padding: 15px; 
-                  border: 1px solid #ddd; 
-                  border-radius: 5px; 
-                  overflow: auto;
-                  white-space: pre-wrap;
-                  word-wrap: break-word;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="header">
-                <h2>Contacts Export - ${filename}</h2>
-                <p>Your CSV data is ready. Use the buttons below to download or copy the content:</p>
-                <button class="download-btn" onclick="downloadCSV()">Download CSV File</button>
-                <button class="copy-btn" onclick="copyToClipboard()">Copy to Clipboard</button>
-              </div>
-              <pre id="csvContent">${csvContent}</pre>
-              <script>
-                function downloadCSV() {
-                  const blob = new Blob([\`${csvContent}\`], { type: 'text/csv;charset=utf-8;' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = '${filename}';
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }
-                
-                function copyToClipboard() {
-                  const content = document.getElementById('csvContent').textContent;
-                  navigator.clipboard.writeText(content).then(() => {
-                    alert('CSV content copied to clipboard!');
-                  }).catch(() => {
-                    // Fallback for older browsers
-                    const textarea = document.createElement('textarea');
-                    textarea.value = content;
-                    document.body.appendChild(textarea);
-                    textarea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textarea);
-                    alert('CSV content copied to clipboard!');
-                  });
-                }
-              </script>
-            </body>
-          </html>
-        `);
-        newWindow.document.close();
-        
-        toast({
-          title: "Export Successful",
-          description: `Opened ${contacts.length} contacts in new window. Use the download button to save as ${filename}`,
-        });
-      } else {
-        // Fallback: copy to clipboard
-        try {
-          await navigator.clipboard.writeText(csvContent);
-          toast({
-            title: "Export Successful",
-            description: `${contacts.length} contacts copied to clipboard as CSV format`,
-          });
-        } catch (clipboardError) {
-          toast({
-            title: "Export Ready",
-            description: `CSV content prepared for ${contacts.length} contacts. Please check console for data.`,
-          });
-          console.log('CSV Content:');
-          console.log(csvContent);
-        }
-      }
-      
+      await handleExportAll(contacts);
     } catch (error) {
       console.error('Export error:', error);
       toast({
@@ -324,6 +187,7 @@ const Contacts = () => {
         onExportReady={() => {}} // No longer needed
         selectedContacts={selectedContacts}
         setSelectedContacts={setSelectedContacts}
+        refreshTrigger={refreshTrigger}
       />
     </div>
   );

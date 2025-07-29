@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Button } from "@/components/common/ui/button";
-import { Badge } from "@/components/common/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/common/ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/common/ui/dropdown-menu";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/common/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { MoreHorizontal, Plus, RefreshCw, RotateCcw } from "lucide-react";
@@ -38,18 +38,29 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
+      
+      // Check if user is authenticated first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("No valid session found. Please log in again.");
+      }
+      
       const { data, error } = await supabase.functions.invoke('admin-list-users');
       
       if (error) {
+        // Handle specific authentication errors
+        if (error.message?.includes('Invalid token') || error.message?.includes('Session not found')) {
+          throw new Error("Your session has expired. Please refresh the page and log in again.");
+        }
         throw error;
       }
       
       setUsers(data.users || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching users:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch users",
+        description: error.message || "Failed to fetch users",
         variant: "destructive",
       });
     } finally {
@@ -58,15 +69,30 @@ const UserManagement = () => {
   };
 
   const syncWithAuth = async () => {
-    toast({
-      title: "Syncing",
-      description: "Syncing with Supabase Auth...",
-    });
-    await fetchUsers();
-    toast({
-      title: "Success",
-      description: "Successfully synced with Supabase Auth",
-    });
+    try {
+      toast({
+        title: "Syncing",
+        description: "Refreshing session and syncing with Supabase Auth...",
+      });
+      
+      // Try to refresh the session
+      const { error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) {
+        throw new Error("Failed to refresh session. Please log in again.");
+      }
+      
+      await fetchUsers();
+      toast({
+        title: "Success",
+        description: "Successfully synced with Supabase Auth",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error", 
+        description: error.message || "Failed to sync with auth",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEditUser = (user: User) => {

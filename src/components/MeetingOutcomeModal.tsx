@@ -6,18 +6,18 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/common/ui/dialog";
-import { Button } from "@/components/common/ui/button";
-import { Label } from "@/components/common/ui/label";
-import { Textarea } from "@/components/common/ui/textarea";
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/common/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/common/ui/radio-group";
+} from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 

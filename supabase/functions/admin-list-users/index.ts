@@ -13,7 +13,13 @@ serve(async (req) => {
   }
 
   try {
-    // Create admin client
+    // Create regular client for token verification
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+
+    // Create admin client for user listing
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -35,7 +41,7 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: user, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const { data: user, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user.user) {
       return new Response(

@@ -1,6 +1,6 @@
-import { Button } from "@/components/common/ui/button";
-import { Badge } from "@/components/common/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/common/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Trash2, Download, X } from "lucide-react";
 
 interface BulkActionsBarProps {

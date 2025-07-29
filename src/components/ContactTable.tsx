@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
-import { Card } from "@/components/common/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/common/ui/table";
-import { Button } from "@/components/common/ui/button";
-import { Input } from "@/components/common/ui/input";
-import { Checkbox } from "@/components/common/ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/common/ui/dropdown-menu";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/common/ui/alert-dialog";
-import { Badge } from "@/components/common/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { 
   Search, 
   Plus, 
@@ -69,6 +69,7 @@ interface ContactTableProps {
   onExportReady: (exportFn: () => void) => void; // Kept for compatibility
   selectedContacts: string[];
   setSelectedContacts: React.Dispatch<React.SetStateAction<string[]>>;
+  refreshTrigger?: number; // New prop to trigger refresh
 }
 
 export const ContactTable = ({ 
@@ -78,7 +79,8 @@ export const ContactTable = ({
   setShowModal,
   onExportReady,
   selectedContacts,
-  setSelectedContacts
+  setSelectedContacts,
+  refreshTrigger
 }: ContactTableProps) => {
   const { toast } = useToast();
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -95,6 +97,14 @@ export const ContactTable = ({
   useEffect(() => {
     fetchContacts();
   }, []);
+
+  // Watch for refresh trigger changes from import
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) {
+      console.log('ContactTable: Refresh triggered by import, refreshTrigger:', refreshTrigger);
+      fetchContacts();
+    }
+  }, [refreshTrigger]);
 
 
   useEffect(() => {
@@ -223,9 +233,9 @@ export const ContactTable = ({
 
 
 
-  // Get unique contact owner IDs for fetching display names
-  const contactOwnerIds = [...new Set(contacts.map(c => c.contact_owner).filter(Boolean))];
-  const { displayNames } = useUserDisplayNames(contactOwnerIds);
+  // Get unique created_by IDs for fetching display names
+  const createdByIds = [...new Set(contacts.map(c => c.created_by).filter(Boolean))];
+  const { displayNames } = useUserDisplayNames(createdByIds);
 
   const visibleColumns = columns.filter(col => col.visible);
   const pageContacts = getCurrentPageContacts();
@@ -311,8 +321,8 @@ export const ContactTable = ({
                           {contact[column.field as keyof Contact]}
                         </button>
                       ) : column.field === 'contact_owner' ? (
-                        contact.contact_owner 
-                          ? displayNames[contact.contact_owner] || "Unknown"
+                        contact.created_by 
+                          ? displayNames[contact.created_by] || "Unknown"
                           : '-'
                       ) : column.field === 'lead_status' && contact.lead_status ? (
                         <Badge variant={contact.lead_status === 'Converted' ? 'default' : 'secondary'}>
