@@ -66,10 +66,10 @@ interface ContactTableProps {
   setShowColumnCustomizer: (show: boolean) => void;
   showModal: boolean;
   setShowModal: (show: boolean) => void;
-  onExportReady: (exportFn: () => void) => void; // Kept for compatibility
+  onExportReady: (exportFn: () => void) => void;
   selectedContacts: string[];
   setSelectedContacts: React.Dispatch<React.SetStateAction<string[]>>;
-  refreshTrigger?: number; // New prop to trigger refresh
+  refreshTrigger?: number;
 }
 
 export const ContactTable = ({ 
@@ -95,6 +95,7 @@ export const ContactTable = ({
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
+    console.log('ContactTable mounted');
     fetchContacts();
   }, []);
 
@@ -105,7 +106,6 @@ export const ContactTable = ({
       fetchContacts();
     }
   }, [refreshTrigger]);
-
 
   useEffect(() => {
     const filtered = contacts.filter(contact =>
@@ -120,14 +120,21 @@ export const ContactTable = ({
   const fetchContacts = async () => {
     try {
       setLoading(true);
+      console.log('Fetching contacts...');
       const { data, error } = await supabase
         .from('contacts')
         .select('*')
         .order('created_time', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Contacts fetched:', data?.length || 0);
       setContacts(data || []);
     } catch (error) {
+      console.error('Error fetching contacts:', error);
       toast({
         title: "Error",
         description: "Failed to fetch contacts",
@@ -231,14 +238,14 @@ export const ContactTable = ({
 
   const totalPages = Math.ceil(filteredContacts.length / itemsPerPage);
 
-
-
   // Get unique created_by IDs for fetching display names
   const createdByIds = [...new Set(contacts.map(c => c.created_by).filter(Boolean))];
   const { displayNames } = useUserDisplayNames(createdByIds);
 
   const visibleColumns = columns.filter(col => col.visible);
   const pageContacts = getCurrentPageContacts();
+
+  console.log('ContactTable render - contacts:', contacts.length, 'filtered:', filteredContacts.length, 'page:', pageContacts.length);
 
   return (
     <div className="space-y-6">
@@ -260,9 +267,7 @@ export const ContactTable = ({
           />
           <span className="text-sm text-muted-foreground">Select all</span>
         </div>
-
       </div>
-
 
       {/* Table */}
       <Card>
@@ -290,13 +295,23 @@ export const ContactTable = ({
             {loading ? (
               <TableRow>
                 <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
-                  Loading contacts...
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
+                    Loading contacts...
+                  </div>
                 </TableCell>
               </TableRow>
             ) : pageContacts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={visibleColumns.length + 2} className="text-center py-8">
-                  No contacts found
+                  <div className="flex flex-col items-center gap-2">
+                    <p className="text-muted-foreground">No contacts found</p>
+                    {searchTerm && (
+                      <p className="text-sm text-muted-foreground">
+                        Try adjusting your search terms
+                      </p>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
