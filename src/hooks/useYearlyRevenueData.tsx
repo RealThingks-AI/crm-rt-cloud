@@ -151,9 +151,13 @@ export const useDashboardStats = () => {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
+      console.log('Fetching dashboard stats...');
+      
       const { data: deals } = await supabase
         .from('deals')
         .select('*');
+
+      console.log('All deals for dashboard stats:', deals);
 
       const { data: meetings } = await supabase
         .from('meetings')
@@ -161,13 +165,21 @@ export const useDashboardStats = () => {
         .eq('date', new Date().toISOString().split('T')[0]);
 
       const totalDeals = deals?.length || 0;
+      
       // Calculate total revenue from Won deals using total_revenue field
-      const totalRevenue = deals?.reduce((sum, deal) => {
+      let totalRevenue = 0;
+      deals?.forEach(deal => {
+        console.log('Processing deal for dashboard:', deal.deal_name, 'Stage:', deal.stage, 'Total Revenue:', deal.total_revenue);
+        
         if (deal.stage === 'Won' && deal.total_revenue) {
-          return sum + Number(deal.total_revenue);
+          const revenue = Number(deal.total_revenue);
+          totalRevenue += revenue;
+          console.log('Adding revenue from Won deal:', revenue, 'Running total:', totalRevenue);
         }
-        return sum;
-      }, 0) || 0;
+      });
+      
+      console.log('Final dashboard total revenue:', totalRevenue);
+      
       const wonDeals = deals?.filter(deal => deal.stage === 'Won').length || 0;
       const todayMeetings = meetings?.length || 0;
 
