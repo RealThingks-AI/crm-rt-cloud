@@ -53,8 +53,11 @@ export const ImportExportBar = ({ deals, onImport, onExport, selectedDeals, onRe
 
     console.log('Starting export with deals:', dealsToExport.length);
 
-    // Export fields - REMOVED system metadata fields
+    // Include ID field for proper duplicate detection on re-import
     const exportFields = [
+      // System fields (include ID for duplicate detection)
+      'id',
+      
       // Basic deal info (all stages)
       'deal_name',
       'stage',

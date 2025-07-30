@@ -70,7 +70,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       }
       
       if (invalidHeaders.length > 0) {
-        const systemFields = ['id', 'created_at', 'modified_at', 'created_by', 'modified_by'];
+        const systemFields = ['created_at', 'modified_at', 'created_by', 'modified_by'];
         const otherIgnored = invalidHeaders.filter(h => !systemFields.includes(h.original));
         
         if (otherIgnored.length > 0) {
@@ -88,6 +88,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       let successCount = 0;
       let errorCount = 0;
       let duplicateCount = 0;
+      let updateCount = 0;
       const errors: string[] = [];
 
       // Process records one by one with enhanced duplicate checking
@@ -125,10 +126,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
               record.stage = 'Lead';
             }
             
-            // Set user ID for new records
-            record.created_by = user?.id || '00000000-0000-0000-0000-000000000000';
-            record.modified_by = user?.id || '00000000-0000-0000-0000-000000000000';
-            
             const isValid = validateImportRecord(record);
             
             if (!isValid) {
@@ -138,18 +135,59 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
               continue;
             }
             
-            // Enhanced duplicate checking - check BEFORE insert with delay for database consistency
-            console.log(`Checking for duplicates before inserting row ${i + 1}...`);
+            // Enhanced duplicate checking with update capability
+            console.log(`Checking for duplicates before processing row ${i + 1}...`);
             
             // Add a small delay to ensure database consistency
             await new Promise(resolve => setTimeout(resolve, 100));
             
             const isDuplicate = await checkDuplicate(record);
             if (isDuplicate) {
-              console.log(`Skipping duplicate record ${i + 1}: ${record.deal_name}`);
-              duplicateCount++;
+              console.log(`Found duplicate record ${i + 1}: ${record.deal_name}, attempting update...`);
+              
+              // If it's a duplicate, try to update instead of skipping
+              try {
+                let updateData = { ...record };
+                delete updateData.id; // Don't update the ID
+                updateData.modified_by = user?.id || '00000000-0000-0000-0000-000000000000';
+                updateData.modified_at = new Date().toISOString();
+
+                let updateResult;
+                if (record.id) {
+                  // Update by ID if available
+                  updateResult = await supabase
+                    .from('deals')
+                    .update(updateData)
+                    .eq('id', record.id)
+                    .select('id');
+                } else {
+                  // Update by deal_name if no ID
+                  updateResult = await supabase
+                    .from('deals')
+                    .update(updateData)
+                    .eq('deal_name', record.deal_name)
+                    .select('id');
+                }
+
+                if (updateResult.error) {
+                  console.error(`Error updating duplicate record ${i + 1}:`, updateResult.error);
+                  duplicateCount++;
+                } else if (updateResult.data && updateResult.data.length > 0) {
+                  updateCount++;
+                  console.log(`Successfully updated existing record ${i + 1}`);
+                } else {
+                  duplicateCount++;
+                }
+              } catch (updateError) {
+                console.error(`Error updating duplicate record ${i + 1}:`, updateError);
+                duplicateCount++;
+              }
               continue;
             }
+            
+            // Set user ID for new records
+            record.created_by = user?.id || '00000000-0000-0000-0000-000000000000';
+            record.modified_by = user?.id || '00000000-0000-0000-0000-000000000000';
             
           } else {
             config.required.forEach(field => {
@@ -233,14 +271,14 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
         }
       }
 
-      console.log(`Import completed - Success: ${successCount}, Errors: ${errorCount}, Duplicates: ${duplicateCount}`);
+      console.log(`Import completed - Success: ${successCount}, Updates: ${updateCount}, Errors: ${errorCount}, Duplicates: ${duplicateCount}`);
       console.log('Import errors:', errors);
 
-      let message = `Import completed: ${successCount} records imported`;
+      let message = `Import completed: ${successCount} new records, ${updateCount} updated`;
       if (duplicateCount > 0) message += `, ${duplicateCount} duplicates skipped`;
       if (errorCount > 0) message += `, ${errorCount} errors`;
 
-      if (successCount > 0) {
+      if (successCount > 0 || updateCount > 0) {
         toast({
           title: "Import successful",
           description: message,
@@ -254,10 +292,10 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           title: "Import completed with errors",
           description: `${message}. Check console for details.`,
         });
-      } else if (duplicateCount > 0) {
+      } else if (duplicateCount > 0 && successCount === 0 && updateCount === 0) {
         toast({
-          title: "Import completed with duplicates",
-          description: message,
+          title: "Import completed - no changes",
+          description: "All records were duplicates, no new data was added.",
         });
       }
       
