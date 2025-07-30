@@ -118,9 +118,9 @@ const Contacts = () => {
           <Button
             variant="default"
             onClick={() => setShowColumnCustomizer(true)}
+            size="icon"
           >
-            <Settings className="w-4 h-4 mr-2" />
-            Column Customization
+            <Settings className="w-4 h-4" />
           </Button>
           
           <DropdownMenu>

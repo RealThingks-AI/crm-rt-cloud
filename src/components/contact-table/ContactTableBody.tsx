@@ -3,9 +3,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, ArrowUpDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Edit, Trash2, ArrowUpDown, MoreHorizontal, UserPlus } from "lucide-react";
 import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
 import { ContactColumnConfig } from "../ContactColumnCustomizer";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface Contact {
   id: string;
@@ -30,6 +33,7 @@ interface ContactTableBodyProps {
   onEdit: (contact: Contact) => void;
   onDelete: (id: string) => void;
   searchTerm: string;
+  onRefresh?: () => void;
 }
 
 export const ContactTableBody = ({
@@ -40,10 +44,12 @@ export const ContactTableBody = ({
   setSelectedContacts,
   onEdit,
   onDelete,
-  searchTerm
+  searchTerm,
+  onRefresh
 }: ContactTableBodyProps) => {
+  const { toast } = useToast();
   const createdByIds = [...new Set(pageContacts.map(c => c.created_by).filter(Boolean))];
-  const { displayNames } = useUserDisplayNames(createdByIds);
+  const { displayNames, loading: namesLoading } = useUserDisplayNames(createdByIds);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -59,6 +65,54 @@ export const ContactTableBody = ({
       setSelectedContacts(prev => [...prev, contactId]);
     } else {
       setSelectedContacts(prev => prev.filter(id => id !== contactId));
+    }
+  };
+
+  const handleConvertToLead = async (contact: Contact) => {
+    try {
+      // Create a new lead with contact information
+      const leadData = {
+        lead_name: contact.contact_name,
+        company_name: contact.company_name,
+        position: contact.position,
+        email: contact.email,
+        phone_no: contact.phone_no,
+        mobile_no: contact.mobile_no,
+        linkedin: contact.linkedin,
+        website: contact.website,
+        contact_source: contact.contact_source,
+        lead_status: contact.lead_status || 'New',
+        industry: contact.industry,
+        city: contact.city,
+        country: contact.country,
+        description: contact.description,
+        contact_owner: contact.contact_owner,
+        created_by: contact.created_by,
+        created_time: new Date().toISOString(),
+        modified_time: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('leads')
+        .insert([leadData]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Contact "${contact.contact_name}" has been converted to a lead successfully.`,
+      });
+
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Error converting contact to lead:', error);
+      toast({
+        title: "Error",
+        description: "Failed to convert contact to lead. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -140,9 +194,14 @@ export const ContactTableBody = ({
                     {contact[column.field as keyof Contact]}
                   </button>
                 ) : column.field === 'contact_owner' ? (
-                  contact.created_by 
-                    ? displayNames[contact.created_by] || "Unknown"
-                    : '-'
+                  // Fix the flickering by showing loading state and then the display name
+                  namesLoading ? (
+                    <span className="text-muted-foreground">Loading...</span>
+                  ) : contact.created_by ? (
+                    displayNames[contact.created_by] || "Unknown"
+                  ) : (
+                    '-'
+                  )
                 ) : column.field === 'lead_status' && contact.lead_status ? (
                   <Badge variant={contact.lead_status === 'Converted' ? 'default' : 'secondary'}>
                     {contact.lead_status}
@@ -153,22 +212,33 @@ export const ContactTableBody = ({
               </TableCell>
             ))}
             <TableCell>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onEdit(contact)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onDelete(contact.id)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => onEdit(contact)}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleConvertToLead(contact)}>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Convert to Lead
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => onDelete(contact.id)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </TableCell>
           </TableRow>
         ))}
