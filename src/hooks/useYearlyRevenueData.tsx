@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -92,9 +93,9 @@ export const useYearlyRevenueData = (selectedYear: number) => {
         }
       });
 
-      // Process RFQ deals for projected revenue
+      // Process RFQ deals for projected revenue - sum all TCV values by expected closing quarter
       rfqDeals?.forEach(deal => {
-        console.log('Processing RFQ deal:', deal.deal_name, 'Contract Value:', deal.total_contract_value);
+        console.log('Processing RFQ deal:', deal.deal_name, 'Total Contract Value:', deal.total_contract_value, 'Expected Closing:', deal.expected_closing_date);
         
         if (deal.total_contract_value) {
           const contractValue = Number(deal.total_contract_value);
@@ -102,17 +103,38 @@ export const useYearlyRevenueData = (selectedYear: number) => {
             totalProjectedRevenue += contractValue;
             console.log('Added projected revenue:', contractValue, 'Running total:', totalProjectedRevenue);
             
-            // Quarterly breakdown for projected revenue (distribute based on expected_closing_date)
+            // Determine quarter based on expected_closing_date
             if (deal.expected_closing_date) {
               try {
                 const closingDate = new Date(deal.expected_closing_date);
-                const quarter = Math.ceil((closingDate.getMonth() + 1) / 3) as 1 | 2 | 3 | 4;
-                const quarterKey = `q${quarter}` as keyof QuarterlyData;
-                projectedRevenue[quarterKey] += contractValue;
-                console.log(`Added ${contractValue} to projected Q${quarter}`);
+                const closingYear = closingDate.getFullYear();
+                
+                // Only include deals that are expected to close in the selected year
+                if (closingYear === selectedYear) {
+                  const month = closingDate.getMonth() + 1; // getMonth() returns 0-11
+                  let quarter: keyof QuarterlyData;
+                  
+                  if (month >= 1 && month <= 3) {
+                    quarter = 'q1';
+                  } else if (month >= 4 && month <= 6) {
+                    quarter = 'q2';
+                  } else if (month >= 7 && month <= 9) {
+                    quarter = 'q3';
+                  } else {
+                    quarter = 'q4';
+                  }
+                  
+                  projectedRevenue[quarter] += contractValue;
+                  console.log(`Added ${contractValue} to projected ${quarter.toUpperCase()} for year ${selectedYear}`);
+                } else {
+                  console.log(`Deal ${deal.deal_name} expected to close in ${closingYear}, not ${selectedYear} - not included in quarterly breakdown`);
+                }
               } catch (error) {
                 console.warn('Invalid closing date for deal:', deal.deal_name, deal.expected_closing_date);
+                // If date is invalid, don't include in quarterly breakdown but still count in total
               }
+            } else {
+              console.log(`Deal ${deal.deal_name} has no expected_closing_date - not included in quarterly breakdown`);
             }
           }
         }
