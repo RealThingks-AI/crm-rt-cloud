@@ -33,13 +33,19 @@ export const useYearlyRevenueData = (selectedYear: number) => {
 
       console.log('Target data:', targetData);
 
-      // Get all deals for the selected year
-      const { data: deals } = await supabase
+      // Get all deals for Won and RFQ stages
+      const { data: wonDeals } = await supabase
         .from('deals')
         .select('*')
-        .or(`closing_date.gte.${selectedYear}-01-01,closing_date.lte.${selectedYear}-12-31`);
+        .eq('stage', 'Won');
 
-      console.log('Deals for year:', deals);
+      const { data: rfqDeals } = await supabase
+        .from('deals')
+        .select('*')
+        .eq('stage', 'RFQ');
+
+      console.log('Won deals:', wonDeals);
+      console.log('RFQ deals:', rfqDeals);
 
       const actualRevenue: QuarterlyData = { q1: 0, q2: 0, q3: 0, q4: 0 };
       const projectedRevenue: QuarterlyData = { q1: 0, q2: 0, q3: 0, q4: 0 };
@@ -47,43 +53,67 @@ export const useYearlyRevenueData = (selectedYear: number) => {
       let totalActualRevenue = 0;
       let totalProjectedRevenue = 0;
 
-      deals?.forEach(deal => {
-        console.log('Processing deal:', deal.deal_name, 'Stage:', deal.stage);
+      // Process Won deals for actual revenue
+      wonDeals?.forEach(deal => {
+        console.log('Processing Won deal:', deal.deal_name, 'Total Revenue:', deal.total_revenue);
         
-        // 1. Actual Revenue: Sum of Total Revenue from all Won stage deals
-        if (deal.stage === 'Won' && deal.total_revenue) {
+        if (deal.total_revenue) {
           const revenue = Number(deal.total_revenue);
-          totalActualRevenue += revenue;
-          console.log('Adding actual revenue from Won deal:', revenue, 'Total now:', totalActualRevenue);
-          
-          // Quarterly breakdown for actual revenue (Q1-Q4 Revenue from Won deals)
-          if (deal.quarterly_revenue_q1) {
-            actualRevenue.q1 += Number(deal.quarterly_revenue_q1);
-          }
-          if (deal.quarterly_revenue_q2) {
-            actualRevenue.q2 += Number(deal.quarterly_revenue_q2);
-          }
-          if (deal.quarterly_revenue_q3) {
-            actualRevenue.q3 += Number(deal.quarterly_revenue_q3);
-          }
-          if (deal.quarterly_revenue_q4) {
-            actualRevenue.q4 += Number(deal.quarterly_revenue_q4);
+          if (!isNaN(revenue)) {
+            totalActualRevenue += revenue;
+            console.log('Added actual revenue:', revenue, 'Running total:', totalActualRevenue);
+            
+            // Quarterly breakdown for actual revenue (Q1-Q4 Revenue from Won deals)
+            if (deal.quarterly_revenue_q1) {
+              const q1Revenue = Number(deal.quarterly_revenue_q1);
+              if (!isNaN(q1Revenue)) {
+                actualRevenue.q1 += q1Revenue;
+              }
+            }
+            if (deal.quarterly_revenue_q2) {
+              const q2Revenue = Number(deal.quarterly_revenue_q2);
+              if (!isNaN(q2Revenue)) {
+                actualRevenue.q2 += q2Revenue;
+              }
+            }
+            if (deal.quarterly_revenue_q3) {
+              const q3Revenue = Number(deal.quarterly_revenue_q3);
+              if (!isNaN(q3Revenue)) {
+                actualRevenue.q3 += q3Revenue;
+              }
+            }
+            if (deal.quarterly_revenue_q4) {
+              const q4Revenue = Number(deal.quarterly_revenue_q4);
+              if (!isNaN(q4Revenue)) {
+                actualRevenue.q4 += q4Revenue;
+              }
+            }
           }
         }
+      });
+
+      // Process RFQ deals for projected revenue
+      rfqDeals?.forEach(deal => {
+        console.log('Processing RFQ deal:', deal.deal_name, 'Contract Value:', deal.total_contract_value);
         
-        // 2. Projected Revenue: Sum of Total Contract Value from all RFQ stage deals
-        else if (deal.stage === 'RFQ' && deal.total_contract_value) {
+        if (deal.total_contract_value) {
           const contractValue = Number(deal.total_contract_value);
-          totalProjectedRevenue += contractValue;
-          console.log('Adding projected revenue from RFQ deal:', contractValue, 'Total now:', totalProjectedRevenue);
-          
-          // Quarterly breakdown for projected revenue (distribute based on closing_date)
-          if (deal.closing_date) {
-            const closingDate = new Date(deal.closing_date);
-            const quarter = Math.ceil((closingDate.getMonth() + 1) / 3) as 1 | 2 | 3 | 4;
-            const quarterKey = `q${quarter}` as keyof QuarterlyData;
-            projectedRevenue[quarterKey] += contractValue;
-            console.log(`Adding ${contractValue} to projected Q${quarter}`);
+          if (!isNaN(contractValue)) {
+            totalProjectedRevenue += contractValue;
+            console.log('Added projected revenue:', contractValue, 'Running total:', totalProjectedRevenue);
+            
+            // Quarterly breakdown for projected revenue (distribute based on expected_closing_date)
+            if (deal.expected_closing_date) {
+              try {
+                const closingDate = new Date(deal.expected_closing_date);
+                const quarter = Math.ceil((closingDate.getMonth() + 1) / 3) as 1 | 2 | 3 | 4;
+                const quarterKey = `q${quarter}` as keyof QuarterlyData;
+                projectedRevenue[quarterKey] += contractValue;
+                console.log(`Added ${contractValue} to projected Q${quarter}`);
+              } catch (error) {
+                console.warn('Invalid closing date for deal:', deal.deal_name, deal.expected_closing_date);
+              }
+            }
           }
         }
       });
