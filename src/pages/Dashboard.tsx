@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3, Users, Euro, TrendingUp, Calendar, Target } from "lucide-react";
 import YearlyRevenueSummary from "@/components/YearlyRevenueSummary";
@@ -58,14 +59,20 @@ const Dashboard = () => {
     }).format(amount);
   };
 
+  const getProgressPercentage = (actual: number, target: number) => {
+    if (target === 0) return 0;
+    return (actual / target) * 100;
+  };
+
   const isDataLoading = statsLoading || yearDataLoading;
+  const progressPercentage = getProgressPercentage(stats?.totalRevenue || 0, currentYearData?.annualTarget || 0);
 
   return (
     <div className="p-6 space-y-8">
       {/* Yearly Revenue Summary Section */}
       <YearlyRevenueSummary />
 
-      {/* Top 6 Cards - All in Single Row */}
+      {/* All 6 Cards in Single Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card className="hover-scale">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -93,7 +100,9 @@ const Dashboard = () => {
             ) : (
               <div className="text-2xl font-bold">{formatCurrency(stats?.totalRevenue || 0)}</div>
             )}
-            <p className="text-xs text-muted-foreground">From Won deals</p>
+            <p className="text-xs text-muted-foreground">
+              {progressPercentage.toFixed(1)}% of target
+            </p>
           </CardContent>
         </Card>
 
