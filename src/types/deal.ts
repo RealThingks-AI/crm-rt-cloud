@@ -3,8 +3,8 @@ export type DealStage = 'Lead' | 'Discussions' | 'Qualified' | 'RFQ' | 'Offered'
 
 export interface Deal {
   id: string;
-  created_at: string;
-  modified_at: string;
+  created_time: string;
+  modified_time: string;
   created_by: string | null;
   modified_by: string | null;
   

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,7 +46,7 @@ const Index = () => {
       const { data, error } = await supabase
         .from('deals')
         .select('*')
-        .order('modified_at', { ascending: false });
+        .order('modified_time', { ascending: false });
 
       if (error) {
         toast({
@@ -56,7 +57,7 @@ const Index = () => {
         return;
       }
 
-      setDeals((data || []) as unknown as Deal[]);
+      setDeals((data || []) as Deal[]);
     } catch (error) {
       toast({
         title: "Error",
@@ -72,7 +73,7 @@ const Index = () => {
     try {
       const { error } = await supabase
         .from('deals')
-        .update({ ...updates, modified_at: new Date().toISOString() })
+        .update({ ...updates, modified_time: new Date().toISOString() })
         .eq('id', dealId);
 
       if (error) throw error;
@@ -105,12 +106,12 @@ const Index = () => {
 
         if (error) throw error;
 
-        setDeals(prev => [data as unknown as Deal, ...prev]);
+        setDeals(prev => [data as Deal, ...prev]);
       } else if (selectedDeal) {
         const updateData = {
           ...dealData,
           deal_name: dealData.project_name || selectedDeal.project_name || 'Untitled Deal',
-          modified_at: new Date().toISOString(),
+          modified_time: new Date().toISOString(),
           modified_by: user?.id
         };
         
@@ -177,6 +178,7 @@ const Index = () => {
             .single();
 
           if (error) throw error;
+          
           processedDeals.push(data as Deal);
           updatedCount++;
         } else {
@@ -195,6 +197,7 @@ const Index = () => {
             .single();
 
           if (error) throw error;
+          
           processedDeals.push(data as Deal);
           createdCount++;
         }

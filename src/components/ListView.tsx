@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -163,6 +162,32 @@ export const ListView = ({
         variant: "destructive",
       });
     }
+  };
+
+  const getFieldType = (field: string): 'text' | 'number' | 'date' | 'select' | 'textarea' | 'boolean' | 'stage' | 'priority' | 'currency' => {
+    if (field === 'stage') return 'stage';
+    if (field === 'priority') return 'priority';
+    if (['total_contract_value', 'total_revenue', 'quarterly_revenue_q1', 'quarterly_revenue_q2', 'quarterly_revenue_q3', 'quarterly_revenue_q4'].includes(field)) return 'currency';
+    if (['expected_closing_date', 'start_date', 'end_date', 'rfq_received_date', 'proposal_due_date', 'signed_contract_date', 'implementation_start_date'].includes(field)) return 'date';
+    if (['internal_comment', 'customer_need', 'action_items', 'won_reason', 'lost_reason', 'need_improvement', 'drop_reason'].includes(field)) return 'textarea';
+    if (['is_recurring'].includes(field)) return 'boolean';
+    if (['customer_challenges', 'relationship_strength', 'business_value', 'decision_maker_level', 'rfq_status', 'handoff_status'].includes(field)) return 'select';
+    if (['probability', 'project_duration'].includes(field)) return 'number';
+    return 'text';
+  };
+
+  const getFieldOptions = (field: string): string[] => {
+    const optionsMap: Record<string, string[]> = {
+      customer_challenges: ['Open', 'Ongoing', 'Done'],
+      relationship_strength: ['Low', 'Medium', 'High'],
+      business_value: ['Open', 'Ongoing', 'Done'],
+      decision_maker_level: ['Open', 'Ongoing', 'Done'],
+      is_recurring: ['Yes', 'No', 'Unclear'],
+      rfq_status: ['Drafted', 'Submitted', 'Rejected', 'Accepted'],
+      handoff_status: ['Not Started', 'In Progress', 'Complete'],
+      currency_type: ['EUR', 'USD', 'INR'],
+    };
+    return optionsMap[field] || [];
   };
 
   const visibleColumns = columns
@@ -359,10 +384,9 @@ export const ListView = ({
                   filteredAndSortedDeals.map((deal) => (
                     <TableRow 
                       key={deal.id} 
-                      className={`cursor-pointer hover:bg-primary/5 transition-all duration-200 hover:shadow-sm ${
+                      className={`hover:bg-primary/5 transition-all duration-200 hover:shadow-sm ${
                         selectedDeals.has(deal.id) ? 'bg-primary/10 shadow-sm' : ''
                       }`}
-                      onClick={() => onDealClick(deal)}
                       style={{ 
                         background: selectedDeals.has(deal.id) ? 'var(--primary-50)' : undefined,
                         borderLeft: selectedDeals.has(deal.id) ? '3px solid hsl(var(--primary))' : undefined 
@@ -382,24 +406,19 @@ export const ListView = ({
                             field={column.field}
                             dealId={deal.id}
                             onSave={handleInlineEdit}
-                            type={
-                              column.field === 'stage' ? 'select' :
-                              column.field === 'priority' ? 'number' :
-                              ['total_contract_value', 'total_revenue', 'quarterly_revenue_q1', 'quarterly_revenue_q2', 'quarterly_revenue_q3', 'quarterly_revenue_q4'].includes(column.field) ? 'currency' :
-                              ['expected_closing_date', 'start_date', 'end_date', 'rfq_received_date', 'proposal_due_date', 'signed_contract_date', 'implementation_start_date'].includes(column.field) ? 'date' :
-                              'text'
-                            }
-                            options={column.field === 'stage' ? DEAL_STAGES : undefined}
+                            type={getFieldType(column.field)}
+                            options={getFieldOptions(column.field)}
                           />
                         </TableCell>
                       ))}
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                      <TableCell>
                         <div className="flex items-center gap-1">
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => onDealClick(deal)}
                             className="hover-scale p-1 h-7 w-7"
+                            title="Open deal form"
                           >
                             <Edit className="w-3 h-3" />
                           </Button>
@@ -414,6 +433,7 @@ export const ListView = ({
                               });
                             }}
                             className="hover-scale p-1 h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            title="Delete deal"
                           >
                             <Trash2 className="w-3 h-3" />
                           </Button>

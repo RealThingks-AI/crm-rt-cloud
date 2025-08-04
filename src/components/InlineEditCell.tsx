@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,10 +32,12 @@ export const InlineEditCell = ({
     let processedValue = editValue;
     
     // Process value based on type
-    if (type === 'number') {
+    if (type === 'number' || type === 'priority') {
       processedValue = parseFloat(editValue) || 0;
     } else if (type === 'boolean') {
       processedValue = Boolean(editValue);
+    } else if (type === 'currency') {
+      processedValue = parseFloat(editValue) || 0;
     }
     
     onSave(dealId, field, processedValue);
@@ -46,12 +49,21 @@ export const InlineEditCell = ({
     setIsEditing(false);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && type !== 'textarea') {
+      e.preventDefault();
+      handleSave();
+    } else if (e.key === 'Escape') {
+      handleCancel();
+    }
+  };
+
   const formatDisplayValue = () => {
     if (value === null || value === undefined || value === '') return '-';
     
     if (type === 'currency') {
       const symbols = { USD: '$', EUR: '€', INR: '₹' };
-      return `${symbols[value.currency_type as keyof typeof symbols] || '€'}${value.toLocaleString()}`;
+      return `${symbols[value.currency_type as keyof typeof symbols] || '€'}${Number(value).toLocaleString()}`;
     }
     
     if (type === 'date' && value) {
@@ -65,6 +77,17 @@ export const InlineEditCell = ({
     if (type === 'boolean') {
       return value ? 'Yes' : 'No';
     }
+
+    if (type === 'priority' && value) {
+      const priorityLabels: Record<number, string> = {
+        1: 'Highest',
+        2: 'High', 
+        3: 'Medium',
+        4: 'Low',
+        5: 'Lowest'
+      };
+      return `${value} (${priorityLabels[value] || 'Unknown'})`;
+    }
     
     return String(value);
   };
@@ -72,11 +95,15 @@ export const InlineEditCell = ({
   if (!isEditing) {
     return (
       <div 
-        className="group flex items-center justify-between cursor-pointer hover:bg-muted/50 p-1 rounded transition-colors"
-        onClick={() => setIsEditing(true)}
+        className="group flex items-center justify-between cursor-pointer hover:bg-muted/50 p-1 rounded transition-colors min-h-[32px]"
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsEditing(true);
+        }}
+        title="Click to edit"
       >
         <span className="truncate flex-1">{formatDisplayValue()}</span>
-        <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+        <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity ml-1 text-muted-foreground" />
       </div>
     );
   }
@@ -88,8 +115,10 @@ export const InlineEditCell = ({
           <Textarea
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
-            className="w-full min-h-[60px]"
+            onKeyDown={handleKeyDown}
+            className="w-full min-h-[60px] resize-none"
             autoFocus
+            onFocus={(e) => e.target.select()}
           />
         );
         
@@ -99,8 +128,24 @@ export const InlineEditCell = ({
             type="number"
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleKeyDown}
             className="w-full"
             autoFocus
+            onFocus={(e) => e.target.select()}
+          />
+        );
+
+      case 'currency':
+        return (
+          <Input
+            type="number"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="w-full"
+            placeholder="Enter amount"
+            autoFocus
+            onFocus={(e) => e.target.select()}
           />
         );
         
@@ -110,6 +155,7 @@ export const InlineEditCell = ({
             type="date"
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleKeyDown}
             className="w-full"
             autoFocus
           />
@@ -117,10 +163,15 @@ export const InlineEditCell = ({
         
       case 'boolean':
         return (
-          <Switch
-            checked={Boolean(editValue)}
-            onCheckedChange={setEditValue}
-          />
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={Boolean(editValue)}
+              onCheckedChange={setEditValue}
+            />
+            <span className="text-sm text-muted-foreground">
+              {Boolean(editValue) ? 'Yes' : 'No'}
+            </span>
+          </div>
         );
         
       case 'stage':
@@ -176,24 +227,27 @@ export const InlineEditCell = ({
           <Input
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleKeyDown}
             className="w-full"
             autoFocus
+            onFocus={(e) => e.target.select()}
           />
         );
     }
   };
 
   return (
-    <div className="flex items-center gap-1 animate-fade-in">
+    <div className="flex items-center gap-1 animate-fade-in" onClick={(e) => e.stopPropagation()}>
       <div className="flex-1">
         {renderEditControl()}
       </div>
-      <div className="flex gap-1">
+      <div className="flex gap-1 ml-1">
         <Button
           size="sm"
           variant="ghost"
           onClick={handleSave}
           className="h-6 w-6 p-0 hover:bg-green-100"
+          title="Save changes"
         >
           <Check className="w-3 h-3 text-green-600" />
         </Button>
@@ -202,6 +256,7 @@ export const InlineEditCell = ({
           variant="ghost"
           onClick={handleCancel}
           className="h-6 w-6 p-0 hover:bg-red-100"
+          title="Cancel"
         >
           <X className="w-3 h-3 text-red-600" />
         </Button>

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -35,11 +36,12 @@ const UserManagement = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
 
-  const fetchUsers = async () => {
+  // Memoized fetch function to prevent recreation on every render
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Check if user is authenticated first
+      // Get current session from memory instead of calling getSession()
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error("No valid session found. Please log in again.");
@@ -66,16 +68,17 @@ const UserManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]); // Only depend on toast to prevent unnecessary recreation
 
-  const syncWithAuth = async () => {
+  // Debounced sync function to prevent excessive calls
+  const syncWithAuth = useCallback(async () => {
     try {
       toast({
         title: "Syncing",
         description: "Refreshing session and syncing with Supabase Auth...",
       });
       
-      // Try to refresh the session
+      // Try to refresh the session only once
       const { error: refreshError } = await supabase.auth.refreshSession();
       if (refreshError) {
         throw new Error("Failed to refresh session. Please log in again.");
@@ -93,19 +96,19 @@ const UserManagement = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [fetchUsers, toast]);
 
-  const handleEditUser = (user: User) => {
+  const handleEditUser = useCallback((user: User) => {
     setSelectedUser(user);
     setShowEditModal(true);
-  };
+  }, []);
 
-  const handleChangeRole = (user: User) => {
+  const handleChangeRole = useCallback((user: User) => {
     setSelectedUser(user);
     setShowRoleModal(true);
-  };
+  }, []);
 
-  const handleToggleUserStatus = async (user: User) => {
+  const handleToggleUserStatus = useCallback(async (user: User) => {
     try {
       const action = user.banned_until ? 'activate' : 'deactivate';
       const { error } = await supabase.functions.invoke('admin-update-user', {
@@ -122,7 +125,8 @@ const UserManagement = () => {
         description: `User ${action}d successfully`,
       });
       
-      fetchUsers();
+      // Refresh users after successful update
+      await fetchUsers();
     } catch (error) {
       console.error('Error updating user status:', error);
       toast({
@@ -131,14 +135,14 @@ const UserManagement = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [fetchUsers, toast]);
 
-  const handleDeleteUser = (user: User) => {
+  const handleDeleteUser = useCallback((user: User) => {
     setSelectedUser(user);
     setShowDeleteDialog(true);
-  };
+  }, []);
 
-  const getRoleBadgeVariant = (role: string) => {
+  const getRoleBadgeVariant = useCallback((role: string) => {
     switch (role?.toLowerCase()) {
       case 'admin':
         return 'default';
@@ -147,11 +151,12 @@ const UserManagement = () => {
       default:
         return 'outline';
     }
-  };
+  }, []);
 
+  // Only fetch users once on mount
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   if (loading) {
     return (

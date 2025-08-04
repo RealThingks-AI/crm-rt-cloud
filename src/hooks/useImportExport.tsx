@@ -1,3 +1,4 @@
+
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -48,9 +49,10 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       // Validate headers for deals
       if (tableName === 'deals') {
         // Check if we have minimum required headers
-        const hasRequiredHeaders = headers.includes('deal_name') && headers.includes('stage');
+        const hasRequiredHeaders = headers.some(h => mapHeader(h) === 'deal_name') && 
+                                   headers.some(h => mapHeader(h) === 'stage');
         if (!hasRequiredHeaders) {
-          throw new Error('Missing required headers: deal_name and stage are required for deals import');
+          throw new Error('Missing required headers: deal_name and stage are required for deals import. Please check your CSV headers.');
         }
       }
 
@@ -66,18 +68,18 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       console.log('Invalid headers:', invalidHeaders);
       
       if (validHeaders.length === 0) {
-        throw new Error('No valid headers found. Please ensure CSV headers match export field names exactly.');
+        throw new Error('No valid headers found. Please ensure CSV headers match the expected field names.');
       }
       
       if (invalidHeaders.length > 0) {
-        const systemFields = ['created_at', 'modified_at', 'created_by', 'modified_by'];
-        const otherIgnored = invalidHeaders.filter(h => !systemFields.includes(h.original));
+        const systemFields = ['created_time', 'modified_time', 'created_by', 'modified_by'];
+        const otherIgnored = invalidHeaders.filter(h => !systemFields.includes(h.original.toLowerCase()));
         
         if (otherIgnored.length > 0) {
-          console.warn('Other ignored columns:', otherIgnored.map(h => h.original));
+          console.warn('Ignoring unrecognized columns:', otherIgnored.map(h => h.original));
           toast({
-            title: "Column Warning",
-            description: `Ignoring ${otherIgnored.length} unrecognized column(s): ${otherIgnored.map(h => h.original).join(', ')}`,
+            title: "Column Info",
+            description: `Ignoring ${otherIgnored.length} unrecognized column(s). Import will continue with recognized fields.`,
           });
         }
       }
@@ -91,18 +93,19 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       let updateCount = 0;
       const errors: string[] = [];
 
-      // Process records one by one with enhanced duplicate checking
+      // Process records one by one with enhanced error handling
       for (let i = 0; i < dataRows.length; i++) {
         try {
           const row = dataRows[i];
           const record: any = {};
           
+          // Map headers to values with proper validation
           mappedHeaders.forEach((headerMap, index) => {
             if (headerMap.mapped && index < row.length) {
               const rawValue = row[index];
-              if (rawValue && rawValue.trim() !== '') {
-                const validatedValue = validateAndConvertValue(headerMap.mapped, rawValue);
-                if (validatedValue !== null) {
+              if (rawValue !== undefined && rawValue !== null && String(rawValue).trim() !== '') {
+                const validatedValue = validateAndConvertValue(headerMap.mapped, String(rawValue).trim());
+                if (validatedValue !== null && validatedValue !== undefined) {
                   record[headerMap.mapped] = validatedValue;
                 }
               }
@@ -116,20 +119,24 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
             // Ensure required fields have values
             if (!record.deal_name && record.project_name) {
               record.deal_name = record.project_name;
+              console.log(`Row ${i + 1}: Using project_name as deal_name: ${record.deal_name}`);
             }
             if (!record.deal_name) {
-              errors.push(`Row ${i + 1}: Missing deal_name`);
+              errors.push(`Row ${i + 1}: Missing deal_name - this field is required`);
+              console.error(`Row ${i + 1}: Missing deal_name`);
               errorCount++;
               continue;
             }
             if (!record.stage) {
               record.stage = 'Lead';
+              console.log(`Row ${i + 1}: Setting default stage to 'Lead'`);
             }
             
+            // Validate the record structure
             const isValid = validateImportRecord(record);
             
             if (!isValid) {
-              errors.push(`Row ${i + 1}: Invalid deal data - missing deal_name or invalid stage`);
+              errors.push(`Row ${i + 1}: Invalid deal data for "${record.deal_name}" - check deal_name and stage values`);
               console.log(`Row ${i + 1}: Validation failed for deal`, record);
               errorCount++;
               continue;
@@ -138,9 +145,6 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
             // Enhanced duplicate checking with update capability
             console.log(`Checking for duplicates before processing row ${i + 1}...`);
             
-            // Add a small delay to ensure database consistency
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
             const isDuplicate = await checkDuplicate(record);
             if (isDuplicate) {
               console.log(`Found duplicate record ${i + 1}: ${record.deal_name}, attempting update...`);
@@ -148,39 +152,46 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
               // If it's a duplicate, try to update instead of skipping
               try {
                 let updateData = { ...record };
-                delete updateData.id; // Don't update the ID
+                delete updateData.id; // Don't update the ID field itself
                 updateData.modified_by = user?.id || '00000000-0000-0000-0000-000000000000';
-                updateData.modified_at = new Date().toISOString();
+                updateData.modified_time = new Date().toISOString();
+
+                console.log(`Row ${i + 1}: Update data prepared:`, updateData);
 
                 let updateResult;
-                if (record.id) {
+                if (record.id && record.id.trim() !== '') {
                   // Update by ID if available
+                  console.log(`Row ${i + 1}: Updating by ID: ${record.id}`);
                   updateResult = await supabase
                     .from('deals')
                     .update(updateData)
-                    .eq('id', record.id)
-                    .select('id');
+                    .eq('id', record.id.trim())
+                    .select('id, deal_name');
                 } else {
                   // Update by deal_name if no ID
+                  console.log(`Row ${i + 1}: Updating by deal_name: ${record.deal_name}`);
                   updateResult = await supabase
                     .from('deals')
                     .update(updateData)
                     .eq('deal_name', record.deal_name)
-                    .select('id');
+                    .select('id, deal_name');
                 }
 
                 if (updateResult.error) {
-                  console.error(`Error updating duplicate record ${i + 1}:`, updateResult.error);
-                  duplicateCount++;
+                  console.error(`Row ${i + 1}: Error updating record:`, updateResult.error);
+                  errors.push(`Row ${i + 1}: Update failed for "${record.deal_name}" - ${updateResult.error.message}`);
+                  errorCount++;
                 } else if (updateResult.data && updateResult.data.length > 0) {
                   updateCount++;
-                  console.log(`Successfully updated existing record ${i + 1}`);
+                  console.log(`Row ${i + 1}: Successfully updated existing record:`, updateResult.data[0]);
                 } else {
+                  console.log(`Row ${i + 1}: No records updated, treating as duplicate skip`);
                   duplicateCount++;
                 }
-              } catch (updateError) {
-                console.error(`Error updating duplicate record ${i + 1}:`, updateError);
-                duplicateCount++;
+              } catch (updateError: any) {
+                console.error(`Row ${i + 1}: Error updating duplicate record:`, updateError);
+                errors.push(`Row ${i + 1}: Update error for "${record.deal_name}" - ${updateError.message}`);
+                errorCount++;
               }
               continue;
             }
@@ -190,38 +201,42 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
             record.modified_by = user?.id || '00000000-0000-0000-0000-000000000000';
             
           } else {
-            config.required.forEach(field => {
-              if (!record[field]) {
+            // For other tables, handle required fields
+            const missingRequired = config.required.filter(field => !record[field] || String(record[field]).trim() === '');
+            
+            if (missingRequired.length > 0) {
+              // Set defaults for some missing fields
+              missingRequired.forEach(field => {
                 if (field === 'contact_name') {
                   record[field] = `Contact ${i + 1}`;
                 } else if (field === 'lead_name') {
                   record[field] = `Lead ${i + 1}`;
-                } else if (field === 'title') {
-                  record[field] = `Meeting ${i + 1}`;
-                } else if (field === 'contact_owner') {
-                  throw new Error(`Contact Owner is required.`);
-                } else if (field === 'start_time' || field === 'end_time') {
-                  throw new Error(`Missing required field: ${field}`);
                 }
+              });
+              
+              // Check again after setting defaults
+              const stillMissing = config.required.filter(field => !record[field] || String(record[field]).trim() === '');
+              if (stillMissing.length > 0) {
+                errors.push(`Row ${i + 1}: Missing required fields: ${stillMissing.join(', ')}`);
+                errorCount++;
+                continue;
               }
-            });
+            }
             
             record.created_by = user?.id || '00000000-0000-0000-0000-000000000000';
-            if (tableName !== 'meetings') {
-              record.modified_by = user?.id || null;
-            }
+            record.modified_by = user?.id || null;
 
             // Check for duplicates before insertion
             const isDuplicate = await checkDuplicate(record);
             if (isDuplicate) {
-              console.log(`Skipping duplicate record: ${record.contact_name || record.lead_name || 'Unknown'}`);
+              console.log(`Row ${i + 1}: Skipping duplicate record: ${record.contact_name || record.lead_name || 'Unknown'}`);
               duplicateCount++;
               continue;
             }
           }
 
           // Insert single record with proper type handling
-          console.log(`Inserting record ${i + 1}:`, record);
+          console.log(`Row ${i + 1}: Inserting new record:`, record);
           
           // Type-safe table insertion
           let insertResult;
@@ -229,7 +244,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
             insertResult = await supabase
               .from('deals')
               .insert([record])
-              .select('id');
+              .select('id, deal_name');
           } else if (tableName === 'contacts' || tableName === 'contacts_module') {
             insertResult = await supabase
               .from('contacts')
@@ -240,33 +255,27 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
               .from('leads')
               .insert([record])
               .select('id');
-          } else if (tableName === 'meetings') {
-            insertResult = await supabase
-              .from('meetings')
-              .insert([record])
-              .select('id');
           } else {
             throw new Error(`Unsupported table: ${tableName}`);
           }
 
           if (insertResult.error) {
-            console.error(`Error inserting row ${i + 1}:`, insertResult.error);
-            errors.push(`Row ${i + 1}: ${insertResult.error.message}`);
+            console.error(`Row ${i + 1}: Error inserting record:`, insertResult.error);
+            errors.push(`Row ${i + 1}: Insert failed - ${insertResult.error.message}`);
             errorCount++;
-          } else if (insertResult.data) {
-            const insertedCount = insertResult.data.length;
-            successCount += insertedCount;
-            console.log(`Successfully inserted record ${i + 1}:`, insertResult.data[0]?.id);
+          } else if (insertResult.data && insertResult.data.length > 0) {
+            successCount++;
+            console.log(`Row ${i + 1}: Successfully inserted new record:`, insertResult.data[0]);
           }
 
           // Small delay to prevent overwhelming the database
-          if (i % 5 === 0 && i > 0) {
-            await new Promise(resolve => setTimeout(resolve, 300));
+          if (i % 10 === 0 && i > 0) {
+            await new Promise(resolve => setTimeout(resolve, 200));
           }
 
         } catch (rowError: any) {
-          console.error(`Error processing row ${i + 1}:`, rowError);
-          errors.push(`Row ${i + 1}: ${rowError.message}`);
+          console.error(`Row ${i + 1}: Error processing row:`, rowError);
+          errors.push(`Row ${i + 1}: Processing error - ${rowError.message}`);
           errorCount++;
         }
       }
@@ -274,7 +283,8 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       console.log(`Import completed - Success: ${successCount}, Updates: ${updateCount}, Errors: ${errorCount}, Duplicates: ${duplicateCount}`);
       console.log('Import errors:', errors);
 
-      let message = `Import completed: ${successCount} new records, ${updateCount} updated`;
+      let message = `Import completed: ${successCount} new records`;
+      if (updateCount > 0) message += `, ${updateCount} updated`;
       if (duplicateCount > 0) message += `, ${duplicateCount} duplicates skipped`;
       if (errorCount > 0) message += `, ${errorCount} errors`;
 
@@ -286,7 +296,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       }
 
       if (errorCount > 0) {
-        console.log('Import errors:', errors.slice(0, 10));
+        console.log('First 5 import errors:', errors.slice(0, 5));
         toast({
           variant: "destructive",
           title: "Import completed with errors",

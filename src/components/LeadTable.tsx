@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
@@ -165,8 +166,12 @@ export const LeadTable = ({
 
   const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
 
-  // Get unique created_by IDs for fetching display names (always show creator as lead owner)
-  const createdByIds = [...new Set(leads.map(l => l.created_by).filter(Boolean))];
+  // Memoize user IDs to prevent unnecessary re-fetches
+  const createdByIds = useMemo(() => {
+    return [...new Set(leads.map(l => l.created_by).filter(Boolean))];
+  }, [leads]);
+
+  // Use the optimized hook
   const { displayNames } = useUserDisplayNames(createdByIds);
 
   const visibleColumns = columns.filter(col => col.visible);
@@ -251,9 +256,12 @@ export const LeadTable = ({
                           {lead[column.field as keyof Lead]}
                         </button>
                       ) : column.field === 'contact_owner' ? (
-                        lead.created_by 
-                          ? displayNames[lead.created_by] || "Unknown"
-                          : '-'
+                        <span>
+                          {lead.created_by 
+                            ? displayNames[lead.created_by] || "Loading..."
+                            : '-'
+                          }
+                        </span>
                       ) : column.field === 'lead_status' && lead.lead_status ? (
                         <Badge variant={lead.lead_status === 'Qualified' ? 'default' : 'secondary'}>
                           {lead.lead_status}

@@ -1,7 +1,8 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3, Users, Euro, TrendingUp, Calendar, Target } from "lucide-react";
-import YearlyRevenueSummary from "@/components/YearlyRevenueSummary";
-import { useDashboardStats } from "@/hooks/useYearlyRevenueData";
+import { YearlyRevenueSummary } from "@/components/YearlyRevenueSummary";
+import { useYearlyRevenueData } from "@/hooks/useYearlyRevenueData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";

@@ -261,7 +261,6 @@ const DealsPage = () => {
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
             <div className="min-w-0 flex-1">
               <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-2">Deals Pipeline</h1>
-              <p className="text-muted-foreground">Manage your sales pipeline and track deals</p>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-shrink-0">
               <div className="hidden sm:block">
@@ -301,40 +300,6 @@ const DealsPage = () => {
             </div>
           </div>
 
-          {/* Fixed Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="animate-fade-in hover-scale">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Deals</CardTitle>
-                <BarChart3 className="w-4 h-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalDeals}</div>
-              </CardContent>
-            </Card>
-            
-            <Card className="animate-fade-in hover-scale">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Value</CardTitle>
-                <Euro className="w-4 h-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  €{stats.totalValue.toLocaleString()}
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="animate-fade-in hover-scale">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Won Deals</CardTitle>
-                <Users className="w-4 h-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.wonDeals}</div>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </div>
 

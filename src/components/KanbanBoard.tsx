@@ -253,18 +253,6 @@ export const KanbanBoard = ({
             </div>
           </div>
 
-          {/* Add ImportExportBar */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <ImportExportBar
-              deals={deals}
-              onImport={onImportDeals}
-              onExport={(selectedDeals) => {
-                // Handle export logic
-              }}
-              selectedDeals={selectedDeals && selectedDeals.size > 0 ? Array.from(selectedDeals).map(id => deals.find(d => d.id === id)!).filter(Boolean) : undefined}
-              onRefresh={onRefresh}
-            />
-          </div>
         </div>
       </div>
 

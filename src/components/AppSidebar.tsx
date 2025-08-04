@@ -1,15 +1,15 @@
+
 import { 
   Home, 
   Users, 
   UserPlus, 
   BarChart3, 
-  Activity, 
   Settings,
   LogOut,
   Pin,
   PinOff
 } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import {
@@ -23,14 +23,13 @@ const menuItems = [
   { title: "Contacts", url: "/contacts", icon: Users },
   { title: "Leads", url: "/leads", icon: UserPlus },
   { title: "Deals", url: "/deals", icon: BarChart3 },
-  { title: "Feeds", url: "/feeds", icon: Activity },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
-  const [isExpanded, setIsExpanded] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const currentPath = location.pathname;
 
@@ -42,8 +41,12 @@ export function AppSidebar() {
   };
 
   const handleSignOut = async () => {
+    console.log('Sign out clicked');
     await signOut();
-    window.location.href = '/auth';
+  };
+
+  const handleLogoClick = () => {
+    navigate('/');
   };
 
   const getUserDisplayName = () => {
@@ -52,67 +55,31 @@ export function AppSidebar() {
 
   const togglePin = () => {
     setIsPinned(!isPinned);
-    if (!isPinned) {
-      setIsExpanded(true);
-    }
-  };
-
-  const handleMouseEnter = () => {
-    if (!isPinned) {
-      setIsExpanded(true);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (!isPinned) {
-      setIsExpanded(false);
-    }
   };
 
   return (
     <div 
-      className="h-screen flex flex-col border-r border-gray-200"
+      className="h-screen flex flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out"
       style={{ 
-        width: isExpanded ? '220px' : '60px',
-        backgroundColor: '#ffffff',
-        transition: 'width 0.3s ease-in-out'
+        width: isPinned ? '220px' : '60px',
+        minWidth: isPinned ? '220px' : '60px',
+        maxWidth: isPinned ? '220px' : '60px'
       }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-300 relative" style={{ height: '72px', padding: '0 16px' }}>
-        <div className="flex items-center">
+        <div className="flex items-center cursor-pointer" onClick={handleLogoClick}>
           <img 
             src="/lovable-uploads/12bdcc4a-a1c8-4ccf-ba6a-931fd566d3c8.png" 
             alt="Logo" 
             className="w-8 h-8 flex-shrink-0 object-contain"
           />
-          {isExpanded && (
-            <span className="ml-3 text-gray-800 font-semibold text-lg whitespace-nowrap" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+          {isPinned && (
+            <span className="ml-3 text-gray-800 font-semibold text-lg whitespace-nowrap opacity-100 transition-opacity duration-300" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
               RealThingks
             </span>
           )}
         </div>
-        {isExpanded && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={togglePin}
-                className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
-                  isPinned 
-                    ? 'text-blue-700 bg-blue-100 hover:bg-blue-200' 
-                    : 'text-gray-500 hover:text-blue-700 hover:bg-blue-50'
-                }`}
-              >
-                {isPinned ? <Pin className="w-4 h-4" /> : <PinOff className="w-4 h-4" />}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <p>{isPinned ? 'Unpin sidebar' : 'Pin sidebar'}</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
       </div>
 
       {/* Menu Items */}
@@ -124,40 +91,43 @@ export function AppSidebar() {
               <NavLink
                 to={item.url}
                  className={`
-                  flex items-center rounded-lg relative
+                  flex items-center rounded-lg relative transition-colors duration-200
                   ${active 
                     ? 'text-blue-700 bg-blue-100' 
                     : 'text-gray-600 hover:text-blue-700 hover:bg-blue-50'
                   }
                 `}
                 style={{ 
-                  paddingLeft: '0px',
-                  paddingRight: isExpanded ? '16px' : '0px',
+                  paddingLeft: isPinned ? '16px' : '0px',
+                  paddingRight: isPinned ? '16px' : '0px',
                   paddingTop: '10px',
                   paddingBottom: '10px',
                   minHeight: '44px',
                   fontFamily: 'Inter, system-ui, sans-serif',
                   fontSize: '15px',
-                  fontWeight: '500',
-                  transition: 'none'
+                  fontWeight: '500'
                 }}
               >
-                <item.icon 
-                  className="w-5 h-5" 
+                <div 
+                  className="flex items-center justify-center"
                   style={{ 
-                    position: 'absolute',
-                    left: '17.5px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
+                    width: isPinned ? '20px' : '60px',
+                    height: '20px',
                     minWidth: '20px',
-                    minHeight: '20px',
-                    transition: 'none'
-                  }} 
-                />
-                {isExpanded && (
+                    minHeight: '20px'
+                  }}
+                >
+                  <item.icon 
+                    className="w-5 h-5" 
+                    style={{ 
+                      minWidth: '20px',
+                      minHeight: '20px'
+                    }} 
+                  />
+                </div>
+                {isPinned && (
                   <span 
-                    className="ml-16"
-                    style={{ transition: 'none' }}
+                    className="ml-3 opacity-100 transition-opacity duration-300"
                   >
                     {item.title}
                   </span>
@@ -165,7 +135,7 @@ export function AppSidebar() {
               </NavLink>
             );
 
-            if (!isExpanded) {
+            if (!isPinned) {
               return (
                 <Tooltip key={item.title}>
                   <TooltipTrigger asChild>
@@ -187,15 +157,37 @@ export function AppSidebar() {
         </nav>
       </div>
 
-      {/* Bottom Section - User & Sign Out */}
-      <div className="border-t border-gray-300 p-4 relative">
-        {!isExpanded ? (
+      {/* Bottom Section - Pin Toggle & User & Sign Out */}
+      <div className="border-t border-gray-300 p-4 space-y-3 relative">
+        {/* Pin Toggle Button - Always bottom-left aligned */}
+        <div className="flex" style={{ justifyContent: isPinned ? 'flex-start' : 'flex-start', paddingLeft: isPinned ? '0px' : '6px' }}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={togglePin}
+                className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
+                  isPinned 
+                    ? 'text-blue-700 bg-blue-100 hover:bg-blue-200' 
+                    : 'text-gray-500 hover:text-blue-700 hover:bg-blue-50'
+                }`}
+              >
+                {isPinned ? <Pin className="w-4 h-4" /> : <PinOff className="w-4 h-4" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side={isPinned ? "bottom" : "right"}>
+              <p>{isPinned ? 'Unpin sidebar' : 'Pin sidebar'}</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        {/* User & Sign Out */}
+        {!isPinned ? (
           <div className="flex justify-center">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={handleSignOut}
-                  className="flex items-center justify-center w-10 h-10 text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg"
+                  className="flex items-center justify-center w-10 h-10 text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
                   style={{ minWidth: '40px', minHeight: '40px' }}
                 >
                   <LogOut className="w-5 h-5" />
@@ -210,7 +202,7 @@ export function AppSidebar() {
           <div className="flex items-center relative" style={{ minHeight: '40px' }}>
             <button
               onClick={handleSignOut}
-              className="flex items-center justify-center text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg"
+              className="flex items-center justify-center text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
               style={{ 
                 position: 'absolute',
                 left: '6px',
@@ -222,7 +214,7 @@ export function AppSidebar() {
               <LogOut className="w-5 h-5" />
             </button>
             <p 
-              className="text-gray-700 text-sm font-medium truncate ml-16"
+              className="text-gray-700 text-sm font-medium truncate ml-16 opacity-100 transition-opacity duration-300"
               style={{ 
                 fontFamily: 'Inter, system-ui, sans-serif',
                 fontSize: '15px'
