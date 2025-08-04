@@ -151,7 +151,7 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
       const saveData = {
         ...formData,
         deal_name: formData.project_name || formData.deal_name || 'Untitled Deal',
-        modified_at: new Date().toISOString(),
+        modified_time: new Date().toISOString(),
         modified_by: deal?.created_by || formData.created_by
       };
       
@@ -198,7 +198,7 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
           ...formData,
           stage: nextStage,
           deal_name: formData.project_name || formData.deal_name || 'Untitled Deal',
-          modified_at: new Date().toISOString(),
+          modified_time: new Date().toISOString(),
           modified_by: deal?.created_by || formData.created_by
         };
         
@@ -236,7 +236,7 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
         ...formData,
         stage: finalStage,
         deal_name: formData.project_name || formData.deal_name || 'Untitled Deal',
-        modified_at: new Date().toISOString(),
+        modified_time: new Date().toISOString(),
         modified_by: deal?.created_by || formData.created_by
       };
       
@@ -276,7 +276,7 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
         ...formData,
         stage: targetStage,
         deal_name: formData.project_name || formData.deal_name || 'Untitled Deal',
-        modified_at: new Date().toISOString(),
+        modified_time: new Date().toISOString(),
         modified_by: deal?.created_by || formData.created_by
       };
       

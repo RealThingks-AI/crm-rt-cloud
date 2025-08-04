@@ -12,7 +12,7 @@ export interface Deal {
   deal_name: string;
   stage: DealStage;
   
-  // Lead stage fields
+  // Lead stage fields - match DB schema exactly
   project_name?: string;
   customer_name?: string;
   lead_name?: string;
@@ -34,7 +34,7 @@ export interface Deal {
   decision_maker_level?: 'Open' | 'Ongoing' | 'Done';
   is_recurring?: 'Yes' | 'No' | 'Unclear';
   
-  // RFQ stage fields
+  // RFQ stage fields - match DB schema exactly
   total_contract_value?: number;
   currency_type?: 'EUR' | 'USD' | 'INR';
   start_date?: string;
@@ -49,7 +49,7 @@ export interface Deal {
   current_status?: string;
   closing?: string;
   
-  // Won stage fields
+  // Won stage fields - match DB schema exactly
   won_reason?: string;
   quarterly_revenue_q1?: number;
   quarterly_revenue_q2?: number;

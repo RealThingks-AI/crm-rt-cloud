@@ -8,10 +8,9 @@ import { KanbanBoard } from "@/components/KanbanBoard";
 import { ListView } from "@/components/ListView";
 import { DealForm } from "@/components/DealForm";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ImportExportBar } from "@/components/ImportExportBar";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, BarChart3, Users, Euro } from "lucide-react";
+import { Plus } from "lucide-react";
 
 const DealsPage = () => {
   const { user, loading: authLoading } = useAuth();
@@ -32,7 +31,7 @@ const DealsPage = () => {
       const { data, error } = await supabase
         .from('deals')
         .select('*')
-        .order('modified_at', { ascending: false });
+        .order('modified_time', { ascending: false });
 
       if (error) {
         toast({
@@ -59,7 +58,7 @@ const DealsPage = () => {
     try {
       const { error } = await supabase
         .from('deals')
-        .update({ ...updates, modified_at: new Date().toISOString() })
+        .update({ ...updates, modified_time: new Date().toISOString() })
         .eq('id', dealId);
 
       if (error) throw error;
@@ -97,7 +96,7 @@ const DealsPage = () => {
         const updateData = {
           ...dealData,
           deal_name: dealData.project_name || selectedDeal.project_name || 'Untitled Deal',
-          modified_at: new Date().toISOString(),
+          modified_time: new Date().toISOString(),
           modified_by: user?.id
         };
         
@@ -299,7 +298,6 @@ const DealsPage = () => {
               </Button>
             </div>
           </div>
-
         </div>
       </div>
 

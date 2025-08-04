@@ -15,7 +15,7 @@ const Feeds = () => {
         <CardContent>
           <div className="flex justify-center items-center h-32">
             <div className="text-muted-foreground">
-              Feeds module will be implemented here.
+              Coming soon - Feeds functionality will be implemented here.
             </div>
           </div>
         </CardContent>

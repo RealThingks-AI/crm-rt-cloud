@@ -15,7 +15,7 @@ const Meetings = () => {
         <CardContent>
           <div className="flex justify-center items-center h-32">
             <div className="text-muted-foreground">
-              Meetings module will be implemented here.
+              Coming soon - Meetings functionality will be implemented here.
             </div>
           </div>
         </CardContent>
