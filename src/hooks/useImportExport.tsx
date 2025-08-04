@@ -1,4 +1,3 @@
-
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -72,7 +71,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
       }
       
       if (invalidHeaders.length > 0) {
-        const systemFields = ['created_time', 'modified_time', 'created_by', 'modified_by'];
+        const systemFields = ['created_at', 'modified_at', 'created_by', 'modified_by'];
         const otherIgnored = invalidHeaders.filter(h => !systemFields.includes(h.original.toLowerCase()));
         
         if (otherIgnored.length > 0) {
@@ -154,7 +153,7 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
                 let updateData = { ...record };
                 delete updateData.id; // Don't update the ID field itself
                 updateData.modified_by = user?.id || '00000000-0000-0000-0000-000000000000';
-                updateData.modified_time = new Date().toISOString();
+                updateData.modified_at = new Date().toISOString();
 
                 console.log(`Row ${i + 1}: Update data prepared:`, updateData);
 
@@ -211,6 +210,8 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
                   record[field] = `Contact ${i + 1}`;
                 } else if (field === 'lead_name') {
                   record[field] = `Lead ${i + 1}`;
+                } else if (field === 'title') {
+                  record[field] = `Meeting ${i + 1}`;
                 }
               });
               
@@ -224,7 +225,9 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
             }
             
             record.created_by = user?.id || '00000000-0000-0000-0000-000000000000';
-            record.modified_by = user?.id || null;
+            if (tableName !== 'meetings') {
+              record.modified_by = user?.id || null;
+            }
 
             // Check for duplicates before insertion
             const isDuplicate = await checkDuplicate(record);
@@ -253,6 +256,11 @@ export const useImportExport = ({ moduleName, onRefresh, tableName = 'contacts_m
           } else if (tableName === 'leads') {
             insertResult = await supabase
               .from('leads')
+              .insert([record])
+              .select('id');
+          } else if (tableName === 'meetings') {
+            insertResult = await supabase
+              .from('meetings')
               .insert([record])
               .select('id');
           } else {
