@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -8,13 +8,41 @@ import { useToast } from "@/hooks/use-toast";
 import { Palette, Sun, Moon, Monitor } from "lucide-react";
 
 const PreferencesSettings = () => {
-  const [theme, setTheme] = useState("auto");
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("theme") || "auto";
+  });
   const { toast } = useToast();
 
-  const handleSavePreferences = () => {
-    // Here you would typically save to a backend or local storage
+  const applyTheme = (newTheme: string) => {
+    const root = window.document.documentElement;
+    root.classList.remove("light", "dark");
+    
+    if (newTheme === "auto") {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      root.classList.add(systemTheme);
+    } else {
+      root.classList.add(newTheme);
+    }
+  };
+
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+
+  const handleThemeChange = (newTheme: string) => {
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+    applyTheme(newTheme);
     toast({
-      title: "Preferences Updated",
+      title: "Theme Updated",
+      description: `Theme changed to ${newTheme === "auto" ? "system default" : newTheme}.`,
+    });
+  };
+
+  const handleSavePreferences = () => {
+    localStorage.setItem("theme", theme);
+    toast({
+      title: "Preferences Saved",
       description: "Your preferences have been saved successfully.",
     });
   };
@@ -37,7 +65,7 @@ const PreferencesSettings = () => {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="theme-select">Theme</Label>
-            <Select value={theme} onValueChange={setTheme}>
+            <Select value={theme} onValueChange={handleThemeChange}>
               <SelectTrigger id="theme-select">
                 <SelectValue placeholder="Select theme" />
               </SelectTrigger>

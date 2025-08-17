@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Shield, LogOut, Smartphone } from "lucide-react";
 
 const SecuritySettings = () => {
-  const [sessions] = useState([
+  const [sessions, setSessions] = useState([
     {
       id: "1",
       device: "Chrome on Windows",
@@ -34,6 +34,9 @@ const SecuritySettings = () => {
   const { toast } = useToast();
 
   const handleEndSession = (sessionId: string) => {
+    setSessions(prevSessions => 
+      prevSessions.filter(session => session.id !== sessionId)
+    );
     toast({
       title: "Session Ended",
       description: "The session has been terminated successfully.",
@@ -41,6 +44,9 @@ const SecuritySettings = () => {
   };
 
   const handleEndAllSessions = () => {
+    setSessions(prevSessions => 
+      prevSessions.filter(session => session.current)
+    );
     toast({
       title: "All Sessions Ended",
       description: "All other sessions have been terminated.",

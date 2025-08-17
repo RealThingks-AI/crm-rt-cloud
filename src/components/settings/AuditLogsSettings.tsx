@@ -64,10 +64,53 @@ const AuditLogsSettings = () => {
     },
   ]);
 
+  // Filter logs based on search term and type
+  const filteredActivityLogs = activityLogs.filter(log => {
+    const matchesSearch = searchTerm === "" || 
+      log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.resource.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
+
+  const filteredErrorLogs = errorLogs.filter(log => {
+    const matchesSearch = searchTerm === "" || 
+      log.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.source.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.level.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
+
   const handleExportAuditTrail = () => {
+    const dataToExport = logType === "activity" ? filteredActivityLogs : 
+                        logType === "error" ? filteredErrorLogs : 
+                        [...filteredActivityLogs, ...filteredErrorLogs];
+    
+    // Create CSV content
+    const csvContent = "data:text/csv;charset=utf-8," + 
+      (logType === "activity" || logType === "all" ? 
+        "Type,Timestamp,User,Action,Resource,Status,IP\n" +
+        filteredActivityLogs.map(log => 
+          `Activity,${log.timestamp},${log.user},${log.action},${log.resource},${log.status},${log.ip}`
+        ).join("\n") : "") +
+      (logType === "all" ? "\n" : "") +
+      (logType === "error" || logType === "all" ? 
+        (logType === "all" ? "" : "Type,Timestamp,Level,Message,Source,Details\n") +
+        filteredErrorLogs.map(log => 
+          `Error,${log.timestamp},${log.level},${log.message},${log.source},${log.stack}`
+        ).join("\n") : "");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `audit-logs-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
     toast({
-      title: "Export Started",
-      description: "Your audit trail export is being prepared. You'll receive an email when ready.",
+      title: "Export Complete",
+      description: "Your audit trail has been exported successfully.",
     });
   };
 
@@ -157,7 +200,7 @@ const AuditLogsSettings = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {activityLogs.map((log) => (
+                  {filteredActivityLogs.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell className="font-mono text-sm">
                         {log.timestamp}
@@ -202,7 +245,7 @@ const AuditLogsSettings = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {errorLogs.map((log) => (
+                  {filteredErrorLogs.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell className="font-mono text-sm">
                         {log.timestamp}
