@@ -1,35 +1,36 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Palette, 
+  Upload, 
   Eye, 
-  EyeOff, 
-  Upload,
-  Settings,
-  Monitor
+  EyeOff,
+  Image,
+  Paintbrush,
+  Layout
 } from "lucide-react";
 
 const CustomizationSettings = () => {
   const { toast } = useToast();
   const [modules, setModules] = useState({
     dashboard: true,
-    leads: true,
     contacts: true,
+    leads: true,
     deals: true,
     meetings: true,
-    reports: false
+    reports: false,
+    analytics: true
   });
-
-  const [branding, setBranding] = useState({
-    companyName: "Your Company",
-    primaryColor: "#3b82f6",
-    secondaryColor: "#64748b"
+  const [themeColors, setThemeColors] = useState({
+    primary: "#3b82f6",
+    secondary: "#64748b",
+    accent: "#06b6d4"
   });
 
   const handleModuleToggle = (module: string) => {
@@ -41,14 +42,14 @@ const CustomizationSettings = () => {
 
   const handleSaveCustomization = () => {
     toast({
-      title: "Customization saved",
-      description: "Your customization settings have been updated successfully.",
+      title: "Customization Saved",
+      description: "Your customization settings have been applied successfully.",
     });
   };
 
   const handleLogoUpload = () => {
     toast({
-      title: "Logo upload",
+      title: "Logo Upload",
       description: "Logo upload functionality would be implemented here.",
     });
   };
@@ -58,7 +59,7 @@ const CustomizationSettings = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Eye className="w-5 h-5" />
+            <Layout className="w-5 h-5" />
             Module Visibility
           </CardTitle>
         </CardHeader>
@@ -67,22 +68,16 @@ const CustomizationSettings = () => {
             Control which modules are visible in your CRM interface.
           </p>
           
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {Object.entries(modules).map(([module, enabled]) => (
-              <div key={module} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Monitor className="w-4 h-4 text-muted-foreground" />
-                  <div>
-                    <Label className="text-base font-medium capitalize">{module}</Label>
-                    <p className="text-sm text-muted-foreground">
-                      {module === 'dashboard' && 'Main dashboard and analytics'}
-                      {module === 'leads' && 'Lead management and tracking'}
-                      {module === 'contacts' && 'Contact management'}
-                      {module === 'deals' && 'Deal pipeline and management'}
-                      {module === 'meetings' && 'Meeting scheduling and tracking'}
-                      {module === 'reports' && 'Advanced reporting and analytics'}
-                    </p>
-                  </div>
+              <div key={module} className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center gap-2">
+                  {enabled ? (
+                    <Eye className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <EyeOff className="w-4 h-4 text-muted-foreground" />
+                  )}
+                  <span className="font-medium capitalize">{module}</span>
                 </div>
                 <Switch
                   checked={enabled}
@@ -97,99 +92,170 @@ const CustomizationSettings = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Palette className="w-5 h-5" />
-            Branding & Theme
+            <Image className="w-5 h-5" />
+            Branding
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
+              <Label>Company Logo</Label>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 border-2 border-dashed border-muted rounded-lg flex items-center justify-center">
+                  <Image className="w-6 h-6 text-muted-foreground" />
+                </div>
+                <div className="space-y-2">
+                  <Button onClick={handleLogoUpload} className="flex items-center gap-2">
+                    <Upload className="w-4 h-4" />
+                    Upload Logo
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Recommended: 256x256px, PNG or SVG format
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
               <Label htmlFor="company-name">Company Name</Label>
               <Input
                 id="company-name"
-                value={branding.companyName}
-                onChange={(e) => setBranding(prev => ({...prev, companyName: e.target.value}))}
-                placeholder="Enter company name"
+                placeholder="Your Company Name"
+                defaultValue="RealThingks"
               />
             </div>
+          </div>
+        </CardContent>
+      </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Paintbrush className="w-5 h-5" />
+            Theme Colors
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Customize the color scheme of your CRM interface.
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label>Company Logo</Label>
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-muted rounded border flex items-center justify-center">
-                  <Settings className="w-6 h-6 text-muted-foreground" />
-                </div>
-                <Button variant="outline" onClick={handleLogoUpload}>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Logo
-                </Button>
+              <Label htmlFor="primary-color">Primary Color</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  id="primary-color"
+                  value={themeColors.primary}
+                  onChange={(e) => setThemeColors({...themeColors, primary: e.target.value})}
+                  className="w-12 h-10 border rounded cursor-pointer"
+                />
+                <Input
+                  value={themeColors.primary}
+                  onChange={(e) => setThemeColors({...themeColors, primary: e.target.value})}
+                  placeholder="#3b82f6"
+                />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Recommended size: 200x200px, PNG or JPG format
-              </p>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="primary-color">Primary Color</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="primary-color"
-                    type="color"
-                    value={branding.primaryColor}
-                    onChange={(e) => setBranding(prev => ({...prev, primaryColor: e.target.value}))}
-                    className="w-16 h-10 p-1 border"
-                  />
-                  <Input
-                    value={branding.primaryColor}
-                    onChange={(e) => setBranding(prev => ({...prev, primaryColor: e.target.value}))}
-                    placeholder="#3b82f6"
-                  />
-                </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="secondary-color">Secondary Color</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  id="secondary-color"
+                  value={themeColors.secondary}
+                  onChange={(e) => setThemeColors({...themeColors, secondary: e.target.value})}
+                  className="w-12 h-10 border rounded cursor-pointer"
+                />
+                <Input
+                  value={themeColors.secondary}
+                  onChange={(e) => setThemeColors({...themeColors, secondary: e.target.value})}
+                  placeholder="#64748b"
+                />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="secondary-color">Secondary Color</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="secondary-color"
-                    type="color"
-                    value={branding.secondaryColor}
-                    onChange={(e) => setBranding(prev => ({...prev, secondaryColor: e.target.value}))}
-                    className="w-16 h-10 p-1 border"
-                  />
-                  <Input
-                    value={branding.secondaryColor}
-                    onChange={(e) => setBranding(prev => ({...prev, secondaryColor: e.target.value}))}
-                    placeholder="#64748b"
-                  />
-                </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="accent-color">Accent Color</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  id="accent-color"
+                  value={themeColors.accent}
+                  onChange={(e) => setThemeColors({...themeColors, accent: e.target.value})}
+                  className="w-12 h-10 border rounded cursor-pointer"
+                />
+                <Input
+                  value={themeColors.accent}
+                  onChange={(e) => setThemeColors({...themeColors, accent: e.target.value})}
+                  placeholder="#06b6d4"
+                />
               </div>
             </div>
           </div>
+          
+          <div className="p-4 border rounded-lg">
+            <h4 className="font-medium mb-2">Preview</h4>
+            <div className="flex gap-2">
+              <div 
+                className="w-12 h-8 rounded border"
+                style={{ backgroundColor: themeColors.primary }}
+              />
+              <div 
+                className="w-12 h-8 rounded border"
+                style={{ backgroundColor: themeColors.secondary }}
+              />
+              <div 
+                className="w-12 h-8 rounded border"
+                style={{ backgroundColor: themeColors.accent }}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-          <div className="pt-4 border-t">
-            <h4 className="font-medium mb-3">Preview</h4>
-            <div className="p-4 border rounded-lg space-y-2">
-              <div 
-                className="h-8 rounded flex items-center px-3 text-white font-medium"
-                style={{ backgroundColor: branding.primaryColor }}
-              >
-                {branding.companyName} CRM
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="w-5 h-5" />
+            Layout Preferences
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-base font-medium">Compact Mode</Label>
+                <p className="text-sm text-muted-foreground">Reduce spacing and padding for more content</p>
               </div>
-              <div 
-                className="h-6 rounded flex items-center px-3 text-white text-sm"
-                style={{ backgroundColor: branding.secondaryColor }}
-              >
-                Sample navigation item
+              <Switch />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-base font-medium">Fixed Sidebar</Label>
+                <p className="text-sm text-muted-foreground">Keep sidebar pinned on larger screens</p>
               </div>
+              <Switch defaultChecked />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-base font-medium">Show Tooltips</Label>
+                <p className="text-sm text-muted-foreground">Display helpful tooltips throughout the interface</p>
+              </div>
+              <Switch defaultChecked />
             </div>
           </div>
         </CardContent>
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={handleSaveCustomization}>Save Customization</Button>
+        <Button onClick={handleSaveCustomization}>
+          Save Customization Settings
+        </Button>
       </div>
     </div>
   );

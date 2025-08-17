@@ -22,53 +22,51 @@ import CustomizationSettings from "@/components/settings/CustomizationSettings";
 
 const Settings = () => {
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="mb-8">
+      <div>
         <h1 className="text-3xl font-bold text-foreground mb-2">Settings</h1>
         <p className="text-muted-foreground">Manage your account and application preferences</p>
       </div>
 
       {/* Settings Tabs */}
-      <Tabs defaultValue="user-management" className="w-full space-y-6">
-        <div className="overflow-x-auto">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-8 min-w-[800px] h-auto p-1">
-            <TabsTrigger value="user-management" className="flex items-center gap-2 px-3 py-2 text-sm">
-              <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Users</span>
-            </TabsTrigger>
-            <TabsTrigger value="preferences" className="flex items-center gap-2 px-3 py-2 text-sm">
-              <SettingsIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">Preferences</span>
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center gap-2 px-3 py-2 text-sm">
-              <Bell className="w-4 h-4" />
-              <span className="hidden sm:inline">Notifications</span>
-            </TabsTrigger>
-            <TabsTrigger value="data-storage" className="flex items-center gap-2 px-3 py-2 text-sm">
-              <Database className="w-4 h-4" />
-              <span className="hidden sm:inline">Data</span>
-            </TabsTrigger>
-            <TabsTrigger value="integrations" className="flex items-center gap-2 px-3 py-2 text-sm">
-              <Link className="w-4 h-4" />
-              <span className="hidden sm:inline">Integrations</span>
-            </TabsTrigger>
-            <TabsTrigger value="security" className="flex items-center gap-2 px-3 py-2 text-sm">
-              <Shield className="w-4 h-4" />
-              <span className="hidden sm:inline">Security</span>
-            </TabsTrigger>
-            <TabsTrigger value="audit-logs" className="flex items-center gap-2 px-3 py-2 text-sm">
-              <FileText className="w-4 h-4" />
-              <span className="hidden sm:inline">Audit</span>
-            </TabsTrigger>
-            <TabsTrigger value="customization" className="flex items-center gap-2 px-3 py-2 text-sm">
-              <Palette className="w-4 h-4" />
-              <span className="hidden sm:inline">Customize</span>
-            </TabsTrigger>
-          </TabsList>
-        </div>
+      <Tabs defaultValue="user-management" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 mb-6">
+          <TabsTrigger value="user-management" className="flex items-center gap-1">
+            <Users className="w-4 h-4" />
+            <span className="hidden sm:inline">Users</span>
+          </TabsTrigger>
+          <TabsTrigger value="preferences" className="flex items-center gap-1">
+            <SettingsIcon className="w-4 h-4" />
+            <span className="hidden sm:inline">Preferences</span>
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="flex items-center gap-1">
+            <Bell className="w-4 h-4" />
+            <span className="hidden sm:inline">Notifications</span>
+          </TabsTrigger>
+          <TabsTrigger value="data-storage" className="flex items-center gap-1">
+            <Database className="w-4 h-4" />
+            <span className="hidden sm:inline">Data</span>
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="flex items-center gap-1">
+            <Link className="w-4 h-4" />
+            <span className="hidden sm:inline">Integrations</span>
+          </TabsTrigger>
+          <TabsTrigger value="security" className="flex items-center gap-1">
+            <Shield className="w-4 h-4" />
+            <span className="hidden sm:inline">Security</span>
+          </TabsTrigger>
+          <TabsTrigger value="audit-logs" className="flex items-center gap-1">
+            <FileText className="w-4 h-4" />
+            <span className="hidden sm:inline">Audit</span>
+          </TabsTrigger>
+          <TabsTrigger value="customization" className="flex items-center gap-1">
+            <Palette className="w-4 h-4" />
+            <span className="hidden sm:inline">Customize</span>
+          </TabsTrigger>
+        </TabsList>
 
-        <TabsContent value="user-management" className="mt-6">
+        <TabsContent value="user-management">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -82,31 +80,31 @@ const Settings = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="preferences" className="mt-6">
+        <TabsContent value="preferences">
           <PreferencesSettings />
         </TabsContent>
 
-        <TabsContent value="notifications" className="mt-6">
+        <TabsContent value="notifications">
           <NotificationsSettings />
         </TabsContent>
 
-        <TabsContent value="data-storage" className="mt-6">
+        <TabsContent value="data-storage">
           <DataStorageSettings />
         </TabsContent>
 
-        <TabsContent value="integrations" className="mt-6">
+        <TabsContent value="integrations">
           <IntegrationsSettings />
         </TabsContent>
 
-        <TabsContent value="security" className="mt-6">
+        <TabsContent value="security">
           <SecuritySettings />
         </TabsContent>
 
-        <TabsContent value="audit-logs" className="mt-6">
+        <TabsContent value="audit-logs">
           <AuditLogsSettings />
         </TabsContent>
 
-        <TabsContent value="customization" className="mt-6">
+        <TabsContent value="customization">
           <CustomizationSettings />
         </TabsContent>
       </Tabs>
