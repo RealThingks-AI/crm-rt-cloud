@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,6 +24,7 @@ const leadSchema = z.object({
   industry: z.string().optional(),
   country: z.string().optional(),
   description: z.string().optional(),
+  lead_status: z.string().optional(),
 });
 
 type LeadFormData = z.infer<typeof leadSchema>;
@@ -40,6 +42,7 @@ interface Lead {
   industry?: string;
   country?: string;
   description?: string;
+  lead_status?: string;
 }
 
 interface LeadModalProps {
@@ -50,13 +53,11 @@ interface LeadModalProps {
 }
 
 const leadSources = [
+  "LinkedIn",
   "Website",
   "Referral", 
   "Social Media",
   "Email Campaign",
-  "Trade Show",
-  "Cold Call",
-  "LinkedIn",
   "Other"
 ];
 
@@ -76,10 +77,13 @@ const regions = [
   "EU",
   "US", 
   "ASIA",
-  "APAC",
-  "LATAM",
-  "MEA",
   "Other"
+];
+
+const leadStatuses = [
+  "New",
+  "Contacted",
+  "Converted"
 ];
 
 export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProps) => {
@@ -100,6 +104,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
       industry: "Automotive",
       country: "EU",
       description: "",
+      lead_status: "New",
     },
   });
 
@@ -117,6 +122,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         industry: lead.industry || "Automotive",
         country: lead.country || "EU",
         description: lead.description || "",
+        lead_status: lead.lead_status || "New",
       });
     } else {
       form.reset({
@@ -131,6 +137,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         industry: "Automotive",
         country: "EU",
         description: "",
+        lead_status: "New",
       });
     }
   }, [lead, form]);
@@ -161,6 +168,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
         industry: data.industry || null,
         country: data.country || null,
         description: data.description || null,
+        lead_status: data.lead_status || 'New',
         created_by: user.data.user.id,
         modified_by: user.data.user.id,
         contact_owner: user.data.user.id,
@@ -228,7 +236,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                   <FormItem>
                     <FormLabel>Lead Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Doe" {...field} />
+                      <Input placeholder="Lead Name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -242,7 +250,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                   <FormItem>
                     <FormLabel>Company Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Acme Corp" {...field} />
+                      <Input placeholder="Company Name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -270,7 +278,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                   <FormItem>
                     <FormLabel>Email *</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="john@acme.com" {...field} />
+                      <Input type="email" placeholder=" " {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -298,7 +306,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                   <FormItem>
                     <FormLabel>LinkedIn Profile</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://linkedin.com/in/johndoe" {...field} />
+                      <Input placeholder="https://linkedin.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -312,7 +320,7 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                   <FormItem>
                     <FormLabel>Website</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://acme.com" {...field} />
+                      <Input placeholder="https://realthingks.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -385,6 +393,31 @@ export const LeadModal = ({ open, onOpenChange, lead, onSuccess }: LeadModalProp
                         {regions.map((region) => (
                           <SelectItem key={region} value={region}>
                             {region}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="lead_status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lead Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="New" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {leadStatuses.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status}
                           </SelectItem>
                         ))}
                       </SelectContent>

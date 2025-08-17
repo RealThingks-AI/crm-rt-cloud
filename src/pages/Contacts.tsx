@@ -1,13 +1,12 @@
-
 import { ContactTable } from "@/components/ContactTable";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Settings, Download, Upload, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useImportExport } from "@/hooks/useImportExport";
+import { useSimpleContactsImportExport } from "@/hooks/useSimpleContactsImportExport";
 
 const Contacts = () => {
   const { toast } = useToast();
@@ -15,67 +14,55 @@ const Contacts = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  console.log('Contacts page: Rendering');
+  console.log('Contacts page: Rendering with refreshTrigger:', refreshTrigger);
 
-  // Use the import/export hook
-  const { handleImport, handleExportAll } = useImportExport({
-    moduleName: 'contacts',
-    tableName: 'contacts',
-    onRefresh: () => {
-      console.log('Contacts page: Import hook triggering refresh...');
-      setRefreshTrigger(prev => prev + 1);
-    }
-  });
+  const onRefresh = () => {
+    console.log('Contacts page: Triggering refresh...');
+    setRefreshTrigger(prev => {
+      const newTrigger = prev + 1;
+      console.log('Contacts page: Refresh trigger updated from', prev, 'to', newTrigger);
+      return newTrigger;
+    });
+  };
+
+  const { handleImport, handleExport, isImporting } = useSimpleContactsImportExport(onRefresh);
+
+  const handleImportClick = () => {
+    console.log('Contacts page: Import clicked, opening file dialog');
+    fileInputRef.current?.click();
+  };
 
   const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    console.log('Contacts page: File selected for import:', file?.name);
+    
+    if (!file) {
+      console.log('Contacts page: No file selected, returning');
+      return;
+    }
 
-    console.log('Contacts page: Starting CSV import with file:', file.name);
+    console.log('Contacts page: Starting CSV import process with file:', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: new Date(file.lastModified).toISOString()
+    });
     
     try {
+      console.log('Contacts page: Calling handleImport from hook');
       await handleImport(file);
+      
+      // Reset the file input to allow reimporting the same file
       event.target.value = '';
-    } catch (error) {
-      console.error('Import error:', error);
-      toast({
-        title: "Import Error",
-        description: "Failed to import contacts. Please check your CSV format.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleExportContacts = async () => {
-    try {
-      const { data: contacts, error } = await supabase
-        .from('contacts')
-        .select('*')
-        .order('created_time', { ascending: false });
-
-      if (error) {
-        console.error('Database fetch error:', error);
-        throw error;
-      }
-
-      if (!contacts || contacts.length === 0) {
-        toast({
-          title: "No Data",
-          description: "No contacts available to export",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      await handleExportAll(contacts);
-    } catch (error) {
-      console.error('Export error:', error);
-      toast({
-        title: "Export Error",
-        description: "Failed to export contacts. Please try again.",
-        variant: "destructive",
-      });
+      console.log('Contacts page: File input reset');
+      
+    } catch (error: any) {
+      console.error('Contacts page: Import error caught:', error);
+      
+      // Reset file input on error too
+      event.target.value = '';
     }
   };
 
@@ -112,7 +99,7 @@ const Contacts = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Contacts</h1>
-          <p className="text-muted-foreground">Manage your contact database</p>
+          <p className="text-muted-foreground"> </p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -125,27 +112,19 @@ const Contacts = () => {
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="default">
+              <Button variant="default" disabled={isImporting}>
                 <Download className="w-4 h-4 mr-2" />
-                Action
+                {isImporting ? 'Importing...' : 'Action'}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem asChild>
-                <label className="flex items-center cursor-pointer">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Import CSV
-                  <Input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleImportCSV}
-                    className="hidden"
-                  />
-                </label>
+              <DropdownMenuItem onClick={handleImportClick} disabled={isImporting}>
+                <Upload className="w-4 h-4 mr-2" />
+                Import CSV
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportContacts}>
+              <DropdownMenuItem onClick={handleExport}>
                 <Download className="w-4 h-4 mr-2" />
-                Export All
+                Export CSV
               </DropdownMenuItem>
               {selectedContacts.length > 0 && (
                 <DropdownMenuItem 
@@ -166,13 +145,22 @@ const Contacts = () => {
         </div>
       </div>
 
+      {/* Hidden file input for CSV import */}
+      <Input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv"
+        onChange={handleImportCSV}
+        className="hidden"
+        disabled={isImporting}
+      />
+
       {/* Contact Table */}
       <ContactTable 
         showColumnCustomizer={showColumnCustomizer}
         setShowColumnCustomizer={setShowColumnCustomizer}
         showModal={showModal}
         setShowModal={setShowModal}
-        onExportReady={() => {}}
         selectedContacts={selectedContacts}
         setSelectedContacts={setSelectedContacts}
         refreshTrigger={refreshTrigger}

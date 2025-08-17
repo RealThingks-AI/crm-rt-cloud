@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,7 +22,7 @@ const contactSchema = z.object({
   website: z.string().url("Invalid website URL").optional().or(z.literal("")),
   contact_source: z.string().optional(),
   industry: z.string().optional(),
-  country: z.string().optional(),
+  region: z.string().optional(), // Changed from country to region
   description: z.string().optional(),
 });
 
@@ -38,7 +39,7 @@ interface Contact {
   website?: string;
   contact_source?: string;
   industry?: string;
-  country?: string;
+  region?: string; // Changed from country to region
   description?: string;
 }
 
@@ -50,25 +51,18 @@ interface ContactModalProps {
 }
 
 const contactSources = [
+  "LinkedIn",
   "Website",
   "Referral", 
   "Social Media",
   "Email Campaign",
-  "Trade Show",
-  "Cold Call",
-  "LinkedIn",
   "Other"
 ];
 
 const industries = [
   "Automotive",
   "Technology",
-  "Healthcare",
-  "Finance",
   "Manufacturing",
-  "Retail",
-  "Education",
-  "Real Estate",
   "Other"
 ];
 
@@ -76,9 +70,6 @@ const regions = [
   "EU",
   "US", 
   "ASIA",
-  "APAC",
-  "LATAM",
-  "MEA",
   "Other"
 ];
 
@@ -98,7 +89,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
       website: "",
       contact_source: "",
       industry: "Automotive",
-      country: "EU",
+      region: "EU", // Changed from country to region
       description: "",
     },
   });
@@ -115,7 +106,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         website: contact.website || "",
         contact_source: contact.contact_source || "",
         industry: contact.industry || "Automotive",
-        country: contact.country || "EU",
+        region: contact.region || "EU", // Changed from country to region
         description: contact.description || "",
       });
     } else {
@@ -129,7 +120,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         website: "",
         contact_source: "",
         industry: "Automotive",
-        country: "EU",
+        region: "EU", // Changed from country to region
         description: "",
       });
     }
@@ -159,7 +150,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         website: data.website || null,
         contact_source: data.contact_source || null,
         industry: data.industry || null,
-        country: data.country || null,
+        region: data.region || null, // Changed from country to region
         description: data.description || null,
         created_by: user.data.user.id,
         modified_by: user.data.user.id,
@@ -199,6 +190,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
       onSuccess();
       onOpenChange(false);
     } catch (error) {
+      console.error('Error saving contact:', error);
       toast({
         title: "Error",
         description: contact ? "Failed to update contact" : "Failed to create contact",
@@ -228,7 +220,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                   <FormItem>
                     <FormLabel>Contact Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Doe" {...field} />
+                      <Input placeholder="Contact Name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -242,7 +234,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                   <FormItem>
                     <FormLabel>Company Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Acme Corp" {...field} />
+                      <Input placeholder="Company Name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -270,7 +262,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                   <FormItem>
                     <FormLabel>Email *</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="john@acme.com" {...field} />
+                      <Input type="email" placeholder="email@example.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -298,7 +290,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                   <FormItem>
                     <FormLabel>LinkedIn Profile</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://linkedin.com/in/johndoe" {...field} />
+                      <Input placeholder="https://linkedin.com/in/username" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -312,7 +304,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                   <FormItem>
                     <FormLabel>Website</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://acme.com" {...field} />
+                      <Input placeholder="https://example.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -371,7 +363,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
 
               <FormField
                 control={form.control}
-                name="country"
+                name="region"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Region</FormLabel>

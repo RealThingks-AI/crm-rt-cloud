@@ -1,4 +1,3 @@
-
 import { getColumnConfig } from './columnConfig';
 
 export const createHeaderMapper = (tableName: string) => {
@@ -9,7 +8,91 @@ export const createHeaderMapper = (tableName: string) => {
     
     console.log(`Mapping header: "${trimmedHeader}"`);
     
-    // For deals, create comprehensive field mappings
+    // For contacts, create specific field mappings
+    if (tableName === 'contacts' || tableName === 'contacts_module') {
+      // Direct field matches first (case-insensitive)
+      const directMatch = config.allowedColumns.find(col => 
+        col.toLowerCase() === trimmedHeader.toLowerCase()
+      );
+      if (directMatch) {
+        console.log(`Direct field match found: ${trimmedHeader} -> ${directMatch}`);
+        return directMatch;
+      }
+      
+      // Contact-specific field mappings (case-insensitive)
+      const contactMappings: Record<string, string> = {
+        'id': 'id',
+        'contact id': 'id',
+        'contact_id': 'id',
+        'contact_name': 'contact_name',
+        'contact name': 'contact_name',
+        'name': 'contact_name',
+        'full name': 'contact_name',
+        'company_name': 'company_name',
+        'company name': 'company_name',
+        'company': 'company_name',
+        'organization': 'company_name',
+        'position': 'position',
+        'title': 'position',
+        'job title': 'position',
+        'email': 'email',
+        'email address': 'email',
+        'phone_no': 'phone_no',
+        'phone': 'phone_no',
+        'telephone': 'phone_no',
+        'phone number': 'phone_no',
+        'linkedin': 'linkedin',
+        'linkedin url': 'linkedin',
+        'linkedin profile': 'linkedin',
+        'website': 'website',
+        'website url': 'website',
+        'web': 'website',
+        'contact_source': 'contact_source',
+        'contact source': 'contact_source',
+        'source': 'contact_source',
+        'lead source': 'contact_source',
+        'industry': 'industry',
+        'sector': 'industry',
+        'region': 'region',
+        'country': 'region',
+        'nation': 'region',
+        'description': 'description',
+        'notes': 'description',
+        'comments': 'description',
+        'remarks': 'description',
+        'contact_owner': 'contact_owner',
+        'contact owner': 'contact_owner',
+        'owner': 'contact_owner',
+        'created_by': 'created_by',
+        'created by': 'created_by',
+        'creator': 'created_by',
+        'modified_by': 'modified_by',
+        'modified by': 'modified_by',
+        'modifier': 'modified_by',
+        'created_time': 'created_time',
+        'created time': 'created_time',
+        'created at': 'created_time',
+        'creation date': 'created_time',
+        'modified_time': 'modified_time',
+        'modified time': 'modified_time',
+        'modified at': 'modified_time',
+        'modification date': 'modified_time'
+      };
+      
+      // Check for mapping (case-insensitive)
+      const lowerHeader = trimmedHeader.toLowerCase();
+      for (const [key, value] of Object.entries(contactMappings)) {
+        if (key.toLowerCase() === lowerHeader) {
+          console.log(`Contact mapping found: ${trimmedHeader} -> ${value}`);
+          return value;
+        }
+      }
+      
+      console.log(`No mapping found for contacts field: ${trimmedHeader}`);
+      return null;
+    }
+    
+    // For deals, updated mappings after field removal
     if (tableName === 'deals') {
       // Direct field matches first (case-insensitive)
       const directMatch = config.allowedColumns.find(col => 
@@ -20,17 +103,8 @@ export const createHeaderMapper = (tableName: string) => {
         return directMatch;
       }
       
-      // Comprehensive field mappings for deals (case-insensitive)
+      // Updated field mappings for deals - removed deleted fields
       const dealMappings: Record<string, string> = {
-        // System fields
-        'id': 'id',
-        'deal id': 'id',
-        'deal_id': 'id',
-        'created_at': 'created_at',
-        'modified_at': 'modified_at',
-        'created_by': 'created_by',
-        'modified_by': 'modified_by',
-        
         // Core deal fields
         'deal_name': 'deal_name',
         'deal name': 'deal_name',
@@ -46,7 +120,6 @@ export const createHeaderMapper = (tableName: string) => {
         'customer name': 'customer_name',
         'customer': 'customer_name',
         'client': 'customer_name',
-        'company': 'customer_name',
         'lead_name': 'lead_name',
         'lead name': 'lead_name',
         'lead': 'lead_name',
@@ -111,7 +184,6 @@ export const createHeaderMapper = (tableName: string) => {
         'contract value': 'total_contract_value',
         'deal value': 'total_contract_value',
         'value': 'total_contract_value',
-        'amount': 'total_contract_value',
         'deal amount': 'total_contract_value',
         'currency_type': 'currency_type',
         'currency type': 'currency_type',
