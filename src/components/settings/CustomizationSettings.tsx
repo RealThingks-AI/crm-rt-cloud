@@ -216,42 +216,6 @@ const CustomizationSettings = () => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Palette className="w-5 h-5" />
-            Layout Preferences
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-base font-medium">Compact Mode</Label>
-                <p className="text-sm text-muted-foreground">Reduce spacing and padding for more content</p>
-              </div>
-              <Switch />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-base font-medium">Fixed Sidebar</Label>
-                <p className="text-sm text-muted-foreground">Keep sidebar pinned on larger screens</p>
-              </div>
-              <Switch defaultChecked />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-base font-medium">Show Tooltips</Label>
-                <p className="text-sm text-muted-foreground">Display helpful tooltips throughout the interface</p>
-              </div>
-              <Switch defaultChecked />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       <div className="flex justify-end">
         <Button onClick={handleSaveCustomization}>
           Save Customization Settings

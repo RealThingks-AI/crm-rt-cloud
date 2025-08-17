@@ -17,7 +17,7 @@ import {
 
 const DataStorageSettings = () => {
   const { toast } = useToast();
-  const [storageUsed] = useState(65); // 65% of storage used
+  const [storageUsed] = useState(65);
 
   const handleExportData = (dataType: string) => {
     toast({
@@ -37,13 +37,6 @@ const DataStorageSettings = () => {
     toast({
       title: "Backup initiated",
       description: "Creating backup of your data. This may take a few minutes.",
-    });
-  };
-
-  const handleRestore = () => {
-    toast({
-      title: "Restore process",
-      description: "Please select a backup file to restore from.",
     });
   };
 
@@ -180,30 +173,11 @@ const DataStorageSettings = () => {
             </Button>
             <Button 
               variant="outline"
-              onClick={handleRestore}
               className="flex items-center gap-2"
             >
               <RotateCcw className="w-4 h-4" />
               Restore from Backup
             </Button>
-          </div>
-
-          <div className="mt-4">
-            <Label className="text-sm font-medium">Recent Backups</Label>
-            <div className="mt-2 space-y-2">
-              <div className="flex justify-between items-center p-2 bg-muted rounded">
-                <span className="text-sm">Backup_2024-01-15_10-30.zip</span>
-                <Button variant="ghost" size="sm">
-                  <Download className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-muted rounded">
-                <span className="text-sm">Backup_2024-01-08_10-30.zip</span>
-                <Button variant="ghost" size="sm">
-                  <Download className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
           </div>
         </CardContent>
       </Card>

@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -19,7 +18,6 @@ const PreferencesSettings = () => {
   });
 
   const handleSave = () => {
-    // Save preferences logic would go here
     toast({
       title: "Preferences saved",
       description: "Your preferences have been updated successfully.",
@@ -36,7 +34,6 @@ const PreferencesSettings = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Theme Selection */}
           <div className="space-y-2">
             <Label className="text-base font-medium">Theme</Label>
             <Select value={preferences.theme} onValueChange={(value) => setPreferences({...preferences, theme: value})}>
@@ -66,7 +63,6 @@ const PreferencesSettings = () => {
             </Select>
           </div>
 
-          {/* Language Selection */}
           <div className="space-y-2">
             <Label className="text-base font-medium flex items-center gap-2">
               <Globe className="w-4 h-4" />
@@ -81,8 +77,6 @@ const PreferencesSettings = () => {
                 <SelectItem value="es">Spanish</SelectItem>
                 <SelectItem value="fr">French</SelectItem>
                 <SelectItem value="de">German</SelectItem>
-                <SelectItem value="it">Italian</SelectItem>
-                <SelectItem value="pt">Portuguese</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -97,7 +91,6 @@ const PreferencesSettings = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Date Format */}
           <div className="space-y-2">
             <Label className="text-base font-medium flex items-center gap-2">
               <Calendar className="w-4 h-4" />
@@ -111,12 +104,10 @@ const PreferencesSettings = () => {
                 <SelectItem value="MM/dd/yyyy">MM/dd/yyyy (12/31/2024)</SelectItem>
                 <SelectItem value="dd/MM/yyyy">dd/MM/yyyy (31/12/2024)</SelectItem>
                 <SelectItem value="yyyy-MM-dd">yyyy-MM-dd (2024-12-31)</SelectItem>
-                <SelectItem value="dd MMM yyyy">dd MMM yyyy (31 Dec 2024)</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Time Format */}
           <div className="space-y-2">
             <Label className="text-base font-medium">Time Format</Label>
             <Select value={preferences.timeFormat} onValueChange={(value) => setPreferences({...preferences, timeFormat: value})}>
@@ -130,7 +121,6 @@ const PreferencesSettings = () => {
             </Select>
           </div>
 
-          {/* Timezone */}
           <div className="space-y-2">
             <Label className="text-base font-medium">Timezone</Label>
             <Select value={preferences.timezone} onValueChange={(value) => setPreferences({...preferences, timezone: value})}>
@@ -141,12 +131,8 @@ const PreferencesSettings = () => {
                 <SelectItem value="UTC">UTC (Coordinated Universal Time)</SelectItem>
                 <SelectItem value="America/New_York">Eastern Time (ET)</SelectItem>
                 <SelectItem value="America/Chicago">Central Time (CT)</SelectItem>
-                <SelectItem value="America/Denver">Mountain Time (MT)</SelectItem>
                 <SelectItem value="America/Los_Angeles">Pacific Time (PT)</SelectItem>
                 <SelectItem value="Europe/London">London (GMT)</SelectItem>
-                <SelectItem value="Europe/Paris">Paris (CET)</SelectItem>
-                <SelectItem value="Asia/Tokyo">Tokyo (JST)</SelectItem>
-                <SelectItem value="Asia/Shanghai">Shanghai (CST)</SelectItem>
               </SelectContent>
             </Select>
           </div>

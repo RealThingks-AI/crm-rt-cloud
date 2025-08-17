@@ -186,10 +186,6 @@ const IntegrationsSettings = () => {
                   <Switch id="lead-assigned" />
                   <Label htmlFor="lead-assigned">Lead Assigned</Label>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Switch id="contact-created" />
-                  <Label htmlFor="contact-created">Contact Created</Label>
-                </div>
               </div>
             </div>
             

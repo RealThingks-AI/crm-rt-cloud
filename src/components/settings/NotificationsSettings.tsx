@@ -17,9 +17,7 @@ const NotificationsSettings = () => {
     leadAssignment: true,
     meetingReminders: true,
     quotaAlerts: false,
-    systemUpdates: true,
-    securityAlerts: true,
-    weeklyReports: true
+    systemUpdates: true
   });
 
   const handleToggle = (key: string) => {
@@ -137,62 +135,6 @@ const NotificationsSettings = () => {
             <Switch
               checked={notifications.meetingReminders}
               onCheckedChange={() => handleToggle('meetingReminders')}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <TrendingUp className="w-4 h-4 text-muted-foreground" />
-              <div>
-                <Label className="text-base font-medium">Quota Alerts</Label>
-                <p className="text-sm text-muted-foreground">Alerts when approaching quota deadlines</p>
-              </div>
-            </div>
-            <Switch
-              checked={notifications.quotaAlerts}
-              onCheckedChange={() => handleToggle('quotaAlerts')}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Monitor className="w-4 h-4 text-muted-foreground" />
-              <div>
-                <Label className="text-base font-medium">System Updates</Label>
-                <p className="text-sm text-muted-foreground">Notifications about system maintenance and updates</p>
-              </div>
-            </div>
-            <Switch
-              checked={notifications.systemUpdates}
-              onCheckedChange={() => handleToggle('systemUpdates')}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="w-4 h-4 text-muted-foreground" />
-              <div>
-                <Label className="text-base font-medium">Security Alerts</Label>
-                <p className="text-sm text-muted-foreground">Important security notifications</p>
-              </div>
-            </div>
-            <Switch
-              checked={notifications.securityAlerts}
-              onCheckedChange={() => handleToggle('securityAlerts')}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Mail className="w-4 h-4 text-muted-foreground" />
-              <div>
-                <Label className="text-base font-medium">Weekly Reports</Label>
-                <p className="text-sm text-muted-foreground">Weekly summary reports via email</p>
-              </div>
-            </div>
-            <Switch
-              checked={notifications.weeklyReports}
-              onCheckedChange={() => handleToggle('weeklyReports')}
             />
           </div>
         </CardContent>

@@ -95,18 +95,6 @@ const SecuritySettings = () => {
               <p className="text-sm text-muted-foreground">
                 Your account is protected with two-factor authentication using your authenticator app.
               </p>
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Recovery Codes:</p>
-                <div className="grid grid-cols-2 gap-2 text-sm font-mono">
-                  <span className="p-2 bg-background rounded border">ABC1-2DE3</span>
-                  <span className="p-2 bg-background rounded border">FGH4-5IJ6</span>
-                  <span className="p-2 bg-background rounded border">KLM7-8NO9</span>
-                  <span className="p-2 bg-background rounded border">PQR0-1ST2</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Save these recovery codes in a safe place. You can use them to access your account if you lose your phone.
-                </p>
-              </div>
             </div>
           )}
           
@@ -195,16 +183,6 @@ const SecuritySettings = () => {
                 <Lock className="w-4 h-4" />
               </Button>
             </div>
-            
-            <div className="flex justify-between items-center p-3 border rounded-lg">
-              <div>
-                <p className="font-medium">Safari on macOS</p>
-                <p className="text-sm text-muted-foreground">Last active yesterday</p>
-              </div>
-              <Button variant="ghost" size="sm">
-                <Lock className="w-4 h-4" />
-              </Button>
-            </div>
           </div>
           
           <Button 
@@ -213,35 +191,6 @@ const SecuritySettings = () => {
           >
             Terminate All Other Sessions
           </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="w-5 h-5" />
-            Login Activity
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Recent login attempts and security events.
-          </p>
-          
-          <div className="space-y-2">
-            <div className="flex justify-between items-center p-2 bg-muted rounded">
-              <span className="text-sm">Successful login from Chrome</span>
-              <span className="text-xs text-muted-foreground">2 minutes ago</span>
-            </div>
-            <div className="flex justify-between items-center p-2 bg-muted rounded">
-              <span className="text-sm">Password changed</span>
-              <span className="text-xs text-muted-foreground">1 day ago</span>
-            </div>
-            <div className="flex justify-between items-center p-2 bg-muted rounded">
-              <span className="text-sm">Successful login from Mobile App</span>
-              <span className="text-xs text-muted-foreground">2 days ago</span>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

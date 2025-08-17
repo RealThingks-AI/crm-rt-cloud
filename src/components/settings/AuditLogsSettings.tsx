@@ -53,46 +53,6 @@ const AuditLogsSettings = () => {
       details: "Failed login attempt from IP 192.168.1.100",
       timestamp: "2024-01-17 12:15:33",
       type: "warning"
-    },
-    {
-      id: 4,
-      action: "Data Export",
-      user: "Mike Davis",
-      details: "Exported contacts data (2,456 records)",
-      timestamp: "2024-01-17 11:20:45",
-      type: "info"
-    },
-    {
-      id: 5,
-      action: "User Role Changed",
-      user: "Admin System",
-      details: "Changed role for user 'jane.doe@company.com' from User to Manager",
-      timestamp: "2024-01-17 10:05:12",
-      type: "success"
-    }
-  ];
-
-  const errorLogs = [
-    {
-      id: 1,
-      error: "Database Connection Timeout",
-      details: "Connection to database failed after 30 seconds",
-      timestamp: "2024-01-17 14:25:30",
-      severity: "high"
-    },
-    {
-      id: 2,
-      error: "Email Delivery Failed",
-      details: "Failed to send notification email to user@example.com",
-      timestamp: "2024-01-17 13:40:15",
-      severity: "medium"
-    },
-    {
-      id: 3,
-      error: "API Rate Limit Exceeded",
-      details: "Microsoft Teams API rate limit exceeded",
-      timestamp: "2024-01-17 12:10:22",
-      severity: "low"
     }
   ];
 
@@ -118,7 +78,6 @@ const AuditLogsSettings = () => {
                   <SelectItem value="7days">Last 7 days</SelectItem>
                   <SelectItem value="30days">Last 30 days</SelectItem>
                   <SelectItem value="90days">Last 90 days</SelectItem>
-                  <SelectItem value="custom">Custom range</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -134,7 +93,6 @@ const AuditLogsSettings = () => {
                   <SelectItem value="activity">Activity Logs</SelectItem>
                   <SelectItem value="security">Security Logs</SelectItem>
                   <SelectItem value="errors">Error Logs</SelectItem>
-                  <SelectItem value="api">API Logs</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -192,50 +150,6 @@ const AuditLogsSettings = () => {
           
           <div className="flex justify-center mt-4">
             <Button variant="outline">Load More Logs</Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5" />
-            Error Logs
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {errorLogs.map((log) => (
-              <div key={log.id} className="flex items-start space-x-3 p-3 border rounded-lg">
-                <AlertCircle className={`w-5 h-5 mt-1 ${
-                  log.severity === 'high' ? 'text-red-500' :
-                  log.severity === 'medium' ? 'text-yellow-500' : 'text-blue-500'
-                }`} />
-                <div className="flex-1">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium">{log.error}</p>
-                      <p className="text-sm text-muted-foreground">{log.details}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          log.severity === 'high' ? 'bg-red-100 text-red-800' :
-                          log.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
-                          'bg-blue-100 text-blue-800'
-                        }`}>
-                          {log.severity.toUpperCase()}
-                        </span>
-                        <Calendar className="w-3 h-3 text-muted-foreground ml-2" />
-                        <span className="text-xs text-muted-foreground">{log.timestamp}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          <div className="flex justify-center mt-4">
-            <Button variant="outline">Load More Errors</Button>
           </div>
         </CardContent>
       </Card>
