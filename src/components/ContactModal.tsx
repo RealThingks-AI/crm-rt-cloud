@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,10 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 
 const contactSchema = z.object({
-  contact_name: z.string().min(1, "Contact name is required"),
+  contact_name: z.string().min(1, "Contact name is required"), // mandatory
   company_name: z.string().optional(),
   position: z.string().optional(),
-  email: z.string().email("Invalid email address").min(1, "Email is required"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")), // optional now
   phone_no: z.string().optional(),
   linkedin: z.string().url("Invalid LinkedIn URL").optional().or(z.literal("")),
   website: z.string().url("Invalid website URL").optional().or(z.literal("")),
@@ -39,7 +38,7 @@ interface Contact {
   website?: string;
   contact_source?: string;
   industry?: string;
-  region?: string; // Changed from country to region
+  region?: string;
   description?: string;
 }
 
@@ -89,7 +88,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
       website: "",
       contact_source: "",
       industry: "Automotive",
-      region: "EU", // Changed from country to region
+      region: "EU",
       description: "",
     },
   });
@@ -106,7 +105,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         website: contact.website || "",
         contact_source: contact.contact_source || "",
         industry: contact.industry || "Automotive",
-        region: contact.region || "EU", // Changed from country to region
+        region: contact.region || "EU",
         description: contact.description || "",
       });
     } else {
@@ -120,7 +119,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         website: "",
         contact_source: "",
         industry: "Automotive",
-        region: "EU", // Changed from country to region
+        region: "EU",
         description: "",
       });
     }
@@ -144,13 +143,13 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
         contact_name: data.contact_name,
         company_name: data.company_name || null,
         position: data.position || null,
-        email: data.email,
+        email: data.email || null,
         phone_no: data.phone_no || null,
         linkedin: data.linkedin || null,
         website: data.website || null,
         contact_source: data.contact_source || null,
         industry: data.industry || null,
-        region: data.region || null, // Changed from country to region
+        region: data.region || null,
         description: data.description || null,
         created_by: user.data.user.id,
         modified_by: user.data.user.id,
@@ -158,7 +157,6 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
       };
 
       if (contact) {
-        // Update existing contact
         const { error } = await supabase
           .from('contacts')
           .update({
@@ -174,7 +172,6 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
           description: "Contact updated successfully",
         });
       } else {
-        // Create new contact
         const { error } = await supabase
           .from('contacts')
           .insert(contactData);
@@ -260,7 +257,7 @@ export const ContactModal = ({ open, onOpenChange, contact, onSuccess }: Contact
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email *</FormLabel>
+                    <FormLabel>Email</FormLabel>
                     <FormControl>
                       <Input type="email" placeholder="email@example.com" {...field} />
                     </FormControl>
