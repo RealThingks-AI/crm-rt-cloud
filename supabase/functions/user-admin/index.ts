@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.0';
 
@@ -49,11 +50,24 @@ serve(async (req) => {
       );
     }
 
-    // NOTE: Admin role requirement removed — any authenticated user can proceed.
-    console.log('Authenticated request by:', user.user.email, 'Proceeding without admin role check.');
+    // Check if the user is admin for protected operations
+    const { data: userRole } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.user.id)
+      .single();
 
-    // GET - List all users
+    const isAdmin = userRole?.role === 'admin';
+
+    // GET - List all users (admin only)
     if (req.method === 'GET') {
+      if (!isAdmin) {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       console.log('Fetching users list...');
       
       const { data, error } = await supabaseAdmin.auth.admin.listUsers();
@@ -76,40 +90,110 @@ serve(async (req) => {
       );
     }
 
-    // POST - Create new user or reset password
+    // POST - Create new user or handle specific actions
     if (req.method === 'POST') {
+      if (!isAdmin) {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const body = await req.json();
       
-      // Handle password reset
+      // Handle password reset with new password
       if (body.action === 'reset-password') {
-        const { email } = body;
-        if (!email) {
+        const { userId, newPassword } = body;
+        if (!userId || !newPassword) {
           return new Response(
-            JSON.stringify({ error: 'Email is required for password reset' }),
+            JSON.stringify({ error: 'User ID and new password are required' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        console.log('Resetting password for:', email);
+        console.log('Resetting password for user:', userId);
 
-        const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-          type: 'recovery',
-          email: email,
-        });
+        const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
+          userId,
+          { password: newPassword }
+        );
 
         if (error) {
-          console.error('Error generating reset link:', error);
+          console.error('Error resetting password:', error);
           return new Response(
             JSON.stringify({ error: `Password reset failed: ${error.message}` }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        console.log('Password reset link generated successfully');
+        // Log the password reset action
+        await supabaseAdmin.rpc('log_security_event', {
+          p_action: 'PASSWORD_RESET',
+          p_resource_type: 'USER',
+          p_resource_id: userId,
+          p_details: { reset_by: user.user.id, timestamp: new Date().toISOString() }
+        });
+
+        console.log('Password reset successfully');
         return new Response(
           JSON.stringify({ 
             success: true,
-            message: 'Password reset email sent successfully'
+            message: 'Password reset successfully'
+          }),
+          { 
+            status: 200, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      // Handle role changes
+      if (body.action === 'change-role') {
+        const { userId, newRole } = body;
+        if (!userId || !newRole || !['admin', 'user'].includes(newRole)) {
+          return new Response(
+            JSON.stringify({ error: 'Valid user ID and role (admin/user) are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('Changing role for user:', userId, 'to:', newRole);
+
+        // Update role in user_roles table
+        const { error: roleError } = await supabaseAdmin
+          .from('user_roles')
+          .upsert({
+            user_id: userId,
+            role: newRole,
+            assigned_by: user.user.id,
+            assigned_at: new Date().toISOString()
+          });
+
+        if (roleError) {
+          console.error('Error updating role:', roleError);
+          return new Response(
+            JSON.stringify({ error: `Role update failed: ${roleError.message}` }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Log the role change action
+        await supabaseAdmin.rpc('log_security_event', {
+          p_action: 'ROLE_CHANGE',
+          p_resource_type: 'USER',
+          p_resource_id: userId,
+          p_details: { 
+            new_role: newRole, 
+            changed_by: user.user.id, 
+            timestamp: new Date().toISOString() 
+          }
+        });
+
+        console.log('Role updated successfully');
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            message: 'Role updated successfully'
           }),
           { 
             status: 200, 
@@ -165,7 +249,7 @@ serve(async (req) => {
             console.log('Profile created successfully for:', email);
           }
 
-          // Set user role using server-controlled system
+          // Set user role
           const { error: roleError } = await supabaseAdmin
             .from('user_roles')
             .insert({
@@ -179,6 +263,19 @@ serve(async (req) => {
           } else {
             console.log('Role assigned successfully:', role || 'user');
           }
+
+          // Log user creation
+          await supabaseAdmin.rpc('log_security_event', {
+            p_action: 'USER_CREATED',
+            p_resource_type: 'USER',
+            p_resource_id: data.user.id,
+            p_details: { 
+              created_by: user.user.id, 
+              role: role || 'user',
+              timestamp: new Date().toISOString() 
+            }
+          });
+
         } catch (err) {
           console.warn('Setup error:', err);
         }
@@ -198,9 +295,16 @@ serve(async (req) => {
       );
     }
 
-    // PUT - Update user (including role changes, activation/deactivation)
+    // PUT - Update user (including activation/deactivation)
     if (req.method === 'PUT') {
-      const { userId, displayName, role, action } = await req.json();
+      if (!isAdmin) {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { userId, displayName, action } = await req.json();
       
       if (!userId) {
         return new Response(
@@ -209,7 +313,7 @@ serve(async (req) => {
         );
       }
 
-      console.log('Updating user:', userId, 'action:', action, 'role:', role, 'displayName:', displayName);
+      console.log('Updating user:', userId, 'action:', action, 'displayName:', displayName);
 
       // Prepare update data for auth.users
       let updateData: any = {};
@@ -244,6 +348,19 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
+
+        // Log the action
+        if (action) {
+          await supabaseAdmin.rpc('log_security_event', {
+            p_action: action === 'activate' ? 'USER_ACTIVATED' : 'USER_DEACTIVATED',
+            p_resource_type: 'USER',
+            p_resource_id: userId,
+            p_details: { 
+              changed_by: user.user.id, 
+              timestamp: new Date().toISOString() 
+            }
+          });
+        }
       }
 
       // Update profile if display name changed
@@ -264,28 +381,6 @@ serve(async (req) => {
         }
       }
 
-      // Update role using server-controlled system
-      if (role !== undefined) {
-        try {
-          const { error: roleError } = await supabaseAdmin
-            .from('user_roles')
-            .update({ 
-              role,
-              assigned_by: user.user.id,
-              assigned_at: new Date().toISOString()
-            })
-            .eq('user_id', userId);
-
-          if (roleError) {
-            console.warn('Role update failed:', roleError);
-          } else {
-            console.log('Role updated successfully for user:', userId, 'to:', role);
-          }
-        } catch (roleErr) {
-          console.warn('Role update error:', roleErr);
-        }
-      }
-
       console.log('User updated successfully:', userId);
       return new Response(
         JSON.stringify({ 
@@ -299,8 +394,15 @@ serve(async (req) => {
       );
     }
 
-    // DELETE - Delete user
+    // DELETE - Delete user (admin only)
     if (req.method === 'DELETE') {
+      if (!isAdmin) {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const { userId } = await req.json();
       
       if (!userId) {
@@ -313,31 +415,18 @@ serve(async (req) => {
       console.log('Deleting user:', userId);
 
       try {
-        // First delete role record
-        const { error: roleError } = await supabaseAdmin
-          .from('user_roles')
-          .delete()
-          .eq('user_id', userId);
+        // Log user deletion
+        await supabaseAdmin.rpc('log_security_event', {
+          p_action: 'USER_DELETED',
+          p_resource_type: 'USER',
+          p_resource_id: userId,
+          p_details: { 
+            deleted_by: user.user.id, 
+            timestamp: new Date().toISOString() 
+          }
+        });
 
-        if (roleError) {
-          console.warn('Role deletion warning:', roleError.message);
-        } else {
-          console.log('Role deleted successfully for user:', userId);
-        }
-
-        // Then delete profile record
-        const { error: profileError } = await supabaseAdmin
-          .from('profiles')
-          .delete()
-          .eq('id', userId);
-
-        if (profileError) {
-          console.warn('Profile deletion warning:', profileError.message);
-        } else {
-          console.log('Profile deleted successfully for user:', userId);
-        }
-
-        // Finally delete the auth user
+        // Delete the auth user (cascade will handle related records)
         const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
         if (authDeleteError) {

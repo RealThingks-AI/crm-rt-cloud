@@ -8,15 +8,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { MoreHorizontal, Plus, RefreshCw, Shield, ShieldAlert } from "lucide-react";
+import { MoreHorizontal, Plus, RefreshCw, Shield, ShieldAlert, User, Key } from "lucide-react";
 import { format } from "date-fns";
 import UserModal from "./UserModal";
 import EditUserModal from "./EditUserModal";
 import ChangeRoleModal from "./ChangeRoleModal";
 import DeleteUserDialog from "./DeleteUserDialog";
-import ResetPasswordDialog from "./ResetPasswordDialog";
+import SetPasswordModal from "./SetPasswordModal";
 
-interface User {
+interface UserData {
   id: string;
   email: string;
   user_metadata: {
@@ -29,21 +29,43 @@ interface User {
 }
 
 const UserManagement = () => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showResetPasswordDialog, setShowResetPasswordDialog] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showSetPasswordModal, setShowSetPasswordModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [userRole, setUserRole] = useState<string>('user');
   const { toast } = useToast();
   const { refreshUser } = useAuth();
 
+  // Check current user's role
+  useEffect(() => {
+    const checkUserRole = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+          .single();
+        
+        if (!error && data) {
+          setUserRole(data.role);
+        }
+      } catch (error) {
+        console.error('Error checking user role:', error);
+      }
+    };
+
+    checkUserRole();
+  }, []);
+
   const fetchUsers = useCallback(async () => {
     try {
-      console.log('Fetching users with server-controlled roles...');
+      console.log('Fetching users with roles...');
       
       const { data, error } = await supabase.functions.invoke('user-admin', {
         method: 'GET'
@@ -121,22 +143,22 @@ const UserManagement = () => {
     }
   }, [fetchUsers, refreshUser, toast]);
 
-  const handleEditUser = useCallback((user: User) => {
+  const handleEditUser = useCallback((user: UserData) => {
     setSelectedUser(user);
     setShowEditModal(true);
   }, []);
 
-  const handleChangeRole = useCallback((user: User) => {
+  const handleChangeRole = useCallback((user: UserData) => {
     setSelectedUser(user);
     setShowRoleModal(true);
   }, []);
 
-  const handleResetPassword = useCallback((user: User) => {
+  const handleSetPassword = useCallback((user: UserData) => {
     setSelectedUser(user);
-    setShowResetPasswordDialog(true);
+    setShowSetPasswordModal(true);
   }, []);
 
-  const handleToggleUserStatus = useCallback(async (user: User) => {
+  const handleToggleUserStatus = useCallback(async (user: UserData) => {
     try {
       const action = user.banned_until ? 'activate' : 'deactivate';
       
@@ -172,7 +194,7 @@ const UserManagement = () => {
     }
   }, [fetchUsers, refreshUser, toast]);
 
-  const handleDeleteUser = useCallback((user: User) => {
+  const handleDeleteUser = useCallback((user: UserData) => {
     setSelectedUser(user);
     setShowDeleteDialog(true);
   }, []);
@@ -186,8 +208,6 @@ const UserManagement = () => {
     switch (role?.toLowerCase()) {
       case 'admin':
         return 'default';
-      case 'manager':
-        return 'secondary';
       default:
         return 'outline';
     }
@@ -197,10 +217,8 @@ const UserManagement = () => {
     switch (role?.toLowerCase()) {
       case 'admin':
         return <Shield className="h-3 w-3" />;
-      case 'manager':
-        return <ShieldAlert className="h-3 w-3" />;
       default:
-        return null;
+        return <User className="h-3 w-3" />;
     }
   }, []);
 
@@ -211,8 +229,33 @@ const UserManagement = () => {
       setLoading(false);
     };
     
-    loadData();
-  }, [fetchUsers]);
+    if (userRole === 'admin') {
+      loadData();
+    } else {
+      setLoading(false);
+    }
+  }, [fetchUsers, userRole]);
+
+  // If user is not admin, show access denied
+  if (userRole !== 'admin') {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            User Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center h-32 text-center">
+            <ShieldAlert className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold">Access Denied</h3>
+            <p className="text-muted-foreground">Only administrators can access user management.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (
@@ -240,7 +283,7 @@ const UserManagement = () => {
                 User Management
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Manage user accounts, roles, and permissions with server-controlled security
+                Manage user accounts, roles, and permissions with role-based access control
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -314,8 +357,9 @@ const UserManagement = () => {
                         <DropdownMenuItem onClick={() => handleChangeRole(user)}>
                           Change Role
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleResetPassword(user)}>
-                          Reset Password
+                        <DropdownMenuItem onClick={() => handleSetPassword(user)}>
+                          <Key className="h-4 w-4 mr-2" />
+                          Set Password
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleToggleUserStatus(user)}>
                           {user.banned_until ? 'Activate' : 'Deactivate'}
@@ -369,9 +413,9 @@ const UserManagement = () => {
         onSuccess={handleUserSuccess}
       />
       
-      <ResetPasswordDialog 
-        open={showResetPasswordDialog} 
-        onClose={() => setShowResetPasswordDialog(false)}
+      <SetPasswordModal 
+        open={showSetPasswordModal} 
+        onClose={() => setShowSetPasswordModal(false)}
         user={selectedUser}
         onSuccess={handleUserSuccess}
       />
