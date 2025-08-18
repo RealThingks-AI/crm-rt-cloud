@@ -22,25 +22,38 @@ export const useUserRole = () => {
           .from('user_roles')
           .select('role')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle(); // Use maybeSingle() instead of single() to handle 0 rows
 
-        if (!error && data) {
+        if (data?.role) {
           setUserRole(data.role);
-        } else {
-          // If no role found, create default 'user' role
+        } else if (!error || error.code === 'PGRST116') {
+          // If no role found (0 rows), create default 'user' role
           const { error: insertError } = await supabase
             .from('user_roles')
-            .insert([{ user_id: user.id, role: 'user' }]);
+            .insert([{ user_id: user.id, role: 'user' }])
+            .select('role')
+            .single();
           
           if (!insertError) {
             setUserRole('user');
+          } else if (insertError.code === '23505') {
+            // Handle duplicate key constraint - role already exists, fetch it again
+            const { data: existingRole } = await supabase
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', user.id)
+              .single();
+            setUserRole(existingRole?.role || 'user');
           } else {
             console.error('Error creating default user role:', insertError);
             setUserRole('user');
           }
+        } else {
+          console.error('Error fetching user role:', error);
+          setUserRole('user');
         }
       } catch (error) {
-        console.error('Error fetching user role:', error);
+        console.error('Error in fetchUserRole:', error);
         setUserRole('user');
       } finally {
         setLoading(false);
