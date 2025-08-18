@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { MoreHorizontal, Plus, RefreshCw, Shield, ShieldAlert, User, Key } from "lucide-react";
 import { format } from "date-fns";
 import UserModal from "./UserModal";
@@ -38,30 +38,9 @@ const UserManagement = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showSetPasswordModal, setShowSetPasswordModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const [userRole, setUserRole] = useState<string>('user');
   const { toast } = useToast();
   const { refreshUser } = useAuth();
-
-  // Check current user's role
-  useEffect(() => {
-    const checkUserRole = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-          .single();
-        
-        if (!error && data) {
-          setUserRole(data.role);
-        }
-      } catch (error) {
-        console.error('Error checking user role:', error);
-      }
-    };
-
-    checkUserRole();
-  }, []);
+  const { isAdmin, loading: roleLoading } = useUserRole();
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -224,20 +203,40 @@ const UserManagement = () => {
 
   useEffect(() => {
     const loadData = async () => {
+      // Wait for role to be loaded
+      if (roleLoading) return;
+      
       setLoading(true);
-      await fetchUsers();
+      if (isAdmin) {
+        await fetchUsers();
+      }
       setLoading(false);
     };
     
-    if (userRole === 'admin') {
-      loadData();
-    } else {
-      setLoading(false);
-    }
-  }, [fetchUsers, userRole]);
+    loadData();
+  }, [fetchUsers, isAdmin, roleLoading]);
+
+  // Show loading while checking user role
+  if (roleLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            User Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-32">
+            <RefreshCw className="h-6 w-6 animate-spin" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // If user is not admin, show access denied
-  if (userRole !== 'admin') {
+  if (!isAdmin) {
     return (
       <Card>
         <CardHeader>

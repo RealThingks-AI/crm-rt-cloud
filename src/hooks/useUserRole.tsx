@@ -17,6 +17,7 @@ export const useUserRole = () => {
       }
 
       try {
+        // First check if user has a role in user_roles table
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
@@ -26,8 +27,17 @@ export const useUserRole = () => {
         if (!error && data) {
           setUserRole(data.role);
         } else {
-          // If no role found, default to 'user'
-          setUserRole('user');
+          // If no role found, create default 'user' role
+          const { error: insertError } = await supabase
+            .from('user_roles')
+            .insert([{ user_id: user.id, role: 'user' }]);
+          
+          if (!insertError) {
+            setUserRole('user');
+          } else {
+            console.error('Error creating default user role:', insertError);
+            setUserRole('user');
+          }
         }
       } catch (error) {
         console.error('Error fetching user role:', error);
