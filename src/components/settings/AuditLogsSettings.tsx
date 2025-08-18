@@ -49,7 +49,19 @@ const AuditLogsSettings = () => {
 
       if (error) throw error;
 
-      setLogs(data || []);
+      // Transform the data to match our AuditLog interface
+      const transformedLogs: AuditLog[] = (data || []).map(log => ({
+        id: log.id,
+        user_id: log.user_id || '',
+        action: log.action,
+        resource_type: log.resource_type,
+        resource_id: log.resource_id || undefined,
+        details: log.details || undefined,
+        ip_address: log.ip_address ? String(log.ip_address) : undefined,
+        created_at: log.created_at
+      }));
+
+      setLogs(transformedLogs);
     } catch (error: any) {
       console.error('Error fetching audit logs:', error);
       toast({
