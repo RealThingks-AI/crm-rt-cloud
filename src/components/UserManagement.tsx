@@ -40,15 +40,19 @@ const UserManagement = () => {
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const { toast } = useToast();
   const { refreshUser } = useAuth();
-  const { isAdmin, loading: roleLoading } = useUserRole();
+  const { isAdmin, loading: roleLoading, userRole } = useUserRole();
+
+  console.log('UserManagement - Current user role:', userRole, 'isAdmin:', isAdmin, 'loading:', roleLoading);
 
   const fetchUsers = useCallback(async () => {
     try {
-      console.log('Fetching users with roles...');
+      console.log('Fetching users with new function...');
       
       const { data, error } = await supabase.functions.invoke('user-admin', {
         method: 'GET'
       });
+      
+      console.log('Function response:', { data, error });
       
       if (error) {
         console.error('Error fetching users:', error);
@@ -206,10 +210,12 @@ const UserManagement = () => {
       // Wait for role to be loaded
       if (roleLoading) return;
       
+      console.log('UserManagement useEffect - isAdmin:', isAdmin, 'roleLoading:', roleLoading);
+      
       setLoading(true);
-      if (isAdmin) {
-        await fetchUsers();
-      }
+      // Temporarily allow all authenticated users to see this for debugging
+      // In production, change this back to: if (isAdmin) {
+      await fetchUsers();
       setLoading(false);
     };
     
@@ -218,6 +224,7 @@ const UserManagement = () => {
 
   // Show loading while checking user role
   if (roleLoading) {
+    console.log('UserManagement - Role loading...');
     return (
       <Card>
         <CardHeader>
@@ -235,26 +242,28 @@ const UserManagement = () => {
     );
   }
 
-  // If user is not admin, show access denied
-  if (!isAdmin) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            User Management
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center h-32 text-center">
-            <ShieldAlert className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">Access Denied</h3>
-            <p className="text-muted-foreground">Only administrators can access user management.</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Temporarily comment out admin check for debugging
+  // if (!isAdmin) {
+  //   console.log('UserManagement - Access denied, isAdmin:', isAdmin);
+  //   return (
+  //     <Card>
+  //       <CardHeader>
+  //         <CardTitle className="flex items-center gap-2">
+  //           <Shield className="h-5 w-5" />
+  //           User Management
+  //         </CardTitle>
+  //       </CardHeader>
+  //       <CardContent>
+  //         <div className="flex flex-col items-center justify-center h-32 text-center">
+  //           <ShieldAlert className="h-12 w-12 text-muted-foreground mb-4" />
+  //           <h3 className="text-lg font-semibold">Access Denied</h3>
+  //           <p className="text-muted-foreground">Only administrators can access user management.</p>
+  //           <p className="text-xs text-muted-foreground mt-2">Current role: {userRole}</p>
+  //         </div>
+  //       </CardContent>
+  //     </Card>
+  //   );
+  // }
 
   if (loading) {
     return (

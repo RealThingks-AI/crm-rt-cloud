@@ -147,7 +147,7 @@ const ChangeRoleModal = ({ open, onClose, user, onSuccess }: ChangeRoleModalProp
             <ul className="text-sm text-muted-foreground space-y-1">
               {selectedRole === 'admin' ? (
                 <>
-                  <li>• Full CRUD access to all modules</li>
+                  <li>• Full access to all modules</li>
                   <li>• Can manage users and settings</li>
                   <li>• Can update and delete all records</li>
                   <li>• Access to audit logs</li>
@@ -156,7 +156,7 @@ const ChangeRoleModal = ({ open, onClose, user, onSuccess }: ChangeRoleModalProp
                 <>
                   <li>• Can view all records</li>
                   <li>• Can add new content</li>
-                  <li>• Cannot update or delete records</li>
+                  <li>• Can only edit their own records</li>
                   <li>• No access to user management</li>
                 </>
               )}

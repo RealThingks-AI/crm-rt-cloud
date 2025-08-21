@@ -1,11 +1,12 @@
-
-import { LeadTable } from "@/components/LeadTable";
+import LeadTable from "@/components/LeadTable";
 import { Button } from "@/components/ui/button";
 import { Settings, Plus, Trash2, ChevronDown, Upload, Download } from "lucide-react";
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSimpleLeadsImportExport } from "@/hooks/useSimpleLeadsImportExport";
+import { useCRUDAudit } from "@/hooks/useCRUDAudit";
+import { LeadDeleteConfirmDialog } from "@/components/LeadDeleteConfirmDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,20 +16,76 @@ import {
 
 const Leads = () => {
   const { toast } = useToast();
+  const { logBulkDelete } = useCRUDAudit();
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { handleImport, handleExport, isImporting } = useSimpleLeadsImportExport(() => {
     setRefreshTrigger(prev => prev + 1);
   });
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = async (deleteLinkedRecords: boolean = true) => {
     if (selectedLeads.length === 0) return;
 
     try {
+      console.log('Starting bulk delete process for leads:', selectedLeads);
+      
+      if (deleteLinkedRecords) {
+        // Delete in the correct order to avoid foreign key constraint violations
+        
+        // 1. Get all action item IDs for the selected leads
+        console.log('Getting action items for selected leads...');
+        const { data: actionItems } = await supabase
+          .from('lead_action_items')
+          .select('id')
+          .in('lead_id', selectedLeads);
+        
+        const actionItemIds = actionItems?.map(item => item.id) || [];
+        console.log('Found action items to delete:', actionItemIds);
+        
+        // 2. Delete notifications that reference action items
+        if (actionItemIds.length > 0) {
+          console.log('Deleting notifications that reference action items...');
+          const { error: notificationActionError } = await supabase
+            .from('notifications')
+            .delete()
+            .in('action_item_id', actionItemIds);
+            
+          if (notificationActionError) {
+            console.error('Error deleting notifications for action items:', notificationActionError);
+          }
+        }
+
+        // 3. Delete notifications that directly reference the leads
+        console.log('Deleting notifications that reference leads...');
+        const { error: notificationLeadError } = await supabase
+          .from('notifications')
+          .delete()
+          .in('lead_id', selectedLeads);
+          
+        if (notificationLeadError) {
+          console.error('Error deleting notifications for leads:', notificationLeadError);
+        }
+
+        // 4. Delete lead action items
+        console.log('Deleting lead action items...');
+        const { error: actionItemsError } = await supabase
+          .from('lead_action_items')
+          .delete()
+          .in('lead_id', selectedLeads);
+
+        if (actionItemsError) {
+          console.error('Error deleting lead action items:', actionItemsError);
+          throw actionItemsError;
+        }
+      }
+
+      // 5. Finally delete the leads
+      console.log('Deleting leads...');
       const { error } = await supabase
         .from('leads')
         .delete()
@@ -36,6 +93,10 @@ const Leads = () => {
 
       if (error) throw error;
 
+      // Log bulk delete operation
+      await logBulkDelete('leads', selectedLeads.length, selectedLeads);
+
+      console.log('Bulk delete completed successfully');
       toast({
         title: "Success",
         description: `${selectedLeads.length} leads deleted successfully`,
@@ -43,13 +104,20 @@ const Leads = () => {
       
       setSelectedLeads([]);
       setRefreshTrigger(prev => prev + 1);
-    } catch (error) {
+      setShowBulkDeleteDialog(false);
+    } catch (error: any) {
+      console.error('Bulk delete error:', error);
       toast({
         title: "Error",
-        description: "Failed to delete leads",
+        description: error.message || "Failed to delete leads",
         variant: "destructive",
       });
     }
+  };
+
+  const handleBulkDeleteClick = () => {
+    if (selectedLeads.length === 0) return;
+    setShowBulkDeleteDialog(true);
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,7 +155,7 @@ const Leads = () => {
           {selectedLeads.length > 0 && (
             <Button 
               variant="destructive"
-              onClick={handleBulkDelete}
+              onClick={handleBulkDeleteClick}
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Delete Selected ({selectedLeads.length})
@@ -111,7 +179,7 @@ const Leads = () => {
                 Export CSV
               </DropdownMenuItem>
               <DropdownMenuItem 
-                onClick={handleBulkDelete}
+                onClick={handleBulkDeleteClick}
                 disabled={selectedLeads.length === 0}
                 className="text-destructive focus:text-destructive"
               >
@@ -146,6 +214,15 @@ const Leads = () => {
         selectedLeads={selectedLeads}
         setSelectedLeads={setSelectedLeads}
         key={refreshTrigger}
+      />
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <LeadDeleteConfirmDialog
+        open={showBulkDeleteDialog}
+        onConfirm={handleBulkDelete}
+        onCancel={() => setShowBulkDeleteDialog(false)}
+        isMultiple={true}
+        count={selectedLeads.length}
       />
     </div>
   );
