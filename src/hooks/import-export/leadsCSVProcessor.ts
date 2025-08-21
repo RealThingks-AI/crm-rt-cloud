@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { CSVParser } from '@/utils/csvParser';
 import { DateFormatUtils } from '@/utils/dateFormatUtils';
@@ -95,7 +96,7 @@ export class LeadsCSVProcessor {
         // Prepare lead record
         const leadRecord = this.prepareLead(rowObj, options.userId);
 
-        // Validate required fields
+        // Validate required fields - ensure lead_name is present and not empty
         if (!leadRecord.lead_name || leadRecord.lead_name.trim() === '') {
           result.errorCount++;
           result.errors.push('Lead name is required');
@@ -126,10 +127,30 @@ export class LeadsCSVProcessor {
           }
           result.updateCount++;
         } else {
-          // Insert new lead
+          // Insert new lead - ensure we have a proper lead record with all required fields
+          const leadToInsert = {
+            lead_name: leadRecord.lead_name, // Ensure this is always present
+            company_name: leadRecord.company_name,
+            position: leadRecord.position,
+            email: leadRecord.email,
+            phone_no: leadRecord.phone_no,
+            linkedin: leadRecord.linkedin,
+            website: leadRecord.website,
+            contact_source: leadRecord.contact_source,
+            lead_status: leadRecord.lead_status,
+            industry: leadRecord.industry,
+            country: leadRecord.country,
+            description: leadRecord.description,
+            contact_owner: leadRecord.contact_owner,
+            created_by: leadRecord.created_by,
+            modified_by: leadRecord.modified_by,
+            created_time: leadRecord.created_time,
+            modified_time: leadRecord.modified_time
+          };
+
           const { data: insertedLead, error: insertError } = await supabase
             .from('leads')
-            .insert([leadRecord])
+            .insert([leadToInsert])
             .select('id')
             .single();
 
@@ -184,6 +205,11 @@ export class LeadsCSVProcessor {
         leadRecord[dbField] = rowObj[csvField];
       }
     });
+
+    // Ensure lead_name is always set, even if empty from CSV
+    if (!leadRecord.lead_name) {
+      leadRecord.lead_name = rowObj.name || rowObj.contact_name || rowObj.full_name || '';
+    }
 
     // Handle date fields
     if (rowObj.created_time) {
