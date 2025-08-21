@@ -22,37 +22,9 @@ export const useLeadDeletion = () => {
       console.log('Starting delete process for leads:', leadIds);
       
       if (deleteLinkedRecords) {
-        // Step 1: Get all action item IDs for the selected leads
-        console.log('Getting action items for selected leads...');
-        const { data: actionItems, error: actionItemsSelectError } = await supabase
-          .from('lead_action_items')
-          .select('id')
-          .in('lead_id', leadIds);
+        console.log('Cleaning up related records...');
         
-        if (actionItemsSelectError) {
-          console.error('Error selecting action items:', actionItemsSelectError);
-          throw actionItemsSelectError;
-        }
-
-        const actionItemIds = actionItems?.map(item => item.id) || [];
-        console.log('Found action items to process:', actionItemIds);
-
-        // Step 2: Delete notifications that reference these action items
-        if (actionItemIds.length > 0) {
-          console.log('Deleting notifications that reference action items...');
-          const { error: notificationActionError } = await supabase
-            .from('notifications')
-            .delete()
-            .in('action_item_id', actionItemIds);
-            
-          if (notificationActionError) {
-            console.error('Error deleting notifications for action items:', notificationActionError);
-            throw notificationActionError;
-          }
-        }
-
-        // Step 3: Delete notifications that directly reference the leads
-        console.log('Deleting notifications that reference leads...');
+        // Clean up notifications that reference these leads directly
         const { error: notificationLeadError } = await supabase
           .from('notifications')
           .delete()
@@ -60,11 +32,36 @@ export const useLeadDeletion = () => {
           
         if (notificationLeadError) {
           console.error('Error deleting notifications for leads:', notificationLeadError);
-          throw notificationLeadError;
+          // Don't throw - continue with deletion as these are reference-based now
         }
 
-        // Step 4: Delete lead action items
-        console.log('Deleting lead action items...');
+        // Get action item IDs for cleanup
+        const { data: actionItems, error: actionItemsSelectError } = await supabase
+          .from('lead_action_items')
+          .select('id')
+          .in('lead_id', leadIds);
+        
+        if (actionItemsSelectError) {
+          console.error('Error selecting action items:', actionItemsSelectError);
+          // Don't throw - continue with deletion
+        }
+
+        const actionItemIds = actionItems?.map(item => item.id) || [];
+        
+        // Clean up notifications that reference action items
+        if (actionItemIds.length > 0) {
+          const { error: notificationActionError } = await supabase
+            .from('notifications')
+            .delete()
+            .in('action_item_id', actionItemIds);
+            
+          if (notificationActionError) {
+            console.error('Error deleting notifications for action items:', notificationActionError);
+            // Don't throw - continue with deletion as these are reference-based now
+          }
+        }
+
+        // Delete action items
         const { error: actionItemsDeleteError } = await supabase
           .from('lead_action_items')
           .delete()
@@ -72,11 +69,11 @@ export const useLeadDeletion = () => {
 
         if (actionItemsDeleteError) {
           console.error('Error deleting lead action items:', actionItemsDeleteError);
-          throw actionItemsDeleteError;
+          // Don't throw - continue with deletion as these are reference-based now
         }
       }
 
-      // Step 5: Finally delete the leads
+      // Delete the leads - this should now work without foreign key constraints
       console.log('Deleting leads...');
       const { error: leadsDeleteError } = await supabase
         .from('leads')
@@ -108,13 +105,7 @@ export const useLeadDeletion = () => {
       
       let errorMessage = "Failed to delete leads";
       if (error.message) {
-        if (error.message.includes('foreign key')) {
-          errorMessage = "Cannot delete leads: They have related records that must be removed first";
-        } else if (error.message.includes('violates')) {
-          errorMessage = "Cannot delete leads: Database constraint violation";
-        } else {
-          errorMessage = error.message;
-        }
+        errorMessage = error.message;
       }
       
       toast({
