@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { CSVParser } from '@/utils/csvParser';
 import { DateFormatUtils } from '@/utils/dateFormatUtils';
@@ -71,7 +72,9 @@ export class DealsCSVProcessor {
       errors: []
     };
 
-    for (const row of rows) {
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      const row = rows[rowIndex];
+      
       try {
         // Convert row to object
         const rowObj: Record<string, any> = {};
@@ -98,7 +101,8 @@ export class DealsCSVProcessor {
         // Validate required fields - ensure deal_name is present and not empty
         if (!dealRecord.deal_name || dealRecord.deal_name.trim() === '') {
           result.errorCount++;
-          result.errors.push('Deal name is required');
+          result.errors.push(`Row ${rowIndex + 2}: Deal name is required and cannot be empty`);
+          console.error(`Row ${rowIndex + 2}: Missing or empty deal_name:`, rowObj);
           continue;
         }
 
@@ -121,7 +125,7 @@ export class DealsCSVProcessor {
 
           if (updateError) {
             result.errorCount++;
-            result.errors.push(`Update failed: ${updateError.message}`);
+            result.errors.push(`Row ${rowIndex + 2}: Update failed - ${updateError.message}`);
             continue;
           }
           result.updateCount++;
@@ -183,7 +187,7 @@ export class DealsCSVProcessor {
 
           if (insertError) {
             result.errorCount++;
-            result.errors.push(`Insert failed: ${insertError.message}`);
+            result.errors.push(`Row ${rowIndex + 2}: Insert failed - ${insertError.message}`);
             continue;
           }
           dealId = insertedDeal.id;
@@ -197,7 +201,7 @@ export class DealsCSVProcessor {
 
       } catch (error: any) {
         result.errorCount++;
-        result.errors.push(`Row processing error: ${error.message}`);
+        result.errors.push(`Row ${rowIndex + 2}: Processing error - ${error.message}`);
       }
     }
 
@@ -261,9 +265,13 @@ export class DealsCSVProcessor {
       }
     });
 
-    // Ensure deal_name is always set
-    if (!dealRecord.deal_name) {
-      dealRecord.deal_name = rowObj.name || rowObj.project_name || '';
+    // Ensure deal_name is always set - try multiple fallbacks
+    if (!dealRecord.deal_name || dealRecord.deal_name.trim() === '') {
+      // Try fallback fields
+      dealRecord.deal_name = rowObj.name || 
+                            rowObj.project_name || 
+                            rowObj.customer_name || 
+                            '';
     }
 
     // Handle date fields
