@@ -1,6 +1,7 @@
 
 import { ReactNode } from "react";
 import { AppSidebar } from "./AppSidebar";
+import { NotificationBell } from "./NotificationBell";
 import { Button } from "./ui/button";
 import { User, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +24,9 @@ export const CRMLayout = ({ children }: CRMLayoutProps) => {
           </div>
           
           <div className="flex items-center gap-4">
+            {/* Notification Bell */}
+            <NotificationBell size="small" />
+            
             {/* User Menu */}
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" className="flex items-center gap-2">
