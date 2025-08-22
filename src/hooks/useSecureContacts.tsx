@@ -138,6 +138,14 @@ export const useSecureContacts = () => {
 
       console.log('Attempting to delete contact:', { id, contactToDelete });
 
+      // Count contacts before deletion to verify if deletion actually happened
+      const { count: beforeCount } = await supabase
+        .from('contacts')
+        .select('*', { count: 'exact', head: true })
+        .eq('id', id);
+
+      console.log('Contacts count before deletion:', beforeCount);
+
       // Try to delete the contact
       const { data, error } = await supabase
         .from('contacts')
@@ -148,23 +156,21 @@ export const useSecureContacts = () => {
 
       console.log('Delete operation result:', { data, error });
 
-      // If there's an error, it's likely a permission issue
-      if (error) {
-        console.error('Delete operation failed with error:', error);
+      // Check if there's an error OR if no data was returned (both indicate failure)
+      if (error || !data) {
+        console.log('Delete operation failed - checking for permission error');
         
-        // Check if this is a permission/RLS error
-        const isPermissionError = 
-          error.code === 'PGRST301' || // PostgREST forbidden
-          error.code === '42501' ||    // PostgreSQL insufficient privilege
-          error.code === 'P0001' ||    // PostgreSQL raise exception
-          error.message?.toLowerCase().includes('permission') ||
-          error.message?.toLowerCase().includes('policy') ||
-          error.message?.toLowerCase().includes('security') ||
-          error.message?.toLowerCase().includes('forbidden') ||
-          error.message?.toLowerCase().includes('access');
+        // Count contacts after deletion attempt to verify if record was actually deleted
+        const { count: afterCount } = await supabase
+          .from('contacts')
+          .select('*', { count: 'exact', head: true })
+          .eq('id', id);
 
-        if (isPermissionError) {
-          console.log('Permission error detected, logging unauthorized attempt');
+        console.log('Contacts count after deletion attempt:', afterCount);
+
+        // If count is the same, the deletion was blocked (permission issue)
+        if (beforeCount === afterCount && afterCount === 1) {
+          console.log('Deletion was blocked - logging as unauthorized attempt');
           
           // Log unauthorized attempt
           await logDelete('contacts', id, contactToDelete, undefined, 'Blocked');
@@ -175,9 +181,11 @@ export const useSecureContacts = () => {
             variant: "destructive",
           });
           
-          return; // Exit early, don't throw error
-        } else {
-          // For other database errors
+          return; // Exit early, don't throw error or show success
+        }
+
+        // For other database errors, throw the error
+        if (error) {
           throw error;
         }
       }
@@ -194,10 +202,6 @@ export const useSecureContacts = () => {
           title: "Success",
           description: "Contact deleted successfully",
         });
-      } else {
-        // This case should not happen if there's no error, but handle it just in case
-        console.warn('No data returned from delete operation and no error');
-        throw new Error('Delete operation completed but no confirmation received');
       }
 
     } catch (error: any) {
