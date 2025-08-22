@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSecureDataAccess } from '@/hooks/useSecureDataAccess';
 import { useToast } from '@/hooks/use-toast';
+import { useCRUDAudit } from '@/hooks/useCRUDAudit';
 
 interface Contact {
   id: string;
@@ -36,6 +37,7 @@ export const useSecureContacts = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const { secureQuery, secureExport } = useSecureDataAccess();
+  const { logDelete } = useCRUDAudit();
   const { toast } = useToast();
 
   const fetchContacts = async () => {
@@ -128,13 +130,26 @@ export const useSecureContacts = () => {
 
   const deleteContact = async (id: string) => {
     try {
+      // First get the contact to check ownership and get data for logging
+      const contactToDelete = contacts.find(c => c.id === id);
+      if (!contactToDelete) {
+        throw new Error('Contact not found');
+      }
+
       const query = supabase
         .from('contacts')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select()
+        .single();
 
-      await secureQuery('contacts', query, 'DELETE');
+      const result = await secureQuery('contacts', query, 'DELETE');
+      
+      // If we get here, the deletion was successful
       setContacts(prev => prev.filter(contact => contact.id !== id));
+      
+      // Log successful deletion
+      await logDelete('contacts', id, contactToDelete);
       
       toast({
         title: "Success",
@@ -142,11 +157,45 @@ export const useSecureContacts = () => {
       });
     } catch (error: any) {
       console.error('Error deleting contact:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete contact",
-        variant: "destructive",
-      });
+      
+      // Check if this is a permission error (RLS policy violation)
+      if (error.message?.includes('row-level security') || 
+          error.message?.includes('permission') ||
+          error.code === 'PGRST301' || 
+          error.code === '42501') {
+        
+        // Log unauthorized attempt
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          await supabase.from('security_audit_log').insert({
+            user_id: user?.id,
+            action: 'Unauthorized Delete Attempt',
+            resource_type: 'contacts',
+            resource_id: id,
+            details: {
+              operation: 'DELETE',
+              status: 'Blocked',
+              timestamp: new Date().toISOString(),
+              module: 'Contacts',
+              reason: 'Insufficient permissions'
+            }
+          });
+        } catch (logError) {
+          console.error('Failed to log unauthorized attempt:', logError);
+        }
+
+        toast({
+          title: "Permission Denied",
+          description: "You don't have permission to delete this record.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete contact",
+          variant: "destructive",
+        });
+      }
       throw error;
     }
   };

@@ -82,10 +82,48 @@ export const useLeadDeletion = () => {
 
       if (leadsDeleteError) {
         console.error('Error deleting leads:', leadsDeleteError);
+        
+        // Check if this is a permission error (RLS policy violation)
+        if (leadsDeleteError.message?.includes('row-level security') || 
+            leadsDeleteError.message?.includes('permission') ||
+            leadsDeleteError.code === 'PGRST301' || 
+            leadsDeleteError.code === '42501') {
+          
+          // Log unauthorized attempt for each lead
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            for (const leadId of leadIds) {
+              await supabase.from('security_audit_log').insert({
+                user_id: user?.id,
+                action: 'Unauthorized Delete Attempt',
+                resource_type: 'leads',
+                resource_id: leadId,
+                details: {
+                  operation: 'DELETE',
+                  status: 'Blocked',
+                  timestamp: new Date().toISOString(),
+                  module: 'Leads',
+                  reason: 'Insufficient permissions'
+                }
+              });
+            }
+          } catch (logError) {
+            console.error('Failed to log unauthorized attempt:', logError);
+          }
+
+          toast({
+            title: "Permission Denied",
+            description: "You don't have permission to delete this record.",
+            variant: "destructive",
+          });
+          
+          return { success: false, message: "You don't have permission to delete this record." };
+        }
+        
         throw leadsDeleteError;
       }
 
-      // Log the deletion
+      // Log the successful deletion
       await logBulkDelete('leads', leadIds.length, leadIds);
 
       console.log('Delete operation completed successfully');
