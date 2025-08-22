@@ -54,11 +54,14 @@ export const useCRUDAudit = () => {
     tableName: string,
     recordId?: string,
     deletedData?: any,
-    bulkCount?: number
+    bulkCount?: number,
+    status: string = 'Success'
   ) => {
-    await logSecurityEvent('DELETE', tableName, recordId, {
+    const action = status === 'Success' ? 'DELETE' : 'Unauthorized Delete Attempt';
+    
+    await logSecurityEvent(action, tableName, recordId, {
       operation: 'DELETE',
-      status: 'Success',
+      status: status,
       timestamp: new Date().toISOString(),
       deleted_data: deletedData,
       bulk_count: bulkCount,

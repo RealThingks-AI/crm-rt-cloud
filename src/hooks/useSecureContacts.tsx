@@ -136,6 +136,8 @@ export const useSecureContacts = () => {
         throw new Error('Contact not found');
       }
 
+      console.log('Attempting to delete contact:', { id, contactToDelete });
+
       const query = supabase
         .from('contacts')
         .delete()
@@ -145,26 +147,40 @@ export const useSecureContacts = () => {
 
       const result = await secureQuery('contacts', query, 'DELETE');
       
-      // If we get here, the deletion was successful
-      setContacts(prev => prev.filter(contact => contact.id !== id));
-      
-      // Log successful deletion
-      await logDelete('contacts', id, contactToDelete);
-      
-      toast({
-        title: "Success",
-        description: "Contact deleted successfully",
-      });
+      console.log('Delete query result:', result);
+
+      // Check if the deletion was actually successful
+      if (result.data) {
+        // If we get here, the deletion was successful
+        setContacts(prev => prev.filter(contact => contact.id !== id));
+        
+        // Log successful deletion
+        await logDelete('contacts', id, contactToDelete, undefined, 'Success');
+        
+        toast({
+          title: "Success",
+          description: "Contact deleted successfully",
+        });
+      } else {
+        // If no data returned, the deletion may have been blocked
+        console.log('No data returned from delete operation - may have been blocked by RLS');
+        throw new Error('Delete operation was blocked by security policy');
+      }
     } catch (error: any) {
       console.error('Error deleting contact:', error);
       
       // Check if this is a permission error (RLS policy violation)
-      if (error.message?.includes('row-level security') || 
-          error.message?.includes('permission') ||
-          error.code === 'PGRST301' || 
-          error.code === '42501') {
+      const isPermissionError = error.message?.includes('row-level security') || 
+                               error.message?.includes('permission') ||
+                               error.message?.includes('security policy') ||
+                               error.code === 'PGRST301' || 
+                               error.code === '42501' ||
+                               error.code === 'P0001';
+      
+      if (isPermissionError) {
+        console.log('Permission error detected, logging unauthorized attempt');
         
-        // Log unauthorized attempt
+        // Log unauthorized attempt with "Blocked" status
         try {
           const { data: { user } } = await supabase.auth.getUser();
           await supabase.from('security_audit_log').insert({
@@ -177,7 +193,7 @@ export const useSecureContacts = () => {
               status: 'Blocked',
               timestamp: new Date().toISOString(),
               module: 'Contacts',
-              reason: 'Insufficient permissions'
+              reason: 'Insufficient permissions - not record owner or admin'
             }
           });
         } catch (logError) {
@@ -190,12 +206,14 @@ export const useSecureContacts = () => {
           variant: "destructive",
         });
       } else {
+        // For other types of errors, show generic error message
         toast({
           title: "Error",
           description: "Failed to delete contact",
           variant: "destructive",
         });
       }
+      
       throw error;
     }
   };
