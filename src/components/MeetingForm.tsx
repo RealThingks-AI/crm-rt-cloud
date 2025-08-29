@@ -188,41 +188,88 @@ const syncFieldsOnDateChange = (form: any, newDate: Date, currentTimezone: strin
   }
 };
 
-// Convert local time to UTC for storage
-const convertToUTC = (date: Date, timeString: string, timezoneValue: string) => {
-  const [hours, minutes] = timeString.split(':').map(Number);
-  const localDateTime = new Date(date);
-  localDateTime.setHours(hours, minutes, 0, 0);
+// Convert local time to UTC using edge function
+const convertToUTC = async (date: Date, timeString: string, timezoneValue: string, duration: number) => {
+  const localDateTime = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${timeString}`;
   
-  const timezoneOffsetMinutes = getTimezoneOffsetMinutes(timezoneValue);
-  const utcDateTime = new Date(localDateTime.getTime() - (timezoneOffsetMinutes * 60 * 1000));
-  
-  console.log('🔄 convertToUTC Debug:', {
-    enteredLocalTime: `${date.toDateString()} ${timeString}`,
+  console.log('🔄 Converting local time to UTC via edge function:', {
+    localDateTime,
     timezone: timezoneValue,
-    offsetMinutes: timezoneOffsetMinutes,
-    convertedUTC: utcDateTime.toISOString(),
-    forStorage: 'This UTC value will be stored in Supabase'
+    duration
   });
-  
-  return utcDateTime;
+
+  const { data, error } = await supabase.functions.invoke('convert-timezone', {
+    body: {
+      localDateTime,
+      timezone: timezoneValue,
+      duration,
+      operation: 'toUTC'
+    }
+  });
+
+  if (error) {
+    console.error('❌ Timezone conversion error:', error);
+    throw new Error(`Timezone conversion failed: ${error.message}`);
+  }
+
+  console.log('✅ Meeting Form - Final Timezone Conversion Summary:', {
+    userInput: {
+      date: date.toDateString(),
+      time: timeString,
+      timezone: timezoneValue,
+      localDisplay: `${date.toDateString()} ${timeString} (${timezoneValue})`
+    },
+    conversion: {
+      utcStart: data.utcStart,
+      utcEnd: data.utcEnd,
+      willStoreInDB: 'These UTC values',
+      willSendToTeams: 'These same UTC values (no double conversion)'
+    },
+    expected: {
+      supabaseStorage: data.utcStart,
+      teamsDisplay: `Should show ${timeString} in user's timezone`,
+      crmDisplay: `Should show ${timeString} ${timezoneValue}`
+    }
+  });
+
+  return {
+    utcStart: new Date(data.utcStart),
+    utcEnd: new Date(data.utcEnd)
+  };
 };
 
-// Convert UTC time from storage back to local timezone for display
-const convertFromUTC = (utcDate: Date, timezoneValue: string) => {
-  const timezoneOffsetMinutes = getTimezoneOffsetMinutes(timezoneValue);
-  const localDate = new Date(utcDate.getTime() + (timezoneOffsetMinutes * 60 * 1000));
-  
-  console.log('🔄 convertFromUTC Debug:', {
-    fetchedUTC: utcDate.toISOString(),
+// Convert UTC time from storage back to local timezone using edge function
+const convertFromUTC = async (utcDate: Date, timezoneValue: string, duration: number) => {
+  console.log('🔄 Converting UTC to local time via edge function:', {
+    utcDateTime: utcDate.toISOString(),
     timezone: timezoneValue,
-    offsetMinutes: timezoneOffsetMinutes,
-    convertedLocal: localDate.toISOString(),
+    duration
+  });
+
+  const { data, error } = await supabase.functions.invoke('convert-timezone', {
+    body: {
+      localDateTime: utcDate.toISOString(),
+      timezone: timezoneValue,
+      duration,
+      operation: 'fromUTC'
+    }
+  });
+
+  if (error) {
+    console.error('❌ UTC to local conversion error:', error);
+    throw new Error(`UTC to local conversion failed: ${error.message}`);
+  }
+
+  const localDate = new Date(data.localStart);
+  
+  console.log('✅ UTC to Local Conversion Result:', {
+    utcInput: utcDate.toISOString(),
+    localOutput: data.localStart,
     displayDate: localDate.toDateString(),
     displayTime: `${localDate.getHours().toString().padStart(2, '0')}:${localDate.getMinutes().toString().padStart(2, '0')}`,
-    forDisplay: 'This local value will be shown in form'
+    forFormPrefill: 'This will populate the form fields'
   });
-  
+
   return {
     date: new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate()),
     time: `${localDate.getHours().toString().padStart(2, '0')}:${localDate.getMinutes().toString().padStart(2, '0')}`
@@ -230,8 +277,8 @@ const convertFromUTC = (utcDate: Date, timezoneValue: string) => {
 };
 
 // Legacy function for backward compatibility - now uses convertFromUTC
-const formatTimeInTimezone = (utcDate: Date, timezoneValue: string) => {
-  const result = convertFromUTC(utcDate, timezoneValue);
+const formatTimeInTimezone = async (utcDate: Date, timezoneValue: string) => {
+  const result = await convertFromUTC(utcDate, timezoneValue, 30); // Default 30 min duration for legacy usage
   return result.time;
 };
 
@@ -278,40 +325,53 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
   // Pre-fill form with browser's timezone, current date, and next available time slot
   useEffect(() => {
     if (editingMeeting) {
-      console.log('📝 Editing Meeting - Loading stored UTC data:', {
-        storedUTC: editingMeeting.start_datetime,
-        storedTimezone: editingMeeting.timezone
-      });
+      const handleEditingMeeting = async () => {
+        console.log('📝 Editing Meeting - Loading stored UTC data:', {
+          storedUTC: editingMeeting.start_datetime,
+          storedTimezone: editingMeeting.timezone
+        });
 
-      const utcStartDate = new Date(editingMeeting.start_datetime);
-      const utcEndDate = new Date(editingMeeting.end_datetime);
-      const durationMinutes = Math.round((utcEndDate.getTime() - utcStartDate.getTime()) / (1000 * 60));
-      const firstParticipant = editingMeeting.participants && editingMeeting.participants.length > 0 
-        ? editingMeeting.participants[0] 
-        : '';
+        const utcStartDate = new Date(editingMeeting.start_datetime);
+        const utcEndDate = new Date(editingMeeting.end_datetime);
+        const durationMinutes = Math.round((utcEndDate.getTime() - utcStartDate.getTime()) / (1000 * 60));
+        const firstParticipant = editingMeeting.participants && editingMeeting.participants.length > 0 
+          ? editingMeeting.participants[0] 
+          : '';
 
-      // Use browser's current timezone for editing (always display in user's current timezone)
-      const browserTz = getBrowserTimezoneValue();
+        // Use browser's current timezone for editing (always display in user's current timezone)
+        const browserTz = getBrowserTimezoneValue();
+        
+        try {
+          // Convert UTC back to browser's local time for display using edge function
+          const localDateTime = await convertFromUTC(utcStartDate, browserTz, durationMinutes);
+
+          console.log('📝 Editing Meeting - Converted to local time for display:', {
+            browserTimezone: browserTz,
+            localDate: localDateTime.date.toDateString(),
+            localTime: localDateTime.time,
+            willDisplayAs: 'This is what user will see in form'
+          });
+
+          form.reset({
+            title: editingMeeting.title,
+            timezone: browserTz, // Always use browser timezone for editing
+            startDate: localDateTime.date,
+            startTime: localDateTime.time,
+            duration: durationMinutes.toString(),
+            participant: firstParticipant,
+            description: editingMeeting.description || '',
+          });
+        } catch (error) {
+          console.error('Failed to convert UTC to local time:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load meeting data",
+            variant: "destructive",
+          });
+        }
+      };
       
-      // Convert UTC back to browser's local time for display
-      const localDateTime = convertFromUTC(utcStartDate, browserTz);
-
-      console.log('📝 Editing Meeting - Converted to local time for display:', {
-        browserTimezone: browserTz,
-        localDate: localDateTime.date.toDateString(),
-        localTime: localDateTime.time,
-        willDisplayAs: 'This is what user will see in form'
-      });
-
-      form.reset({
-        title: editingMeeting.title,
-        timezone: browserTz, // Always use browser timezone for editing
-        startDate: localDateTime.date,
-        startTime: localDateTime.time,
-        duration: durationMinutes.toString(),
-        participant: firstParticipant,
-        description: editingMeeting.description || '',
-      });
+      handleEditingMeeting();
     } else {
       // For new meetings, preset with browser timezone, today's date, and next available slot
       const today = new Date();
@@ -356,11 +416,22 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Convert to UTC for storage and Teams meeting
-      const utcStartDateTime = convertToUTC(data.startDate, data.startTime, data.timezone);
+      console.log('📝 Meeting Form Submission - Raw Data:', {
+        title: data.title,
+        timezone: data.timezone,
+        startDate: data.startDate,
+        startTime: data.startTime,
+        duration: data.duration,
+        participant: data.participant,
+        description: data.description
+      });
+
+      // Convert to UTC for storage and Teams meeting using edge function
       const durationMinutes = parseInt(data.duration);
-      const utcEndDateTime = new Date(utcStartDateTime);
-      utcEndDateTime.setMinutes(utcEndDateTime.getMinutes() + durationMinutes);
+      const { utcStart, utcEnd } = await convertToUTC(data.startDate, data.startTime, data.timezone, durationMinutes);
+      
+      const utcStartDateTime = utcStart;
+      const utcEndDateTime = utcEnd;
 
       // Check if the selected time is in the past (using browser local time)
       if (isDateTimeInPast(data.startDate, data.startTime)) {

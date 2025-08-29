@@ -134,11 +134,43 @@ export const MeetingsTable = ({
         {status}
       </Badge>;
   };
+  // Get browser timezone offset for display
+  const getBrowserTimezoneValue = () => {
+    const offsetMinutes = -new Date().getTimezoneOffset();
+    const sign = offsetMinutes >= 0 ? '+' : '-';
+    const absMinutes = Math.abs(offsetMinutes);
+    const hours = Math.floor(absMinutes / 60);
+    const minutes = absMinutes % 60;
+    const hoursStr = hours.toString().padStart(2, '0');
+    const minutesStr = minutes.toString().padStart(2, '0');
+    return `UTC${sign}${hoursStr}:${minutesStr}`;
+  };
+
   const formatDateTime = (dateTime: string) => {
-    const date = new Date(dateTime);
+    // Convert UTC time to browser local time for display
+    const utcDate = new Date(dateTime);
+    const browserTz = getBrowserTimezoneValue();
+    
+    // Calculate offset and convert to local time
+    const offsetMatch = browserTz.match(/UTC([+-])(\d{1,2}):?(\d{0,2})/);
+    if (offsetMatch) {
+      const sign = offsetMatch[1] === '+' ? 1 : -1;
+      const hours = parseInt(offsetMatch[2]);
+      const minutes = parseInt(offsetMatch[3] || '0');
+      const offsetMinutes = sign * (hours * 60 + minutes);
+      
+      const localDate = new Date(utcDate.getTime() + (offsetMinutes * 60 * 1000));
+      
+      return {
+        date: format(localDate, 'MMM dd, yyyy'),
+        time: format(localDate, 'HH:mm')
+      };
+    }
+    
+    // Fallback to UTC display
     return {
-      date: format(date, 'MMM dd, yyyy'),
-      time: format(date, 'HH:mm')
+      date: format(utcDate, 'MMM dd, yyyy'),
+      time: format(utcDate, 'HH:mm')
     };
   };
   const handleStatusUpdate = async (meetingId: string, newStatus: 'Completed' | 'Cancelled') => {
