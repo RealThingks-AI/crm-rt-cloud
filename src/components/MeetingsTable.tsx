@@ -135,10 +135,14 @@ export const MeetingsTable = ({
       </Badge>;
   };
   const formatDateTime = (dateTime: string) => {
-    const date = new Date(dateTime);
+    // Convert UTC datetime to browser local time for display
+    const utcDate = new Date(dateTime);
+    const browserOffset = -new Date().getTimezoneOffset(); // minutes ahead of UTC
+    const localDate = new Date(utcDate.getTime() + (browserOffset * 60000));
+    
     return {
-      date: format(date, 'MMM dd, yyyy'),
-      time: format(date, 'HH:mm')
+      date: format(localDate, 'MMM dd, yyyy'),
+      time: format(localDate, 'HH:mm')
     };
   };
   const handleStatusUpdate = async (meetingId: string, newStatus: 'Completed' | 'Cancelled') => {
