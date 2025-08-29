@@ -399,7 +399,6 @@ export type Database = {
           created_at: string
           created_by: string
           description: string | null
-          duration: number | null
           end_datetime: string
           id: string
           modified_by: string | null
@@ -417,7 +416,6 @@ export type Database = {
           created_at?: string
           created_by: string
           description?: string | null
-          duration?: number | null
           end_datetime: string
           id?: string
           modified_by?: string | null
@@ -435,7 +433,6 @@ export type Database = {
           created_at?: string
           created_by?: string
           description?: string | null
-          duration?: number | null
           end_datetime?: string
           id?: string
           modified_by?: string | null

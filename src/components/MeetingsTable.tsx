@@ -17,7 +17,6 @@ interface Meeting {
   title: string;
   start_datetime: string;
   end_datetime: string;
-  duration: number;
   participants: string[];
   organizer: string;
   status: string; // Changed from union type to string to match database
