@@ -46,11 +46,10 @@ export const ContactColumnCustomizer = ({
       { field: 'position', label: 'Position', visible: true, order: 2 },
       { field: 'email', label: 'Email', visible: true, order: 3 },
       { field: 'phone_no', label: 'Phone', visible: true, order: 4 },
-      { field: 'region', label: 'Region', visible: true, order: 5 }, // Changed from country to region
+      { field: 'region', label: 'Region', visible: true, order: 5 },
       { field: 'contact_owner', label: 'Contact Owner', visible: true, order: 6 },
-      { field: 'industry', label: 'Industry', visible: false, order: 7 },
-      { field: 'contact_source', label: 'Source', visible: false, order: 8 },
-      { field: 'lead_status', label: 'Status', visible: false, order: 9 },
+      { field: 'industry', label: 'Industry', visible: true, order: 7 },
+      { field: 'contact_source', label: 'Source', visible: true, order: 8 },
     ];
     setLocalColumns(defaultColumns);
   };
@@ -59,7 +58,7 @@ export const ContactColumnCustomizer = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="text-lg font-bold">Customize Columns</DialogTitle>
+          <DialogTitle className="text-lg font-bold">Columns</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">

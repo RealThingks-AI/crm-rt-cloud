@@ -1,91 +1,78 @@
 
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
-import { GenericCSVProcessor } from './import-export/genericCSVProcessor';
-import { GenericCSVExporter } from './import-export/genericCSVExporter';
-import { getExportFilename } from '@/utils/exportUtils';
+import { useToast } from '@/hooks/use-toast';
+import { LeadsCSVProcessor } from '@/hooks/import-export/leadsCSVProcessor';
+import { LeadsCSVExporter } from '@/hooks/import-export/leadsCSVExporter';
 
-// Leads field order including action items
-const LEADS_EXPORT_FIELDS = [
-  'id', 'lead_name', 'company_name', 'position', 'email', 'phone_no',
-  'linkedin', 'website', 'contact_source', 'lead_status', 'industry', 'country',
-  'description', 'contact_owner', 'created_by', 'modified_by',
-  'created_time', 'modified_time', 'action_items_json'
-];
+interface Lead {
+  id: string;
+  lead_name: string;
+  company_name?: string;
+  email?: string;
+  phone_no?: string;
+  position?: string;
+  created_by?: string;
+  contact_owner?: string;
+  lead_status?: string;
+  created_time?: string;
+  modified_time?: string;
+  linkedin?: string;
+  website?: string;
+  contact_source?: string;
+  industry?: string;
+  country?: string;
+  description?: string;
+}
 
-export const useSimpleLeadsImportExport = (onRefresh: () => void) => {
-  const { user } = useAuth();
+export const useSimpleLeadsImportExport = (onImportComplete: () => void) => {
   const [isImporting, setIsImporting] = useState(false);
+  const { toast } = useToast();
 
   const handleImport = async (file: File) => {
-    if (!user?.id) {
-      toast({
-        title: "Error",
-        description: "User not authenticated",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsImporting(true);
-    
+
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
       const text = await file.text();
-      const processor = new GenericCSVProcessor();
-      
+      console.log('Starting leads import with new processor...');
+
+      const processor = new LeadsCSVProcessor();
       const result = await processor.processCSV(text, {
-        tableName: 'leads',
         userId: user.id,
         onProgress: (processed, total) => {
-          console.log(`Progress: ${processed}/${total}`);
+          console.log(`Processing: ${processed}/${total}`);
         }
       });
 
-      const { successCount, updateCount, errorCount } = result;
-      const message = `Import completed: ${successCount} new, ${updateCount} updated, ${errorCount} errors`;
-      
-      if (successCount > 0 || updateCount > 0) {
+      // Show results
+      if (result.successCount > 0 || result.updateCount > 0) {
         toast({
           title: "Import Successful",
-          description: message,
+          description: `Successfully processed ${result.successCount + result.updateCount} leads (${result.successCount} new, ${result.updateCount} updated)${result.errorCount > 0 ? ` with ${result.errorCount} errors` : ''}`,
         });
-        
-        // Trigger real-time refresh
-        onRefresh();
-        
-        // Dispatch custom event for real-time updates
-        window.dispatchEvent(new CustomEvent('leads-data-updated', {
-          detail: { successCount, updateCount, source: 'csv-import' }
-        }));
-      } else {
+      }
+
+      if (result.errorCount > 0 && result.errors.length > 0) {
+        const errorSample = result.errors.slice(0, 3).join(', ');
         toast({
-          title: "Import Failed",
-          description: message,
+          title: "Import Errors",
+          description: `${result.errorCount} errors occurred. Sample: ${errorSample}${result.errors.length > 3 ? '...' : ''}`,
           variant: "destructive",
         });
       }
 
+      onImportComplete();
+
     } catch (error: any) {
-      console.error('Import error:', error);
-      let errorMessage = "Failed to import leads";
-      
-      if (error.message) {
-        if (error.message.includes('foreign key')) {
-          errorMessage = "Import failed: Invalid user reference in data";
-        } else if (error.message.includes('duplicate key')) {
-          errorMessage = "Import failed: Duplicate records found";
-        } else if (error.message.includes('check constraint')) {
-          errorMessage = "Import failed: Invalid data format";
-        } else {
-          errorMessage = error.message;
-        }
-      }
-      
+      console.error('Import failed:', error);
       toast({
-        title: "Import Error",
-        description: errorMessage,
+        title: "Import Failed",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {
@@ -95,65 +82,48 @@ export const useSimpleLeadsImportExport = (onRefresh: () => void) => {
 
   const handleExport = async () => {
     try {
-      // Fetch leads with their action items
-      const { data: leads, error: leadsError } = await supabase
+      const { data, error } = await supabase
         .from('leads')
         .select('*')
         .order('created_time', { ascending: false });
 
-      if (leadsError) throw leadsError;
+      if (error) {
+        throw error;
+      }
 
-      if (!leads || leads.length === 0) {
+      if (!data || data.length === 0) {
         toast({
           title: "No Data",
-          description: "No leads to export",
-          variant: "destructive",
+          description: "No leads to export.",
         });
         return;
       }
 
-      // Fetch all action items for these leads
-      const leadIds = leads.map(lead => lead.id);
-      const { data: actionItems, error: actionItemsError } = await supabase
-        .from('lead_action_items')
-        .select('*')
-        .in('lead_id', leadIds)
-        .order('created_at', { ascending: false });
+      console.log('Starting leads export with new exporter...');
+      const exporter = new LeadsCSVExporter();
+      const csvContent = await exporter.exportLeads(data);
 
-      if (actionItemsError) {
-        console.error('Error fetching action items:', actionItemsError);
-        // Continue with export without action items
-      }
-
-      // Group action items by lead_id
-      const actionItemsByLead = (actionItems || []).reduce((acc, item) => {
-        if (!acc[item.lead_id]) {
-          acc[item.lead_id] = [];
-        }
-        acc[item.lead_id].push(item);
-        return acc;
-      }, {} as Record<string, any[]>);
-
-      // Combine leads with their action items
-      const leadsWithActionItems = leads.map(lead => ({
-        ...lead,
-        action_items_json: JSON.stringify(actionItemsByLead[lead.id] || [])
-      }));
-
-      const filename = getExportFilename('leads', 'all');
-      const exporter = new GenericCSVExporter();
-      await exporter.exportToCSV(leadsWithActionItems, filename, LEADS_EXPORT_FIELDS);
+      // Download the file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('download', `leads_export_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
 
       toast({
         title: "Export Successful",
-        description: `${leads.length} leads with action items exported`,
+        description: `Exported ${data.length} leads to CSV.`,
       });
 
     } catch (error: any) {
-      console.error('Export error:', error);
+      console.error('Export failed:', error);
       toast({
-        title: "Export Error",
-        description: error.message || "Failed to export leads",
+        title: "Export Failed",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
     }

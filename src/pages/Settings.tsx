@@ -2,14 +2,29 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Palette, Shield, FileText } from "lucide-react";
+import { Users, Shield, FileText } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
 import UserManagement from "@/components/UserManagement";
-import PreferencesSettings from "@/components/settings/PreferencesSettings";
 import SecuritySettings from "@/components/settings/SecuritySettings";
 import AuditLogsSettings from "@/components/settings/AuditLogsSettings";
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState("user-management");
+  const { isAdmin, userRole, loading: roleLoading } = useUserRole();
+  const canManageUsers = isAdmin; // Only Admin can manage users (not managers)
+  const canViewAuditLogs = isAdmin; // Only Admin can view audit logs (not managers)
+  const [activeTab, setActiveTab] = useState(canManageUsers ? "user-management" : "security");
+
+  // Show loading while checking user role
+  if (roleLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Settings</h1>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -21,40 +36,40 @@ const Settings = () => {
 
       {/* Settings Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 gap-1">
-          <TabsTrigger value="user-management" className="flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            <span className="hidden sm:inline">User Management</span>
-          </TabsTrigger>
-          <TabsTrigger value="preferences" className="flex items-center gap-2">
-            <Palette className="w-4 h-4" />
-            <span className="hidden sm:inline">Preferences</span>
-          </TabsTrigger>
+        <TabsList className={`grid w-full ${canManageUsers ? 'grid-cols-3' : canViewAuditLogs ? 'grid-cols-2' : 'grid-cols-1'} gap-1`}>
+          {canManageUsers && (
+            <TabsTrigger value="user-management" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">User Management</span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="security" className="flex items-center gap-2">
             <Shield className="w-4 h-4" />
             <span className="hidden sm:inline">Security</span>
           </TabsTrigger>
-          <TabsTrigger value="audit-logs" className="flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            <span className="hidden sm:inline">Audit & Logs</span>
-          </TabsTrigger>
+          {canViewAuditLogs && (
+            <TabsTrigger value="audit-logs" className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">Audit & Logs</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
-        <TabsContent value="user-management" className="mt-6">
-          <UserManagement />
-        </TabsContent>
-
-        <TabsContent value="preferences" className="mt-6">
-          <PreferencesSettings />
-        </TabsContent>
+        {canManageUsers && (
+          <TabsContent value="user-management" className="mt-6">
+            <UserManagement />
+          </TabsContent>
+        )}
 
         <TabsContent value="security" className="mt-6">
           <SecuritySettings />
         </TabsContent>
 
-        <TabsContent value="audit-logs" className="mt-6">
-          <AuditLogsSettings />
-        </TabsContent>
+        {canViewAuditLogs && (
+          <TabsContent value="audit-logs" className="mt-6">
+            <AuditLogsSettings />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

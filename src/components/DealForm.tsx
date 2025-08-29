@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { validateRequiredFields, getFieldErrors, validateDateLogic, validateRevenueSum } from "./deal-form/validation";
 import { DealStageForm } from "./deal-form/DealStageForm";
 import { DealActionItemsModal } from "./DealActionItemsModal";
+import { supabase } from "@/integrations/supabase/client";
+import { useUserDisplayNames } from "@/hooks/useUserDisplayNames";
 
 interface DealFormProps {
   deal: Deal | null;
@@ -27,6 +30,43 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [actionModalOpen, setActionModalOpen] = useState(false);
   const { toast } = useToast();
+
+  // NEW: Track current user id for default Lead Owner
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const { displayNames: currentUserDisplayNames } = useUserDisplayNames(currentUserId ? [currentUserId] : []);
+
+  // Fetch current user once when creating a deal
+  useEffect(() => {
+    if (!isCreating) return;
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (error) {
+        console.warn("DealForm: Failed to get current user for lead owner default:", error);
+        return;
+      }
+      const uid = data?.user?.id || null;
+      setCurrentUserId(uid);
+      console.log("DealForm: currentUserId for default lead owner:", uid);
+    });
+  }, [isCreating]);
+
+  // Auto-fill Lead Owner for new deal creation if missing/Unknown
+  useEffect(() => {
+    if (!isCreating) return;
+    if (!currentUserId) return;
+
+    const name = currentUserDisplayNames[currentUserId];
+    if (!name) return;
+
+    setFormData(prev => {
+      const current = prev.lead_owner;
+      if (current && current !== "Unknown User") {
+        // Respect user-entered value or previously resolved name
+        return prev;
+      }
+      console.log("DealForm: Auto-setting lead_owner to current user's display name:", name);
+      return { ...prev, lead_owner: name };
+    });
+  }, [isCreating, currentUserId, currentUserDisplayNames]);
 
   useEffect(() => {
     if (deal) {
@@ -256,6 +296,12 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
   const canMoveToFinalStage = !isCreating;
   const canSave = true; // Always allow saving
 
+  const handleActionButtonClick = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent form submission
+    e.stopPropagation(); // Stop event bubbling
+    setActionModalOpen(true);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
@@ -334,9 +380,10 @@ export const DealForm = ({ deal, isOpen, onClose, onSave, isCreating = false, in
               )}
               {!isCreating && (
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setActionModalOpen(true)}
+                  onClick={handleActionButtonClick}
                 >
                   Action
                 </Button>

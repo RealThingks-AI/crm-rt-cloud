@@ -49,8 +49,8 @@ export const LeadColumnCustomizer = ({
       { field: 'country', label: 'Region', visible: true, order: 5 },
       { field: 'contact_owner', label: 'Lead Owner', visible: true, order: 6 },
       { field: 'lead_status', label: 'Lead Status', visible: true, order: 7 },
-      { field: 'industry', label: 'Industry', visible: false, order: 8 },
-      { field: 'contact_source', label: 'Source', visible: false, order: 9 },
+      { field: 'industry', label: 'Industry', visible: true, order: 8 },
+      { field: 'contact_source', label: 'Source', visible: true, order: 9 },
     ];
     setLocalColumns(defaultColumns);
   };
@@ -59,7 +59,7 @@ export const LeadColumnCustomizer = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="text-lg font-bold">Customize Columns</DialogTitle>
+          <DialogTitle className="text-lg font-bold">Columns</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">

@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +10,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import Dashboard from "./pages/Dashboard";
 import Contacts from "./pages/Contacts";
 import Leads from "./pages/Leads";
+import Meetings from "./pages/Meetings";
 import DealsPage from "./pages/DealsPage";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
@@ -24,16 +26,20 @@ const FixedSidebarLayout = ({ children }: { children: React.ReactNode }) => {
   
   return (
     <div className="min-h-screen flex w-full">
-      <div className="fixed top-0 left-0 h-full z-50">
+      <div className="fixed top-0 left-0 z-50 h-full">
         <AppSidebar isFixed={true} isOpen={sidebarOpen} onToggle={setSidebarOpen} />
       </div>
       <main 
-        className="flex-1 bg-background transition-all duration-300 ease-in-out"
+        className="flex-1 bg-background min-h-screen"
         style={{ 
-          marginLeft: sidebarOpen ? '220px' : '60px'
+          marginLeft: sidebarOpen ? '200px' : '64px',
+          transition: 'margin-left 300ms ease-in-out',
+          width: `calc(100vw - ${sidebarOpen ? '200px' : '64px'})`
         }}
       >
-        {children}
+        <div className="w-full h-full overflow-auto">
+          {children}
+        </div>
       </main>
     </div>
   );
@@ -110,6 +116,11 @@ const AppRouter = () => (
       <Route path="/leads" element={
         <ProtectedRoute>
           <Leads />
+        </ProtectedRoute>
+      } />
+      <Route path="/meetings" element={
+        <ProtectedRoute>
+          <Meetings />
         </ProtectedRoute>
       } />
       <Route path="/deals" element={

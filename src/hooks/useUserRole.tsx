@@ -35,18 +35,48 @@ export const useUserRole = () => {
   }, [user]);
 
   const isAdmin = userRole === 'admin';
-  const canEdit = isAdmin;
-  const canDelete = isAdmin;
-  const canManageUsers = isAdmin;
-  const canAccessSettings = isAdmin;
+  const isManager = userRole === 'manager';
+  const isUser = userRole === 'user';
+  
+  // Core permissions
+  const canEdit = isAdmin || isManager;
+  const canDelete = isAdmin || isManager;
+  
+  // Module access permissions
+  const canAccessDeals = isAdmin || isManager; // Users blocked from deals completely
+  const canAccessSettings = true; // All users can access settings
+  
+  // Management permissions
+  const canManageUsers = isAdmin; // Only admins can manage users
+  const canViewAuditLogs = isAdmin; // Only admin can view audit logs (managers blocked)
+  
+  // Data editing permissions
+  const canEditAllContacts = isAdmin || isManager; // Admin/Manager can edit all contacts
+  const canEditOwnContacts = true; // All users can edit their own contacts
+  const canEditAllLeads = isAdmin || isManager; // Admin/Manager can edit all leads  
+  const canEditOwnLeads = true; // All users can edit their own leads
+  
+  // Deletion permissions
+  const canDeleteContacts = isAdmin || isManager; // Only Admin/Manager can delete contacts
+  const canDeleteLeads = isAdmin || isManager; // Only Admin/Manager can delete leads
 
   return {
     userRole,
     isAdmin,
+    isManager,
+    isUser,
     canEdit,
     canDelete,
-    canManageUsers,
+    canAccessDeals,
     canAccessSettings,
+    canManageUsers,
+    canViewAuditLogs,
+    canEditAllContacts,
+    canEditOwnContacts,
+    canEditAllLeads,
+    canEditOwnLeads,
+    canDeleteContacts,
+    canDeleteLeads,
     loading
   };
 };

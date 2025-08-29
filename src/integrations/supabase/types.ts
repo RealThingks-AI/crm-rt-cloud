@@ -155,7 +155,7 @@ export type Database = {
           business_value: string | null
           closing: string | null
           created_at: string | null
-          created_by: string | null
+          created_by: string
           currency_type: string | null
           current_status: string | null
           customer_challenges: string | null
@@ -203,7 +203,7 @@ export type Database = {
           business_value?: string | null
           closing?: string | null
           created_at?: string | null
-          created_by?: string | null
+          created_by: string
           currency_type?: string | null
           current_status?: string | null
           customer_challenges?: string | null
@@ -251,7 +251,7 @@ export type Database = {
           business_value?: string | null
           closing?: string | null
           created_at?: string | null
-          created_by?: string | null
+          created_by?: string
           currency_type?: string | null
           current_status?: string | null
           customer_challenges?: string | null
@@ -391,6 +391,63 @@ export type Database = {
           phone_no?: string | null
           position?: string | null
           website?: string | null
+        }
+        Relationships: []
+      }
+      meetings: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          duration: number | null
+          end_datetime: string
+          id: string
+          modified_by: string | null
+          organizer: string
+          participants: string[]
+          start_datetime: string
+          status: string
+          teams_meeting_id: string | null
+          teams_meeting_link: string | null
+          timezone: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          duration?: number | null
+          end_datetime: string
+          id?: string
+          modified_by?: string | null
+          organizer: string
+          participants?: string[]
+          start_datetime: string
+          status?: string
+          teams_meeting_id?: string | null
+          teams_meeting_link?: string | null
+          timezone?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          duration?: number | null
+          end_datetime?: string
+          id?: string
+          modified_by?: string | null
+          organizer?: string
+          participants?: string[]
+          start_datetime?: string
+          status?: string
+          teams_meeting_id?: string | null
+          teams_meeting_link?: string | null
+          timezone?: string | null
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
