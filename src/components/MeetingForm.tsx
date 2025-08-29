@@ -362,6 +362,26 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
       const utcEndDateTime = new Date(utcStartDateTime);
       utcEndDateTime.setMinutes(utcEndDateTime.getMinutes() + durationMinutes);
 
+      console.log('✅ Meeting Form - Final Timezone Conversion Summary:', {
+        userInput: {
+          date: data.startDate.toDateString(),
+          time: data.startTime,
+          timezone: data.timezone,
+          localDisplay: `${data.startDate.toDateString()} ${data.startTime} (${data.timezone})`
+        },
+        conversion: {
+          utcStart: utcStartDateTime.toISOString(),
+          utcEnd: utcEndDateTime.toISOString(),
+          willStoreInDB: 'These UTC values',
+          willSendToTeams: 'These same UTC values (no double conversion)'
+        },
+        expected: {
+          supabaseStorage: utcStartDateTime.toISOString(),
+          teamsDisplay: `Should show ${data.startTime} in user's timezone`,
+          crmDisplay: `Should show ${data.startTime} ${data.timezone}`
+        }
+      });
+
       // Check if the selected time is in the past (using browser local time)
       if (isDateTimeInPast(data.startDate, data.startTime)) {
         toast({

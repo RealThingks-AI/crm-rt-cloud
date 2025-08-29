@@ -96,6 +96,29 @@ const handler = async (req: Request): Promise<Response> => {
       // Ensure participants is an array, default to empty array if undefined
       const safeParticipants = Array.isArray(participants) ? participants : [];
 
+      // CRITICAL: Log the timezone conversion flow
+      console.log('🔍 Teams Meeting Creation - Timezone Flow Debug:', {
+        step: '1. Received from frontend',
+        startDateTime: startDateTime,
+        endDateTime: endDateTime,
+        note: 'Frontend should send UTC-converted datetime strings'
+      });
+
+      // Validate that received datetimes are in proper ISO format
+      const startDate = new Date(startDateTime);
+      const endDate = new Date(endDateTime);
+      
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        throw new Error('Invalid datetime format received from frontend');
+      }
+
+      console.log('🔍 Teams Meeting Creation - Validation:', {
+        step: '2. Parsed and validated',
+        parsedStartUTC: startDate.toISOString(),
+        parsedEndUTC: endDate.toISOString(),
+        note: 'These are the UTC times that will be sent to Graph API'
+      });
+
       const eventData = {
         subject: title,
         body: {
@@ -103,11 +126,11 @@ const handler = async (req: Request): Promise<Response> => {
           content: description || '',
         },
         start: {
-          dateTime: startDateTime,
+          dateTime: startDateTime, // Already in UTC from frontend
           timeZone: 'UTC',
         },
         end: {
-          dateTime: endDateTime,
+          dateTime: endDateTime, // Already in UTC from frontend
           timeZone: 'UTC',
         },
         attendees: safeParticipants.map((email: string) => ({
@@ -121,7 +144,16 @@ const handler = async (req: Request): Promise<Response> => {
         onlineMeetingProvider: 'teamsForBusiness',
       };
 
-      console.log('Creating Teams event with data:', JSON.stringify(eventData, null, 2));
+      console.log('🔍 Teams Meeting Creation - Final Graph API Payload:', {
+        step: '3. Sending to Microsoft Graph',
+        subject: eventData.subject,
+        startDateTime: eventData.start.dateTime,
+        startTimeZone: eventData.start.timeZone,
+        endDateTime: eventData.end.dateTime,
+        endTimeZone: eventData.end.timeZone,
+        note: 'Microsoft Graph will handle timezone display for users'
+      });
+
       console.log('Using organizer email:', userEmail);
 
       // Use the specific user's endpoint instead of /me
