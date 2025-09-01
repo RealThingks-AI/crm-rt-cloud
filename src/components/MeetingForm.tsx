@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { addMinutes, format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -12,11 +12,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { CalendarIcon, Clock, Users, Globe, Check, ChevronsUpDown } from 'lucide-react';
-import { format } from 'date-fns';
+import { CalendarIcon, Clock, Users, Globe, Check, ChevronsUpDown, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  IANA_TIMEZONES,
+  getBrowserTimezone,
+  convertLocalToUTC,
+  convertUTCToLocal,
+  isLocalDateTimeInPast,
+  getNextAvailableTimeSlot,
+  getAvailableTimeSlots,
+  checkMeetingConflicts,
+  suggestNextAvailableSlot,
+  formatDateTimeWithTimezone
+} from '@/utils/timezoneUtils';
 
 const meetingSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -37,261 +49,27 @@ interface MeetingFormProps {
   editingMeeting?: any;
 }
 
-// Generate time slots every 30 minutes
-const generateTimeSlots = () => {
-  const slots = [];
-  for (let hour = 0; hour < 24; hour++) {
-    for (let minute = 0; minute < 60; minute += 30) {
-      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-      slots.push(timeString);
-    }
-  }
-  return slots;
-};
-
-const timeSlots = generateTimeSlots();
-
 const durationOptions = [
   { label: '30 minutes', value: '30' },
   { label: '1 hour', value: '60' },
   { label: '1.5 hours', value: '90' },
   { label: '2 hours', value: '120' },
+  { label: '3 hours', value: '180' },
 ];
 
-// Updated timezone options as requested
-const timezones = [
-  { label: 'UTC-10:00 (Hawaii-Aleutian Standard Time)', value: 'UTC-10:00' },
-  { label: 'UTC-09:00 (Alaska Standard Time)', value: 'UTC-09:00' },
-  { label: 'UTC-08:00 (Pacific Standard Time)', value: 'UTC-08:00' },
-  { label: 'UTC-07:00 (Mountain Standard Time)', value: 'UTC-07:00' },
-  { label: 'UTC-06:00 (Central Standard Time)', value: 'UTC-06:00' },
-  { label: 'UTC-05:00 (Eastern Standard Time)', value: 'UTC-05:00' },
-  { label: 'UTC-04:00 (Atlantic Standard Time)', value: 'UTC-04:00' },
-  { label: 'UTC-03:30 (Newfoundland Standard Time)', value: 'UTC-03:30' },
-  { label: 'UTC-03:00 (Argentina Time)', value: 'UTC-03:00' },
-  { label: 'UTC-02:00 (Fernando de Noronha Time)', value: 'UTC-02:00' },
-  { label: 'UTC-01:00 (Azores Standard Time)', value: 'UTC-01:00' },
-  { label: 'UTC+00:00 (Greenwich Mean Time/Western European Time)', value: 'UTC+00:00' },
-  { label: 'UTC+01:00 (Central European Time)', value: 'UTC+01:00' },
-  { label: 'UTC+02:00 (Eastern European Time)', value: 'UTC+02:00' },
-  { label: 'UTC+03:00 (Moscow Time)', value: 'UTC+03:00' },
-  { label: 'UTC+03:30 (Iran Standard Time)', value: 'UTC+03:30' },
-  { label: 'UTC+04:00 (Gulf Standard Time)', value: 'UTC+04:00' },
-  { label: 'UTC+05:30 (Indian Standard Time)', value: 'UTC+05:30' },
-  { label: 'UTC+06:30 (Myanmar Standard Time)', value: 'UTC+06:30' },
-  { label: 'UTC+07:00 (Indochina Time)', value: 'UTC+07:00' },
-  { label: 'UTC+08:00 (China Standard Time)', value: 'UTC+08:00' },
-  { label: 'UTC+08:45 (Australian Central Western Standard Time)', value: 'UTC+08:45' },
-  { label: 'UTC+09:00 (Japan Standard Time)', value: 'UTC+09:00' },
-  { label: 'UTC+09:30 (Australian Central Standard Time)', value: 'UTC+09:30' },
-  { label: 'UTC+10:00 (Australian Eastern Standard Time)', value: 'UTC+10:00' },
-  { label: 'UTC+10:30 (Lord Howe Standard Time)', value: 'UTC+10:30' },
-  { label: 'UTC+11:00 (Solomon Islands Time)', value: 'UTC+11:00' },
-  { label: 'UTC+12:00 (Fiji Time)', value: 'UTC+12:00' },
-];
-
-// Get browser's actual timezone and return corresponding UTC offset value
-const getBrowserTimezoneValue = () => {
-  const offsetMinutes = -new Date().getTimezoneOffset(); // minutes ahead of UTC (positive for ahead)
-  const sign = offsetMinutes >= 0 ? '+' : '-';
-  const absMinutes = Math.abs(offsetMinutes);
-  const hours = Math.floor(absMinutes / 60);
-  const minutes = absMinutes % 60;
-  const hoursStr = hours.toString().padStart(2, '0');
-  const minutesStr = minutes.toString().padStart(2, '0');
-  return `UTC${sign}${hoursStr}:${minutesStr}`;
-};
-
-// Function to get timezone offset in minutes from UTC offset string
-const getTimezoneOffsetMinutes = (timezoneValue: string) => {
-  const match = timezoneValue.match(/UTC([+-])(\d{1,2}):?(\d{0,2})/);
-  if (!match) return 0;
-  const sign = match[1] === '+' ? 1 : -1;
-  const hours = parseInt(match[2]);
-  const minutes = parseInt(match[3] || '0');
-  return sign * (hours * 60 + minutes);
-};
-
-// Check if a specific date/time combination is in the past relative to browser's current time
-const isDateTimeInPast = (date: Date, timeString: string) => {
-  const [hours, minutes] = timeString.split(':').map(Number);
-  const selectedDateTime = new Date(date);
-  selectedDateTime.setHours(hours, minutes, 0, 0);
-  
-  const now = new Date();
-  return selectedDateTime <= now;
-};
-
-// Get next available time slot based on browser's current time
-const getNextAvailableTimeSlot = (forDate?: Date) => {
-  const now = new Date();
-  const targetDate = forDate || now;
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const selectedDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
-  
-  // If it's today, start from current time + next 30-min slot
-  if (selectedDay.getTime() === today.getTime()) {
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    
-    // Round up to next 30-minute interval
-    let nextMinute = currentMinute < 30 ? 30 : 0;
-    let nextHour = currentMinute < 30 ? currentHour : currentHour + 1;
-    
-    // Handle hour overflow and next day
-    if (nextHour >= 24) {
-      nextHour = 9; // Start at 9 AM for next day
-      nextMinute = 0;
-    }
-    
-    return `${nextHour.toString().padStart(2, '0')}:${nextMinute.toString().padStart(2, '0')}`;
-  }
-  
-  // For future dates, start at 9:00 AM
-  return "09:00";
-};
-
-// Get filtered available time slots based on selected date and timezone
-const getAvailableTimeSlots = (selectedDate: Date, timezone: string) => {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const selectedDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-  
-  // If selected date is today, filter out past time slots
-  if (selectedDay.getTime() === today.getTime()) {
-    return timeSlots.filter(timeString => !isDateTimeInPast(selectedDate, timeString));
-  }
-  
-  // If selected date is in the future, all slots are available
-  return timeSlots;
-};
-
-// Synchronize form fields when timezone changes
-const syncFieldsOnTimezoneChange = (form: any, newTimezone: string, currentDate: Date, currentTime: string) => {
-  const availableSlots = getAvailableTimeSlots(currentDate, newTimezone);
-  
-  // If current time is no longer available in new timezone, pick next available
-  if (!availableSlots.includes(currentTime)) {
-    const nextSlot = availableSlots.length > 0 ? availableSlots[0] : getNextAvailableTimeSlot(currentDate);
-    form.setValue('startTime', nextSlot);
-  }
-};
-
-// Synchronize form fields when date changes
-const syncFieldsOnDateChange = (form: any, newDate: Date, currentTimezone: string, currentTime: string) => {
-  const availableSlots = getAvailableTimeSlots(newDate, currentTimezone);
-  
-  // If current time is no longer available for new date, pick next available
-  if (!availableSlots.includes(currentTime)) {
-    const nextSlot = availableSlots.length > 0 ? availableSlots[0] : getNextAvailableTimeSlot(newDate);
-    form.setValue('startTime', nextSlot);
-  }
-};
-
-// Convert local time to UTC using edge function
-const convertToUTC = async (date: Date, timeString: string, timezoneValue: string, duration: number) => {
-  const localDateTime = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${timeString}`;
-  
-  console.log('🔄 Converting local time to UTC via edge function:', {
-    localDateTime,
-    timezone: timezoneValue,
-    duration
-  });
-
-  const { data, error } = await supabase.functions.invoke('convert-timezone', {
-    body: {
-      localDateTime,
-      timezone: timezoneValue,
-      duration,
-      operation: 'toUTC'
-    }
-  });
-
-  if (error) {
-    console.error('❌ Timezone conversion error:', error);
-    throw new Error(`Timezone conversion failed: ${error.message}`);
-  }
-
-  console.log('✅ Meeting Form - Final Timezone Conversion Summary:', {
-    userInput: {
-      date: date.toDateString(),
-      time: timeString,
-      timezone: timezoneValue,
-      localDisplay: `${date.toDateString()} ${timeString} (${timezoneValue})`
-    },
-    conversion: {
-      utcStart: data.utcStart,
-      utcEnd: data.utcEnd,
-      willStoreInDB: 'These UTC values',
-      willSendToTeams: 'These same UTC values (no double conversion)'
-    },
-    expected: {
-      supabaseStorage: data.utcStart,
-      teamsDisplay: `Should show ${timeString} in user's timezone`,
-      crmDisplay: `Should show ${timeString} ${timezoneValue}`
-    }
-  });
-
-  return {
-    utcStart: new Date(data.utcStart),
-    utcEnd: new Date(data.utcEnd)
-  };
-};
-
-// Convert UTC time from storage back to local timezone using edge function
-const convertFromUTC = async (utcDate: Date, timezoneValue: string, duration: number) => {
-  console.log('🔄 Converting UTC to local time via edge function:', {
-    utcDateTime: utcDate.toISOString(),
-    timezone: timezoneValue,
-    duration
-  });
-
-  const { data, error } = await supabase.functions.invoke('convert-timezone', {
-    body: {
-      localDateTime: utcDate.toISOString(),
-      timezone: timezoneValue,
-      duration,
-      operation: 'fromUTC'
-    }
-  });
-
-  if (error) {
-    console.error('❌ UTC to local conversion error:', error);
-    throw new Error(`UTC to local conversion failed: ${error.message}`);
-  }
-
-  const localDate = new Date(data.localStart);
-  
-  console.log('✅ UTC to Local Conversion Result:', {
-    utcInput: utcDate.toISOString(),
-    localOutput: data.localStart,
-    displayDate: localDate.toDateString(),
-    displayTime: `${localDate.getHours().toString().padStart(2, '0')}:${localDate.getMinutes().toString().padStart(2, '0')}`,
-    forFormPrefill: 'This will populate the form fields'
-  });
-
-  return {
-    date: new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate()),
-    time: `${localDate.getHours().toString().padStart(2, '0')}:${localDate.getMinutes().toString().padStart(2, '0')}`
-  };
-};
-
-// Legacy function for backward compatibility - now uses convertFromUTC
-const formatTimeInTimezone = async (utcDate: Date, timezoneValue: string) => {
-  const result = await convertFromUTC(utcDate, timezoneValue, 30); // Default 30 min duration for legacy usage
-  return result.time;
-};
-
-export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: any) => {
+export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: MeetingFormProps) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableLeads, setAvailableLeads] = useState<any[]>([]);
   const [participantOpen, setParticipantOpen] = useState(false);
+  const [existingMeetings, setExistingMeetings] = useState<any[]>([]);
+  const [conflictWarning, setConflictWarning] = useState<string | null>(null);
+  const [suggestedSlot, setSuggestedSlot] = useState<{ date: Date; time: string } | null>(null);
 
-  const detectedTimezone = getBrowserTimezoneValue();
+  const detectedTimezone = getBrowserTimezone();
 
-  const form = useForm<any>({
-    resolver: zodResolver(meetingSchema as any),
+  const form = useForm<MeetingFormData>({
+    resolver: zodResolver(meetingSchema),
     defaultValues: {
       title: '',
       timezone: detectedTimezone,
@@ -306,10 +84,21 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
   const watchedDate = form.watch('startDate');
   const watchedTime = form.watch('startTime');
   const watchedTimezone = form.watch('timezone');
+  const watchedDuration = form.watch('duration');
 
-  // Auto-detect and preset browser timezone, current date, and next available time slot
+  // Fetch existing meetings for conflict detection
+  useEffect(() => {
+    const fetchMeetings = async () => {
+      const { data } = await supabase
+        .from('meetings')
+        .select('id, start_time_utc, end_time_utc, start_datetime, end_datetime, title')
+        .eq('status', 'Scheduled');
+      setExistingMeetings(data || []);
+    };
+    if (open) fetchMeetings();
+  }, [open]);
 
-  // Fetch leads with status "New" for participants dropdown
+  // Fetch leads for participants dropdown
   useEffect(() => {
     const fetchLeads = async () => {
       const { data: leads, error } = await supabase
@@ -322,47 +111,64 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
     fetchLeads();
   }, []);
 
-  // Pre-fill form with browser's timezone, current date, and next available time slot
+  // Check for conflicts when time/date changes
   useEffect(() => {
-    if (editingMeeting) {
-      const handleEditingMeeting = async () => {
-        console.log('📝 Editing Meeting - Loading stored UTC data:', {
-          storedUTC: editingMeeting.start_datetime,
-          storedTimezone: editingMeeting.timezone
-        });
-
-        const utcStartDate = new Date(editingMeeting.start_datetime);
-        const utcEndDate = new Date(editingMeeting.end_datetime);
-        const durationMinutes = Math.round((utcEndDate.getTime() - utcStartDate.getTime()) / (1000 * 60));
-        const firstParticipant = editingMeeting.participants && editingMeeting.participants.length > 0 
-          ? editingMeeting.participants[0] 
-          : '';
-
-        // Use browser's current timezone for editing (always display in user's current timezone)
-        const browserTz = getBrowserTimezoneValue();
+    if (watchedDate && watchedTime && watchedTimezone && watchedDuration) {
+      const duration = parseInt(watchedDuration);
+      try {
+        const { utcStart } = convertLocalToUTC(watchedDate, watchedTime, watchedTimezone);
+        const utcEnd = addMinutes(utcStart, duration);
         
-        try {
-          // Convert UTC back to browser's local time for display using edge function
-          const localDateTime = await convertFromUTC(utcStartDate, browserTz, durationMinutes);
+        const hasConflict = checkMeetingConflicts(
+          existingMeetings,
+          utcStart,
+          utcEnd,
+          editingMeeting?.id
+        );
+        
+        if (hasConflict) {
+          setConflictWarning('This time slot conflicts with an existing meeting.');
+          const suggested = suggestNextAvailableSlot(existingMeetings, utcStart, duration, watchedTimezone);
+          setSuggestedSlot(suggested);
+        } else {
+          setConflictWarning(null);
+          setSuggestedSlot(null);
+        }
+      } catch (error) {
+        console.error('Error checking conflicts:', error);
+      }
+    }
+  }, [watchedDate, watchedTime, watchedTimezone, watchedDuration, existingMeetings, editingMeeting?.id]);
 
-          console.log('📝 Editing Meeting - Converted to local time for display:', {
-            browserTimezone: browserTz,
-            localDate: localDateTime.date.toDateString(),
-            localTime: localDateTime.time,
-            willDisplayAs: 'This is what user will see in form'
-          });
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (editingMeeting && open) {
+      const handleEditingMeeting = async () => {
+        try {
+          // Use start_time_utc if available, fallback to start_datetime
+          const utcStartDate = new Date(editingMeeting.start_time_utc || editingMeeting.start_datetime);
+          const utcEndDate = new Date(editingMeeting.end_time_utc || editingMeeting.end_datetime);
+          const duration = editingMeeting.duration || Math.round((utcEndDate.getTime() - utcStartDate.getTime()) / (1000 * 60));
+          
+          // Use stored timezone or browser timezone
+          const timezone = editingMeeting.time_zone || detectedTimezone;
+          
+          // Convert back to local time
+          const { localDate, timeString } = convertUTCToLocal(utcStartDate, timezone);
+          
+          const firstParticipant = editingMeeting.participants?.[0] || '';
 
           form.reset({
             title: editingMeeting.title,
-            timezone: browserTz, // Always use browser timezone for editing
-            startDate: localDateTime.date,
-            startTime: localDateTime.time,
-            duration: durationMinutes.toString(),
+            timezone,
+            startDate: localDate,
+            startTime: timeString,
+            duration: duration.toString(),
             participant: firstParticipant,
             description: editingMeeting.description || '',
           });
         } catch (error) {
-          console.error('Failed to convert UTC to local time:', error);
+          console.error('Failed to load meeting data:', error);
           toast({
             title: "Error",
             description: "Failed to load meeting data",
@@ -372,17 +178,10 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
       };
       
       handleEditingMeeting();
-    } else {
-      // For new meetings, preset with browser timezone, today's date, and next available slot
+    } else if (!editingMeeting && open) {
+      // Reset form for new meeting
       const today = new Date();
-      const nextSlot = getNextAvailableTimeSlot(today);
-      
-      console.log('📝 New Meeting - Browser timezone auto-preset:', {
-        browserTimezone: detectedTimezone,
-        todayDate: today.toDateString(),
-        nextTimeSlot: nextSlot,
-        note: 'User can change timezone if needed'
-      });
+      const nextSlot = getNextAvailableTimeSlot(today, detectedTimezone);
       
       form.reset({
         title: '',
@@ -394,50 +193,62 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
         description: '',
       });
     }
-  }, [editingMeeting, form, detectedTimezone]);
+  }, [editingMeeting, open, form, detectedTimezone, toast]);
 
-  // Synchronize fields when timezone changes
+  // Update available time slots when date/timezone changes
   useEffect(() => {
-    if (watchedTimezone && watchedDate && !editingMeeting) {
-      syncFieldsOnTimezoneChange(form, watchedTimezone, watchedDate, watchedTime);
+    if (watchedDate && watchedTimezone) {
+      const availableSlots = getAvailableTimeSlots(watchedDate, watchedTimezone);
+      if (!availableSlots.includes(watchedTime)) {
+        const nextSlot = availableSlots[0] || getNextAvailableTimeSlot(watchedDate, watchedTimezone);
+        form.setValue('startTime', nextSlot);
+      }
     }
-  }, [watchedTimezone]);
+  }, [watchedDate, watchedTimezone, watchedTime, form]);
 
-  // Synchronize fields when date changes
-  useEffect(() => {
-    if (watchedDate && watchedTimezone && !editingMeeting) {
-      syncFieldsOnDateChange(form, watchedDate, watchedTimezone, watchedTime);
+  const handleSuggestedSlotAccept = () => {
+    if (suggestedSlot) {
+      form.setValue('startDate', suggestedSlot.date);
+      form.setValue('startTime', suggestedSlot.time);
+      setConflictWarning(null);
+      setSuggestedSlot(null);
     }
-  }, [watchedDate]);
+  };
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: MeetingFormData) => {
     setIsSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      console.log('📝 Meeting Form Submission - Raw Data:', {
-        title: data.title,
-        timezone: data.timezone,
-        startDate: data.startDate,
-        startTime: data.startTime,
-        duration: data.duration,
-        participant: data.participant,
-        description: data.description
-      });
-
-      // Convert to UTC for storage and Teams meeting using edge function
-      const durationMinutes = parseInt(data.duration);
-      const { utcStart, utcEnd } = await convertToUTC(data.startDate, data.startTime, data.timezone, durationMinutes);
-      
-      const utcStartDateTime = utcStart;
-      const utcEndDateTime = utcEnd;
-
-      // Check if the selected time is in the past (using browser local time)
-      if (isDateTimeInPast(data.startDate, data.startTime)) {
+      // Validate time is not in the past
+      if (isLocalDateTimeInPast(data.startDate, data.startTime, data.timezone)) {
         toast({
           title: "Invalid Date",
           description: "Cannot schedule meetings in the past",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Convert to UTC for storage
+      const duration = parseInt(data.duration);
+      const { utcStart } = convertLocalToUTC(data.startDate, data.startTime, data.timezone);
+      const utcEnd = addMinutes(utcStart, duration);
+
+      // Check for conflicts one more time
+      const hasConflict = checkMeetingConflicts(
+        existingMeetings,
+        utcStart,
+        utcEnd,
+        editingMeeting?.id
+      );
+
+      if (hasConflict && !conflictWarning) {
+        toast({
+          title: "Meeting Conflict",
+          description: "This time slot conflicts with an existing meeting",
           variant: "destructive",
         });
         setIsSubmitting(false);
@@ -448,90 +259,109 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
       const participantEmail = selectedLead?.email || data.participant;
       const participantEmails = [participantEmail];
 
-      let teamsResult;
+      // Prepare meeting data for database
+      const meetingData = {
+        title: data.title,
+        description: data.description,
+        start_time_utc: utcStart.toISOString(),
+        end_time_utc: utcEnd.toISOString(),
+        start_datetime: utcStart.toISOString(), // Keep for backward compatibility
+        end_datetime: utcEnd.toISOString(), // Keep for backward compatibility
+        time_zone: data.timezone,
+        duration,
+        participants: participantEmails,
+        organizer: user.id,
+        created_by: user.id,
+        modified_by: user.id,
+        status: 'Scheduled',
+      };
+
+      let meetingId: string;
 
       if (editingMeeting) {
-        if (editingMeeting.teams_meeting_id) {
-          teamsResult = await supabase.functions.invoke('create-teams-meeting', {
-            body: {
-              title: data.title,
-              startDateTime: utcStartDateTime.toISOString(),
-              endDateTime: utcEndDateTime.toISOString(),
-              participants: participantEmails,
-              description: data.description,
-              teamsEventId: editingMeeting.teams_meeting_id,
-            },
-          });
-          if (teamsResult.error) {
-            console.error('Teams update error:', teamsResult.error);
+        // Update existing meeting
+        const { data: updatedMeeting, error } = await supabase
+          .from('meetings')
+          .update(meetingData)
+          .eq('id', editingMeeting.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        meetingId = editingMeeting.id;
+
+        // Update Teams meeting if it exists
+        if (editingMeeting.microsoft_event_id || editingMeeting.teams_meeting_id) {
+          try {
+            await supabase.functions.invoke('create-teams-meeting', {
+              body: {
+                title: data.title,
+                startDateTime: utcStart.toISOString(),
+                endDateTime: utcEnd.toISOString(),
+                participants: participantEmails,
+                description: data.description,
+                teamsEventId: editingMeeting.microsoft_event_id || editingMeeting.teams_meeting_id,
+              },
+            });
+          } catch (teamsError) {
+            console.error('Teams update failed:', teamsError);
+            toast({
+              title: "Warning",
+              description: "Meeting updated but Teams sync failed",
+              variant: "destructive",
+            });
           }
         }
-
-        const { error: updateError } = await supabase
-          .from('meetings')
-          .update({
-            title: data.title,
-            start_datetime: utcStartDateTime.toISOString(),
-            end_datetime: utcEndDateTime.toISOString(),
-            participants: participantEmails,
-            description: data.description,
-            timezone: data.timezone,
-            modified_by: user.id,
-          })
-          .eq('id', editingMeeting.id);
-        if (updateError) throw updateError;
-
-        toast({
-          title: "Meeting Updated",
-          description: "Meeting has been updated successfully",
-        });
       } else {
-        teamsResult = await supabase.functions.invoke('create-teams-meeting', {
-          body: {
-            title: data.title,
-            startDateTime: utcStartDateTime.toISOString(),
-            endDateTime: utcEndDateTime.toISOString(),
-            participants: participantEmails,
-            description: data.description,
-          },
-        });
+        // Create new meeting
+        const { data: newMeeting, error } = await supabase
+          .from('meetings')
+          .insert(meetingData)
+          .select()
+          .single();
 
-        let teamsEventId = null;
-        let teamsLink = null;
+        if (error) throw error;
+        meetingId = newMeeting.id;
 
-        if (teamsResult.data && !teamsResult.error) {
-          teamsEventId = teamsResult.data.eventId;
-          teamsLink = teamsResult.data.joinUrl || teamsResult.data.webLink;
-        } else {
-          console.error('Teams creation error:', teamsResult.error);
+        // Create Teams meeting
+        try {
+          const { data: teamsResult, error: teamsError } = await supabase.functions.invoke('create-teams-meeting', {
+            body: {
+              title: data.title,
+              startDateTime: utcStart.toISOString(),
+              endDateTime: utcEnd.toISOString(),
+              participants: participantEmails,
+              description: data.description,
+            },
+          });
+
+          if (!teamsError && teamsResult?.success) {
+            // Update meeting with Teams info
+            await supabase
+              .from('meetings')
+              .update({
+                microsoft_event_id: teamsResult.eventId,
+                teams_meeting_id: teamsResult.eventId,
+                teams_meeting_link: teamsResult.joinUrl,
+              })
+              .eq('id', meetingId);
+          }
+        } catch (teamsError) {
+          console.error('Teams creation failed:', teamsError);
           toast({
-            title: "Teams Integration Warning",
-            description: "Meeting created but Teams link may not be available",
+            title: "Warning",
+            description: "Meeting created but Teams integration failed",
             variant: "destructive",
           });
         }
-
-        const { error: insertError } = await supabase
-          .from('meetings')
-          .insert({
-            title: data.title,
-            start_datetime: utcStartDateTime.toISOString(),
-            end_datetime: utcEndDateTime.toISOString(),
-            participants: participantEmails,
-            organizer: user.id,
-            created_by: user.id,
-            description: data.description,
-            timezone: data.timezone,
-            teams_meeting_id: teamsEventId,
-            teams_meeting_link: teamsLink,
-          });
-        if (insertError) throw insertError;
-
-        toast({
-          title: "Meeting Created",
-          description: "Meeting has been created successfully",
-        });
       }
+
+      toast({
+        title: editingMeeting ? "Meeting Updated" : "Meeting Created",
+        description: editingMeeting 
+          ? "Meeting has been updated successfully"
+          : "Meeting has been created and synced with Teams",
+      });
 
       onSuccess();
       onOpenChange(false);
@@ -547,24 +377,34 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
     }
   };
 
+  const availableTimeSlots = watchedDate && watchedTimezone 
+    ? getAvailableTimeSlots(watchedDate, watchedTimezone)
+    : [];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px]" aria-describedby="meeting-form-description">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CalendarIcon className="h-5 w-5" />
-            {editingMeeting ? 'Edit Meeting' : 'Create New Meeting'}
+          <DialogTitle>
+            {editingMeeting ? 'Edit Meeting' : 'Schedule New Meeting'}
           </DialogTitle>
         </DialogHeader>
+        <div id="meeting-form-description" className="sr-only">
+          {editingMeeting ? 'Edit meeting details' : 'Create a new meeting with timezone support'}
+        </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Meeting Title */}
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Meeting Title *</FormLabel>
+                  <FormLabel className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Meeting Title
+                  </FormLabel>
                   <FormControl>
                     <Input placeholder="Enter meeting title" {...field} />
                   </FormControl>
@@ -573,6 +413,7 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
               )}
             />
 
+            {/* Timezone Selection */}
             <FormField
               control={form.control}
               name="timezone"
@@ -580,25 +421,16 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <Globe className="h-4 w-4" />
-                    Timezone * <span className="text-xs text-muted-foreground">(Auto-detected)</span>
+                    Timezone
                   </FormLabel>
-                  <Select 
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      // Trigger synchronization when timezone changes
-                      if (watchedDate && !editingMeeting) {
-                        syncFieldsOnTimezoneChange(form, value, watchedDate, watchedTime);
-                      }
-                    }} 
-                    value={field.value}
-                  >
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select timezone" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className="max-h-60 z-50 bg-background">
-                      {timezones.map((tz) => (
+                    <SelectContent className="max-h-[200px]">
+                      {IANA_TIMEZONES.map((tz) => (
                         <SelectItem key={tz.value} value={tz.value}>
                           {tz.label}
                         </SelectItem>
@@ -610,7 +442,9 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
               )}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Date and Time Row */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Date Selection */}
               <FormField
                 control={form.control}
                 name="startDate"
@@ -618,7 +452,7 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
                   <FormItem className="flex flex-col">
                     <FormLabel className="flex items-center gap-2">
                       <CalendarIcon className="h-4 w-4" />
-                      Start Date *
+                      Date
                     </FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
@@ -643,16 +477,11 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
                         <Calendar
                           mode="single"
                           selected={field.value}
-                          onSelect={(date) => {
-                            field.onChange(date);
-                            // Trigger synchronization when date changes
-                            if (date && watchedTimezone && !editingMeeting) {
-                              syncFieldsOnDateChange(form, date, watchedTimezone, watchedTime);
-                            }
-                          }}
-                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date < new Date(new Date().setHours(0, 0, 0, 0))
+                          }
                           initialFocus
-                          className="p-3 pointer-events-auto"
                         />
                       </PopoverContent>
                     </Popover>
@@ -661,38 +490,28 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
                 )}
               />
 
+              {/* Time Selection */}
               <FormField
                 control={form.control}
                 name="startTime"
                 render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    Start Time * <span className="text-xs text-muted-foreground">(Synced with timezone & date)</span>
-                  </FormLabel>
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Time
+                    </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select time" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="max-h-60 z-50 bg-background">
-                        {(() => {
-                          const availableSlots = watchedDate ? getAvailableTimeSlots(watchedDate, watchedTimezone || detectedTimezone) : timeSlots;
-                          return availableSlots.map((time) => {
-                            const isPast = watchedDate && isDateTimeInPast(watchedDate, time);
-                            return (
-                              <SelectItem
-                                key={time}
-                                value={time}
-                                disabled={!!isPast}
-                                className={isPast ? "text-muted-foreground" : ""}
-                              >
-                                {time} {isPast ? "(Past)" : ""}
-                              </SelectItem>
-                            );
-                          });
-                        })()}
+                      <SelectContent className="max-h-[200px]">
+                        {availableTimeSlots.map((time) => (
+                          <SelectItem key={time} value={time}>
+                            {time}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -701,15 +520,13 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
               />
             </div>
 
+            {/* Duration Selection */}
             <FormField
               control={form.control}
               name="duration"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    Duration *
-                  </FormLabel>
+                  <FormLabel>Duration</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -729,15 +546,39 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
               )}
             />
 
+            {/* Conflict Warning */}
+            {conflictWarning && (
+              <Alert className="border-amber-200 bg-amber-50">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800">
+                  {conflictWarning}
+                  {suggestedSlot && (
+                    <div className="mt-2">
+                      <p className="text-sm">
+                        Suggested next available slot: {format(suggestedSlot.date, 'MMM dd')} at {suggestedSlot.time}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSuggestedSlotAccept}
+                        className="mt-1"
+                      >
+                        Use suggested slot
+                      </Button>
+                    </div>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Participant Selection */}
             <FormField
               control={form.control}
               name="participant"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Participant (Lead with Status = "New") *
-                  </FormLabel>
+                  <FormLabel>Participant</FormLabel>
                   <Popover open={participantOpen} onOpenChange={setParticipantOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -749,10 +590,10 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
                             !field.value && "text-muted-foreground"
                           )}
                         >
-                          {field.value 
+                          {field.value
                             ? (() => {
-                                const selectedLead = availableLeads.find(lead => lead.id === field.value);
-                                return selectedLead ? selectedLead.lead_name : "Select participant";
+                                const lead = availableLeads.find(l => l.id === field.value);
+                                return lead ? `${lead.lead_name} (${lead.email})` : field.value;
                               })()
                             : "Select participant"}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -762,34 +603,36 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
                     <PopoverContent className="w-full p-0">
                       <Command>
                         <CommandInput placeholder="Search participants..." />
-                        <CommandList>
-                          <CommandEmpty>No participants found.</CommandEmpty>
-                          <CommandGroup>
+                        <CommandEmpty>No participant found.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandList>
                             {availableLeads.map((lead) => (
                               <CommandItem
+                                value={`${lead.lead_name} ${lead.email}`}
                                 key={lead.id}
                                 onSelect={() => {
-                                  field.onChange(lead.id);
+                                  form.setValue("participant", lead.id);
                                   setParticipantOpen(false);
                                 }}
                               >
                                 <Check
                                   className={cn(
                                     "mr-2 h-4 w-4",
-                                    field.value === lead.id ? "opacity-100" : "opacity-0"
+                                    lead.id === field.value
+                                      ? "opacity-100"
+                                      : "opacity-0"
                                   )}
                                 />
-                                <div className="flex flex-col">
-                                  <span className="font-medium">{lead.lead_name}</span>
-                                  <span className="text-sm text-muted-foreground">
-                                    {lead.email}
-                                    {lead.company_name && ` - ${lead.company_name}`}
-                                  </span>
+                                <div>
+                                  <div className="font-medium">{lead.lead_name}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {lead.email} • {lead.company_name}
+                                  </div>
                                 </div>
                               </CommandItem>
                             ))}
-                          </CommandGroup>
-                        </CommandList>
+                          </CommandList>
+                        </CommandGroup>
                       </Command>
                     </PopoverContent>
                   </Popover>
@@ -798,17 +641,18 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
               )}
             />
 
+            {/* Description */}
             <FormField
               control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>Description (Optional)</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Meeting agenda or description" 
-                      className="min-h-20"
-                      {...field} 
+                    <Textarea
+                      placeholder="Enter meeting description..."
+                      className="min-h-[80px]"
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -816,15 +660,30 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: a
               )}
             />
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
+            {/* Preview */}
+            {watchedDate && watchedTime && watchedTimezone && watchedDuration && (
+              <div className="rounded-lg border bg-muted/50 p-3">
+                <div className="text-sm font-medium">Meeting Preview:</div>
+                <div className="text-sm text-muted-foreground">
+                  {(() => {
+                    try {
+                      const duration = parseInt(watchedDuration);
+                      const { utcStart } = convertLocalToUTC(watchedDate, watchedTime, watchedTimezone);
+                      return formatDateTimeWithTimezone(utcStart, watchedTimezone, duration);
+                    } catch {
+                      return 'Invalid time selection';
+                    }
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {/* Form Actions */}
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || !!conflictWarning}>
                 {isSubmitting ? 'Saving...' : editingMeeting ? 'Update Meeting' : 'Create Meeting'}
               </Button>
             </div>

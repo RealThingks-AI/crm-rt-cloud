@@ -399,15 +399,20 @@ export type Database = {
           created_at: string
           created_by: string
           description: string | null
+          duration: number | null
           end_datetime: string
+          end_time_utc: string | null
           id: string
+          microsoft_event_id: string | null
           modified_by: string | null
           organizer: string
           participants: string[]
           start_datetime: string
+          start_time_utc: string | null
           status: string
           teams_meeting_id: string | null
           teams_meeting_link: string | null
+          time_zone: string | null
           timezone: string | null
           title: string
           updated_at: string
@@ -416,15 +421,20 @@ export type Database = {
           created_at?: string
           created_by: string
           description?: string | null
+          duration?: number | null
           end_datetime: string
+          end_time_utc?: string | null
           id?: string
+          microsoft_event_id?: string | null
           modified_by?: string | null
           organizer: string
           participants?: string[]
           start_datetime: string
+          start_time_utc?: string | null
           status?: string
           teams_meeting_id?: string | null
           teams_meeting_link?: string | null
+          time_zone?: string | null
           timezone?: string | null
           title: string
           updated_at?: string
@@ -433,15 +443,20 @@ export type Database = {
           created_at?: string
           created_by?: string
           description?: string | null
+          duration?: number | null
           end_datetime?: string
+          end_time_utc?: string | null
           id?: string
+          microsoft_event_id?: string | null
           modified_by?: string | null
           organizer?: string
           participants?: string[]
           start_datetime?: string
+          start_time_utc?: string | null
           status?: string
           teams_meeting_id?: string | null
           teams_meeting_link?: string | null
+          time_zone?: string | null
           timezone?: string | null
           title?: string
           updated_at?: string

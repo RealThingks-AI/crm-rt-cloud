@@ -12,16 +12,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { BulkActionsBar } from '@/components/BulkActionsBar';
+import { getBrowserTimezone, convertUTCToLocal, formatDateTimeWithTimezone } from '@/utils/timezoneUtils';
 interface Meeting {
   id: string;
   title: string;
-  start_datetime: string;
-  end_datetime: string;
+  start_datetime?: string; // Legacy field
+  end_datetime?: string; // Legacy field
+  start_time_utc?: string; // New field
+  end_time_utc?: string; // New field
+  duration?: number;
+  time_zone?: string;
   participants: string[];
   organizer: string;
-  status: string; // Changed from union type to string to match database
+  status: string;
   teams_meeting_link?: string;
   teams_meeting_id?: string;
+  microsoft_event_id?: string;
   description?: string;
   created_at: string;
 }
@@ -49,12 +55,11 @@ export const MeetingsTable = ({
   } = useAuth();
   const fetchMeetings = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('meetings').select('*').order('start_datetime', {
-        ascending: true
-      });
+      const { data, error } = await supabase
+        .from('meetings')
+        .select('*')
+        .order('start_time_utc', { ascending: true });
+      
       if (error) throw error;
       setMeetings(data || []);
     } catch (error: any) {
@@ -76,7 +81,10 @@ export const MeetingsTable = ({
   const filterMeetingsByStatus = (meetings: Meeting[]) => {
     if (statusFilter === 'All') return meetings;
     if (statusFilter === 'Upcoming') {
-      return meetings.filter(meeting => meeting.status === 'Scheduled' && new Date(meeting.start_datetime) > new Date());
+      return meetings.filter(meeting => {
+        const startTime = new Date(meeting.start_time_utc || meeting.start_datetime || '');
+        return meeting.status === 'Scheduled' && startTime > new Date();
+      });
     }
     if (statusFilter === 'Done') {
       return meetings.filter(meeting => meeting.status === 'Completed');
@@ -133,60 +141,47 @@ export const MeetingsTable = ({
         {status}
       </Badge>;
   };
-  // Get browser timezone offset for display
-  const getBrowserTimezoneValue = () => {
-    const offsetMinutes = -new Date().getTimezoneOffset();
-    const sign = offsetMinutes >= 0 ? '+' : '-';
-    const absMinutes = Math.abs(offsetMinutes);
-    const hours = Math.floor(absMinutes / 60);
-    const minutes = absMinutes % 60;
-    const hoursStr = hours.toString().padStart(2, '0');
-    const minutesStr = minutes.toString().padStart(2, '0');
-    return `UTC${sign}${hoursStr}:${minutesStr}`;
-  };
-
-  const formatDateTime = (dateTime: string) => {
-    // Convert UTC time to browser local time for display
-    const utcDate = new Date(dateTime);
-    const browserTz = getBrowserTimezoneValue();
+  const formatDateTime = (meeting: Meeting) => {
+    // Use new UTC fields if available, fallback to legacy fields
+    const startUTC = new Date(meeting.start_time_utc || meeting.start_datetime || '');
+    const endUTC = new Date(meeting.end_time_utc || meeting.end_datetime || '');
+    const timezone = meeting.time_zone || getBrowserTimezone();
     
-    // Calculate offset and convert to local time
-    const offsetMatch = browserTz.match(/UTC([+-])(\d{1,2}):?(\d{0,2})/);
-    if (offsetMatch) {
-      const sign = offsetMatch[1] === '+' ? 1 : -1;
-      const hours = parseInt(offsetMatch[2]);
-      const minutes = parseInt(offsetMatch[3] || '0');
-      const offsetMinutes = sign * (hours * 60 + minutes);
-      
-      const localDate = new Date(utcDate.getTime() + (offsetMinutes * 60 * 1000));
+    try {
+      // Convert UTC to local time in the meeting's original timezone or browser timezone
+      const { localDate: startLocal, timeString: startTime } = convertUTCToLocal(startUTC, timezone);
+      const { timeString: endTime } = convertUTCToLocal(endUTC, timezone);
       
       return {
-        date: format(localDate, 'MMM dd, yyyy'),
-        time: format(localDate, 'HH:mm')
+        date: format(startLocal, 'MMM dd, yyyy'),
+        time: `${startTime} - ${endTime}`,
+        timezone: timezone.split('/').pop()?.replace('_', ' ') || 'UTC'
+      };
+    } catch (error) {
+      console.error('Error formatting datetime:', error);
+      // Fallback to UTC display
+      return {
+        date: format(startUTC, 'MMM dd, yyyy'),
+        time: format(startUTC, 'HH:mm'),
+        timezone: 'UTC'
       };
     }
-    
-    // Fallback to UTC display
-    return {
-      date: format(utcDate, 'MMM dd, yyyy'),
-      time: format(utcDate, 'HH:mm')
-    };
   };
   const handleStatusUpdate = async (meetingId: string, newStatus: 'Completed' | 'Cancelled') => {
     try {
       const meeting = meetings.find(m => m.id === meetingId);
 
       // If cancelling and has Teams event, cancel it first
-      if (newStatus === 'Cancelled' && meeting?.teams_meeting_id) {
+      const teamsEventId = meeting?.microsoft_event_id || meeting?.teams_meeting_id;
+      if (newStatus === 'Cancelled' && teamsEventId) {
         console.log('Cancelling Teams event for meeting:', meetingId);
-        const {
-          error: teamsError
-        } = await supabase.functions.invoke('create-teams-meeting', {
-          body: {
-            teamsEventId: meeting.teams_meeting_id
-          }
-        });
-        if (teamsError) {
+        try {
+          await supabase.functions.invoke('create-teams-meeting', {
+            body: {
+              teamsEventId: teamsEventId
+            }
+          });
+        } catch (teamsError) {
           console.error('Failed to cancel Teams event:', teamsError);
           toast({
             title: "Warning",
@@ -224,16 +219,16 @@ export const MeetingsTable = ({
       const meeting = meetings.find(m => m.id === meetingId);
 
       // Cancel Teams event if exists
-      if (meeting?.teams_meeting_id) {
+      const teamsEventId = meeting?.microsoft_event_id || meeting?.teams_meeting_id;
+      if (teamsEventId) {
         console.log('Deleting Teams event for meeting:', meetingId);
-        const {
-          error: teamsError
-        } = await supabase.functions.invoke('create-teams-meeting', {
-          body: {
-            teamsEventId: meeting.teams_meeting_id
-          }
-        });
-        if (teamsError) {
+        try {
+          await supabase.functions.invoke('create-teams-meeting', {
+            body: {
+              teamsEventId: teamsEventId
+            }
+          });
+        } catch (teamsError) {
           console.error('Failed to delete Teams event:', teamsError);
         }
       }
@@ -326,8 +321,7 @@ export const MeetingsTable = ({
               </TableHeader>
               <TableBody>
                 {filteredMeetings.map(meeting => {
-                const startFormatted = formatDateTime(meeting.start_datetime);
-                const endFormatted = formatDateTime(meeting.end_datetime);
+                const formatted = formatDateTime(meeting);
                 return <TableRow key={meeting.id} className="hover:bg-muted/50">
                       <TableCell className="w-[50px]">
                         <Checkbox checked={selectedMeetings.includes(meeting.id)} onCheckedChange={() => toggleMeetingSelection(meeting.id)} aria-label={`Select ${meeting.title}`} />
@@ -336,13 +330,16 @@ export const MeetingsTable = ({
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                          {startFormatted.date}
+                          {formatted.date}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-muted-foreground" />
-                          {startFormatted.time} - {endFormatted.time}
+                          <div className="flex flex-col">
+                            <span>{formatted.time}</span>
+                            <span className="text-xs text-muted-foreground">{formatted.timezone}</span>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
