@@ -491,7 +491,7 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
                 name="timezone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center gap-2">
+                    <FormLabel className="flex items-center gap-2 h-5">
                       <Globe className="h-4 w-4" />
                       Timezone
                     </FormLabel>
@@ -520,7 +520,7 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
                 name="duration"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Duration</FormLabel>
+                    <FormLabel className="h-5 flex items-center">Duration</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
