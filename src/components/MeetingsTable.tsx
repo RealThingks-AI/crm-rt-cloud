@@ -378,31 +378,31 @@ export const MeetingsTable = ({
                   <TableHead className="w-[50px]">
                     <Checkbox checked={isAllSelected} onCheckedChange={toggleSelectAllMeetings} aria-label="Select all" />
                   </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => {
+                  <TableHead className="cursor-pointer" onClick={() => {
                   setSortField('title');
                   setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
                 }}>
                     Meeting Title ↕
                   </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => {
+                  <TableHead className="cursor-pointer" onClick={() => {
                   setSortField('start_datetime');
                   setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
                 }}>
                     Date & Time ↕
                   </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => {
+                  <TableHead className="cursor-pointer" onClick={() => {
                   setSortField('participants');
                   setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
                 }}>
                     Participants ↕
                   </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => {
+                  <TableHead className="cursor-pointer" onClick={() => {
                   setSortField('status');
                   setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
                 }}>
                     Status ↕
                   </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => {
+                  <TableHead className="cursor-pointer" onClick={() => {
                   setSortField('organizer');
                   setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
                 }}>
