@@ -1,28 +1,32 @@
 import { fromZonedTime, toZonedTime, format } from 'date-fns-tz';
 import { format as formatDate, addMinutes, isAfter } from 'date-fns';
 
-// IANA timezone options for the form
+// IANA timezone options for the form with formatted display
 export const IANA_TIMEZONES = [
-  { label: 'Pacific/Honolulu (HST)', value: 'Pacific/Honolulu' },
-  { label: 'America/Anchorage (AKST)', value: 'America/Anchorage' },
-  { label: 'America/Los_Angeles (PST)', value: 'America/Los_Angeles' },
-  { label: 'America/Denver (MST)', value: 'America/Denver' },
-  { label: 'America/Chicago (CST)', value: 'America/Chicago' },
-  { label: 'America/New_York (EST)', value: 'America/New_York' },
-  { label: 'America/Halifax (AST)', value: 'America/Halifax' },
-  { label: 'America/St_Johns (NST)', value: 'America/St_Johns' },
-  { label: 'America/Sao_Paulo (BRT)', value: 'America/Sao_Paulo' },
-  { label: 'Europe/London (GMT/BST)', value: 'Europe/London' },
-  { label: 'Europe/Paris (CET)', value: 'Europe/Paris' },
-  { label: 'Europe/Berlin (CET)', value: 'Europe/Berlin' },
-  { label: 'Europe/Moscow (MSK)', value: 'Europe/Moscow' },
-  { label: 'Asia/Dubai (GST)', value: 'Asia/Dubai' },
-  { label: 'Asia/Kolkata (IST)', value: 'Asia/Kolkata' },
-  { label: 'Asia/Shanghai (CST)', value: 'Asia/Shanghai' },
-  { label: 'Asia/Tokyo (JST)', value: 'Asia/Tokyo' },
-  { label: 'Australia/Sydney (AEDT)', value: 'Australia/Sydney' },
-  { label: 'Pacific/Auckland (NZDT)', value: 'Pacific/Auckland' },
+  { label: 'UTC-10:00 (HST)', value: 'Pacific/Honolulu' },
+  { label: 'UTC-09:00 (AKST)', value: 'America/Anchorage' },
+  { label: 'UTC-08:00 (PST)', value: 'America/Los_Angeles' },
+  { label: 'UTC-07:00 (MST)', value: 'America/Denver' },
+  { label: 'UTC-06:00 (CST)', value: 'America/Chicago' },
+  { label: 'UTC-05:00 (EST)', value: 'America/New_York' },
+  { label: 'UTC-04:00 (AST)', value: 'America/Halifax' },
+  { label: 'UTC-03:30 (NST)', value: 'America/St_Johns' },
+  { label: 'UTC-03:00 (BRT)', value: 'America/Sao_Paulo' },
+  { label: 'UTC+00:00 (GMT)', value: 'Europe/London' },
+  { label: 'UTC+01:00 (CET)', value: 'Europe/Paris' },
+  { label: 'UTC+01:00 (CET)', value: 'Europe/Berlin' },
+  { label: 'UTC+02:00 (EET)', value: 'Europe/Athens' },
+  { label: 'UTC+03:00 (MSK)', value: 'Europe/Moscow' },
+  { label: 'UTC+04:00 (GST)', value: 'Asia/Dubai' },
+  { label: 'UTC+05:30 (IST)', value: 'Asia/Kolkata' },
+  { label: 'UTC+08:00 (CST)', value: 'Asia/Shanghai' },
+  { label: 'UTC+09:00 (JST)', value: 'Asia/Tokyo' },
+  { label: 'UTC+11:00 (AEDT)', value: 'Australia/Sydney' },
+  { label: 'UTC+13:00 (NZDT)', value: 'Pacific/Auckland' },
 ];
+
+// Default timezone (EET)
+export const DEFAULT_TIMEZONE = 'Europe/Athens';
 
 /**
  * Get the browser's IANA timezone
@@ -103,6 +107,34 @@ export const formatDateTimeWithTimezone = (
   const timezoneAbbr = format(utcDateTime, 'zzz', { timeZone: timezone });
   
   return `${formattedDate} · ${timeString} - ${endTimeString} (${timezoneAbbr})`;
+};
+
+/**
+ * Generate timezone display string in format: UTC±HH:MM (Abbreviation)
+ */
+export const generateTimezoneDisplay = (timezone: string): string => {
+  try {
+    const now = new Date();
+    const utcTime = now.getTime();
+    const localTime = new Date(now.toLocaleString("en-US", { timeZone: timezone })).getTime();
+    const offsetMs = localTime - utcTime;
+    const offsetHours = Math.floor(Math.abs(offsetMs) / (1000 * 60 * 60));
+    const offsetMinutes = Math.floor((Math.abs(offsetMs) % (1000 * 60 * 60)) / (1000 * 60));
+    const sign = offsetMs >= 0 ? '+' : '-';
+    
+    // Get timezone abbreviation
+    const formatter = new Intl.DateTimeFormat('en', {
+      timeZone: timezone,
+      timeZoneName: 'short'
+    });
+    const parts = formatter.formatToParts(now);
+    const abbr = parts.find(part => part.type === 'timeZoneName')?.value || timezone.split('/').pop()?.replace('_', ' ') || 'UTC';
+    
+    return `UTC${sign}${offsetHours.toString().padStart(2, '0')}:${offsetMinutes.toString().padStart(2, '0')} (${abbr})`;
+  } catch (error) {
+    console.error('Error generating timezone display:', error);
+    return timezone;
+  }
 };
 
 /**

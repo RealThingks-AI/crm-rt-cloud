@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   IANA_TIMEZONES,
+  DEFAULT_TIMEZONE,
   getBrowserTimezone,
   convertLocalToUTC,
   convertUTCToLocal,
@@ -27,7 +28,8 @@ import {
   getAvailableTimeSlots,
   checkMeetingConflicts,
   suggestNextAvailableSlot,
-  formatDateTimeWithTimezone
+  formatDateTimeWithTimezone,
+  generateTimezoneDisplay
 } from '@/utils/timezoneUtils';
 
 const meetingSchema = z.object({
@@ -72,7 +74,7 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
     resolver: zodResolver(meetingSchema),
     defaultValues: {
       title: '',
-      timezone: detectedTimezone,
+      timezone: DEFAULT_TIMEZONE, // Set default to EET
       startDate: new Date(),
       startTime: getNextAvailableTimeSlot(),
       duration: '30',
@@ -145,16 +147,32 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
     if (editingMeeting && open) {
       const handleEditingMeeting = async () => {
         try {
-          // Use start_time_utc if available, fallback to start_datetime
-          const utcStartDate = new Date(editingMeeting.start_time_utc || editingMeeting.start_datetime);
-          const utcEndDate = new Date(editingMeeting.end_time_utc || editingMeeting.end_datetime);
+          // Use start_time_utc (new field)
+          const utcStartDate = new Date(editingMeeting.start_time_utc);
+          const utcEndDate = new Date(editingMeeting.end_time_utc);
           const duration = editingMeeting.duration || Math.round((utcEndDate.getTime() - utcStartDate.getTime()) / (1000 * 60));
           
           // Use stored timezone or browser timezone
           const timezone = editingMeeting.time_zone || detectedTimezone;
           
+          console.log('🔍 Meeting Form - Edit Mode Debug:', {
+            step: '1. Loading from Supabase',
+            storedUTCStart: editingMeeting.start_time_utc,
+            storedUTCEnd: editingMeeting.end_time_utc,
+            storedTimezone: editingMeeting.time_zone,
+            storedTimezoneDisplay: editingMeeting.time_zone_display
+          });
+          
           // Convert back to local time
           const { localDate, timeString } = convertUTCToLocal(utcStartDate, timezone);
+          
+          console.log('🔍 Meeting Form - Edit Mode Debug:', {
+            step: '2. Converted back to Local Time for Display',
+            convertedLocalDate: localDate.toDateString(),
+            convertedLocalTime: timeString,
+            targetTimezone: timezone,
+            note: 'User should see original local time they entered'
+          });
           
           const firstParticipant = editingMeeting.participants?.[0] || '';
 
@@ -185,7 +203,7 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
       
       form.reset({
         title: '',
-        timezone: detectedTimezone,
+        timezone: DEFAULT_TIMEZONE, // Use default EET
         startDate: today,
         startTime: nextSlot,
         duration: '30',
@@ -259,15 +277,30 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
       const participantEmail = selectedLead?.email || data.participant;
       const participantEmails = [participantEmail];
 
+      // Debug logging for timezone conversion
+      console.log('🔍 Meeting Form - Timezone Conversion Debug:', {
+        step: '1. User Input (Local Time)',
+        localDate: data.startDate.toDateString(),
+        localTime: data.startTime,
+        timezone: data.timezone,
+        duration,
+      });
+
+      console.log('🔍 Meeting Form - Timezone Conversion Debug:', {
+        step: '2. Converted to UTC for Storage',
+        utcStartISO: utcStart.toISOString(),
+        utcEndISO: utcEnd.toISOString(),
+        note: 'These values will be stored in Supabase'
+      });
+
       // Prepare meeting data for database
       const meetingData = {
         title: data.title,
         description: data.description,
         start_time_utc: utcStart.toISOString(),
         end_time_utc: utcEnd.toISOString(),
-        start_datetime: utcStart.toISOString(), // Keep for backward compatibility
-        end_datetime: utcEnd.toISOString(), // Keep for backward compatibility
         time_zone: data.timezone,
+        time_zone_display: generateTimezoneDisplay(data.timezone),
         duration,
         participants: participantEmails,
         organizer: user.id,
@@ -275,6 +308,14 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
         modified_by: user.id,
         status: 'Scheduled',
       };
+
+      console.log('🔍 Meeting Form - Database Storage Debug:', {
+        step: '3. Final Meeting Data for Supabase',
+        start_time_utc: meetingData.start_time_utc,
+        end_time_utc: meetingData.end_time_utc,
+        time_zone: meetingData.time_zone,
+        time_zone_display: meetingData.time_zone_display
+      });
 
       let meetingId: string;
 
@@ -293,8 +334,16 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
         // Update Teams meeting if it exists
         if (editingMeeting.microsoft_event_id || editingMeeting.teams_meeting_id) {
           try {
-            await supabase.functions.invoke('create-teams-meeting', {
+            console.log('🔍 Meeting Form - Teams Update Debug:', {
+              step: '4. Updating Teams Meeting',
+              startDateTime: utcStart.toISOString(),
+              endDateTime: utcEnd.toISOString(),
+              teamsEventId: editingMeeting.microsoft_event_id || editingMeeting.teams_meeting_id
+            });
+
+            const { data: teamsResult, error: teamsError } = await supabase.functions.invoke('create-teams-meeting', {
               body: {
+                operation: 'update',
                 title: data.title,
                 startDateTime: utcStart.toISOString(),
                 endDateTime: utcEnd.toISOString(),
@@ -303,6 +352,14 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
                 teamsEventId: editingMeeting.microsoft_event_id || editingMeeting.teams_meeting_id,
               },
             });
+
+            if (!teamsError && teamsResult?.success && teamsResult?.meetingLink) {
+              // Update meeting with new Teams link
+              await supabase
+                .from('meetings')
+                .update({ teams_meeting_link: teamsResult.meetingLink })
+                .eq('id', editingMeeting.id);
+            }
           } catch (teamsError) {
             console.error('Teams update failed:', teamsError);
             toast({
@@ -325,6 +382,13 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
 
         // Create Teams meeting
         try {
+          console.log('🔍 Meeting Form - Teams Integration Debug:', {
+            step: '4. Sending to Teams Edge Function',
+            startDateTime: utcStart.toISOString(),
+            endDateTime: utcEnd.toISOString(),
+            note: 'UTC times sent to Teams for proper conversion'
+          });
+
           const { data: teamsResult, error: teamsError } = await supabase.functions.invoke('create-teams-meeting', {
             body: {
               title: data.title,
@@ -337,14 +401,23 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
 
           if (!teamsError && teamsResult?.success) {
             // Update meeting with Teams info
+            const teamsUpdateData: any = {
+              microsoft_event_id: teamsResult.eventId,
+            };
+            
+            // Use meetingLink (which includes fallback to webLink) or joinUrl
+            if (teamsResult.meetingLink || teamsResult.joinUrl) {
+              teamsUpdateData.teams_meeting_link = teamsResult.meetingLink || teamsResult.joinUrl;
+            }
+            
+            console.log('🔍 Updating meeting with Teams data:', teamsUpdateData);
+            
             await supabase
               .from('meetings')
-              .update({
-                microsoft_event_id: teamsResult.eventId,
-                teams_meeting_id: teamsResult.eventId,
-                teams_meeting_link: teamsResult.joinUrl,
-              })
+              .update(teamsUpdateData)
               .eq('id', meetingId);
+          } else {
+            console.error('Teams integration failed:', teamsError || 'No result returned');
           }
         } catch (teamsError) {
           console.error('Teams creation failed:', teamsError);

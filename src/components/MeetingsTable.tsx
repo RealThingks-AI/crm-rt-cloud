@@ -12,16 +12,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { BulkActionsBar } from '@/components/BulkActionsBar';
+import { MeetingDeleteConfirmDialog } from '@/components/MeetingDeleteConfirmDialog';
+import { useMeetingDeletion } from '@/hooks/useMeetingDeletion';
 import { getBrowserTimezone, convertUTCToLocal, formatDateTimeWithTimezone } from '@/utils/timezoneUtils';
+
 interface Meeting {
   id: string;
   title: string;
-  start_datetime?: string; // Legacy field
-  end_datetime?: string; // Legacy field
-  start_time_utc?: string; // New field
-  end_time_utc?: string; // New field
+  start_time_utc: string;
+  end_time_utc: string;
   duration?: number;
-  time_zone?: string;
+  time_zone: string;
+  time_zone_display?: string;
   participants: string[];
   organizer: string;
   status: string;
@@ -31,35 +33,44 @@ interface Meeting {
   description?: string;
   created_at: string;
 }
+
 interface MeetingsTableProps {
   onEdit: (meeting: Meeting) => void;
   refreshTrigger: number;
   statusFilter?: string;
+  searchQuery?: string;
 }
+
 export const MeetingsTable = ({
   onEdit,
   refreshTrigger,
-  statusFilter = 'All'
+  statusFilter = 'All',
+  searchQuery = ''
 }: MeetingsTableProps) => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [selectedMeetings, setSelectedMeetings] = useState<string[]>([]);
   const [sortField, setSortField] = useState<string>('start_datetime');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [meetingToDelete, setMeetingToDelete] = useState<Meeting | null>(null);
   const {
     toast
   } = useToast();
   const {
     user
   } = useAuth();
+  const { deleteMeetings, isDeleting } = useMeetingDeletion();
+
   const fetchMeetings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('meetings')
-        .select('*')
-        .order('start_time_utc', { ascending: true });
-      
+      const {
+        data,
+        error
+      } = await supabase.from('meetings').select('*').order('start_time_utc', {
+        ascending: true
+      });
       if (error) throw error;
       setMeetings(data || []);
     } catch (error: any) {
@@ -73,20 +84,20 @@ export const MeetingsTable = ({
       setLoading(false);
     }
   };
+
   useEffect(() => {
     fetchMeetings();
   }, [refreshTrigger]);
 
-  // Filter and search logic
   const filterMeetingsByStatus = (meetings: Meeting[]) => {
     if (statusFilter === 'All') return meetings;
     if (statusFilter === 'Upcoming') {
       return meetings.filter(meeting => {
-        const startTime = new Date(meeting.start_time_utc || meeting.start_datetime || '');
-        return meeting.status === 'Scheduled' && startTime > new Date();
+        const startTime = new Date(meeting.start_time_utc);
+        return meeting.status === 'Scheduled' && !isNaN(startTime.getTime()) && startTime > new Date();
       });
     }
-    if (statusFilter === 'Done') {
+    if (statusFilter === 'Completed') {
       return meetings.filter(meeting => meeting.status === 'Completed');
     }
     if (statusFilter === 'Cancelled') {
@@ -94,9 +105,17 @@ export const MeetingsTable = ({
     }
     return meetings;
   };
-  const filteredMeetings = filterMeetingsByStatus(meetings).filter(meeting => Object.values(meeting).some(value => String(value).toLowerCase().includes(searchQuery.toLowerCase())));
 
-  // Selection handlers
+  const filteredMeetings = filterMeetingsByStatus(meetings).filter(meeting => {
+    const query = (searchQuery || localSearchQuery).toLowerCase();
+    const searchableFields = [
+      meeting.title,
+      meeting.description || '',
+      meeting.participants.join(' ')
+    ];
+    return searchableFields.some(field => field.toLowerCase().includes(query));
+  });
+
   const toggleMeetingSelection = (meetingId: string) => {
     setSelectedMeetings(prev => {
       if (prev.includes(meetingId)) {
@@ -106,6 +125,7 @@ export const MeetingsTable = ({
       }
     });
   };
+
   const toggleSelectAllMeetings = () => {
     if (selectedMeetings.length === filteredMeetings.length) {
       setSelectedMeetings([]);
@@ -113,19 +133,29 @@ export const MeetingsTable = ({
       setSelectedMeetings(filteredMeetings.map(meeting => meeting.id));
     }
   };
+
   const isAllSelected = selectedMeetings.length === filteredMeetings.length && filteredMeetings.length > 0;
-  const handleDeleteSelected = () => {
-    selectedMeetings.forEach(meetingId => handleDelete(meetingId));
-    setSelectedMeetings([]);
+
+  const handleDeleteSelected = async () => {
+    if (selectedMeetings.length === 0) return;
+    
+    const result = await deleteMeetings(selectedMeetings);
+    if (result.success) {
+      setSelectedMeetings([]);
+      fetchMeetings(); // Refresh the table
+    }
   };
+
   const handleClearSelection = () => {
     setSelectedMeetings([]);
   };
+
   const handleExportSelected = () => {
     const selectedData = meetings.filter(meeting => selectedMeetings.includes(meeting.id));
     console.log('Exporting selected meetings:', selectedData);
     // Export logic would go here
   };
+
   const getStatusBadge = (status: string) => {
     const variants = {
       'Scheduled': 'default',
@@ -141,51 +171,91 @@ export const MeetingsTable = ({
         {status}
       </Badge>;
   };
+
   const formatDateTime = (meeting: Meeting) => {
-    // Use new UTC fields if available, fallback to legacy fields
-    const startUTC = new Date(meeting.start_time_utc || meeting.start_datetime || '');
-    const endUTC = new Date(meeting.end_time_utc || meeting.end_datetime || '');
+    // Use new UTC fields only
+    const startUTC = new Date(meeting.start_time_utc || '');
+    const endUTC = new Date(meeting.end_time_utc || '');
     const timezone = meeting.time_zone || getBrowserTimezone();
-    
     try {
-      // Convert UTC to local time in the meeting's original timezone or browser timezone
-      const { localDate: startLocal, timeString: startTime } = convertUTCToLocal(startUTC, timezone);
-      const { timeString: endTime } = convertUTCToLocal(endUTC, timezone);
-      
+      // Validate dates
+      if (isNaN(startUTC.getTime()) || isNaN(endUTC.getTime())) {
+        throw new Error('Invalid datetime values');
+      }
+
+      // Convert UTC to local time in the meeting's original timezone
+      const {
+        localDate: startLocal,
+        timeString: startTime
+      } = convertUTCToLocal(startUTC, timezone);
+      const {
+        timeString: endTime
+      } = convertUTCToLocal(endUTC, timezone);
       return {
         date: format(startLocal, 'MMM dd, yyyy'),
         time: `${startTime} - ${endTime}`,
-        timezone: timezone.split('/').pop()?.replace('_', ' ') || 'UTC'
+        timezone: meeting.time_zone_display || timezone.split('/').pop()?.replace('_', ' ') || 'UTC'
       };
     } catch (error) {
-      console.error('Error formatting datetime:', error);
-      // Fallback to UTC display
+      console.error('Error formatting datetime for meeting:', meeting.id, error);
+      // Fallback to raw UTC display
       return {
-        date: format(startUTC, 'MMM dd, yyyy'),
-        time: format(startUTC, 'HH:mm'),
+        date: 'Invalid Date',
+        time: 'Invalid Time',
         timezone: 'UTC'
       };
     }
   };
+
   const handleStatusUpdate = async (meetingId: string, newStatus: 'Completed' | 'Cancelled') => {
     try {
       const meeting = meetings.find(m => m.id === meetingId);
+      let teamsSuccess = true;
 
       // If cancelling and has Teams event, cancel it first
       const teamsEventId = meeting?.microsoft_event_id || meeting?.teams_meeting_id;
       if (newStatus === 'Cancelled' && teamsEventId) {
-        console.log('Cancelling Teams event for meeting:', meetingId);
+        console.log('Cancelling Teams event for meeting:', meetingId, 'with event ID:', teamsEventId);
         try {
-          await supabase.functions.invoke('create-teams-meeting', {
+          const {
+            data: cancelResult,
+            error: cancelError
+          } = await supabase.functions.invoke('create-teams-meeting', {
             body: {
+              operation: 'delete',
               teamsEventId: teamsEventId
             }
           });
+          
+          if (cancelError) {
+            console.error('Teams cancellation error:', cancelError);
+            teamsSuccess = false;
+            toast({
+              title: "Teams Sync Warning",
+              description: "Failed to cancel Teams meeting. Please cancel manually in Teams.",
+              variant: "destructive"
+            });
+          } else if (cancelResult?.success) {
+            console.log('Teams event cancelled successfully');
+            toast({
+              title: "Teams Meeting Cancelled",
+              description: "Teams meeting has been cancelled successfully",
+            });
+          } else {
+            console.error('Teams cancellation failed:', cancelResult);
+            teamsSuccess = false;
+            toast({
+              title: "Teams Sync Warning", 
+              description: "Teams meeting cancellation may have failed. Please check Teams.",
+              variant: "destructive"
+            });
+          }
         } catch (teamsError) {
           console.error('Failed to cancel Teams event:', teamsError);
+          teamsSuccess = false;
           toast({
-            title: "Warning",
-            description: "Meeting updated locally but Teams event may not be cancelled",
+            title: "Teams Sync Error",
+            description: "Could not connect to Teams. Meeting will be updated locally only.",
             variant: "destructive"
           });
         }
@@ -198,11 +268,34 @@ export const MeetingsTable = ({
         status: newStatus,
         modified_by: user?.id
       }).eq('id', meetingId);
+      
       if (error) throw error;
-      toast({
-        title: "Meeting Updated",
-        description: `Meeting has been marked as ${newStatus.toLowerCase()}`
-      });
+
+      // Show appropriate success message
+      if (newStatus === 'Cancelled') {
+        if (teamsEventId && teamsSuccess) {
+          toast({
+            title: "Meeting Cancelled",
+            description: "Meeting and Teams event have been cancelled successfully"
+          });
+        } else if (teamsEventId) {
+          toast({
+            title: "Meeting Cancelled Locally",
+            description: "Meeting cancelled in app. Please manually cancel in Teams if needed."
+          });
+        } else {
+          toast({
+            title: "Meeting Cancelled",
+            description: "Meeting has been cancelled successfully"
+          });
+        }
+      } else {
+        toast({
+          title: "Meeting Updated",
+          description: `Meeting has been marked as ${newStatus.toLowerCase()}`
+        });
+      }
+      
       fetchMeetings();
     } catch (error: any) {
       console.error('Error updating meeting status:', error);
@@ -213,43 +306,31 @@ export const MeetingsTable = ({
       });
     }
   };
-  const handleDelete = async (meetingId: string) => {
-    if (!confirm('Are you sure you want to delete this meeting?')) return;
-    try {
-      const meeting = meetings.find(m => m.id === meetingId);
 
-      // Cancel Teams event if exists
-      const teamsEventId = meeting?.microsoft_event_id || meeting?.teams_meeting_id;
-      if (teamsEventId) {
-        console.log('Deleting Teams event for meeting:', meetingId);
-        try {
-          await supabase.functions.invoke('create-teams-meeting', {
-            body: {
-              teamsEventId: teamsEventId
-            }
-          });
-        } catch (teamsError) {
-          console.error('Failed to delete Teams event:', teamsError);
-        }
-      }
-      const {
-        error
-      } = await supabase.from('meetings').delete().eq('id', meetingId);
-      if (error) throw error;
-      toast({
-        title: "Meeting Deleted",
-        description: "Meeting has been deleted successfully"
-      });
-      fetchMeetings();
-    } catch (error: any) {
-      console.error('Error deleting meeting:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete meeting",
-        variant: "destructive"
-      });
+  const handleDeleteClick = (meeting: Meeting) => {
+    setMeetingToDelete(meeting);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!meetingToDelete) return;
+    
+    const result = await deleteMeetings([meetingToDelete.id]);
+    if (result.success) {
+      fetchMeetings(); // Refresh the table
+    }
+    
+    setMeetingToDelete(null);
+    setDeleteDialogOpen(false);
+  };
+
+  const handleDelete = async (meetingId: string) => {
+    const meeting = meetings.find(m => m.id === meetingId);
+    if (meeting) {
+      handleDeleteClick(meeting);
     }
   };
+
   if (loading) {
     return <Card>
         <CardContent className="p-6">
@@ -257,6 +338,7 @@ export const MeetingsTable = ({
         </CardContent>
       </Card>;
   }
+
   if (meetings.length === 0) {
     return <Card>
         <CardHeader>
@@ -273,14 +355,20 @@ export const MeetingsTable = ({
         </CardContent>
       </Card>;
   }
-  return <Card>
-      
-      <CardContent>
-        <div className="mb-4">
-          <Input type="text" placeholder="Search meetings..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-        </div>
 
-        {selectedMeetings.length > 0 && <BulkActionsBar selectedCount={selectedMeetings.length} onDelete={handleDeleteSelected} onExport={handleExportSelected} onClearSelection={handleClearSelection} />}
+  return <Card>
+      <CardContent>
+        {!searchQuery && <div className="mb-4">
+            
+          </div>}
+
+        {selectedMeetings.length > 0 && <BulkActionsBar 
+          selectedCount={selectedMeetings.length} 
+          onDelete={handleDeleteSelected} 
+          onExport={handleExportSelected} 
+          onClearSelection={handleClearSelection}
+          itemType="meeting"
+        />}
 
         <div className="overflow-x-auto">
           <TooltipProvider>
@@ -294,26 +382,31 @@ export const MeetingsTable = ({
                   setSortField('title');
                   setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
                 }}>
-                    Title
+                    Meeting Title ↕
                   </TableHead>
                   <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => {
                   setSortField('start_datetime');
                   setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
                 }}>
-                    Date
+                    Date & Time ↕
                   </TableHead>
-                  <TableHead>Time</TableHead>
                   <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => {
                   setSortField('participants');
                   setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
                 }}>
-                    Participants
+                    Participants ↕
                   </TableHead>
                   <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => {
                   setSortField('status');
                   setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
                 }}>
-                    Status
+                    Status ↕
+                  </TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => {
+                  setSortField('organizer');
+                  setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                }}>
+                    Organizer ↕
                   </TableHead>
                   <TableHead>Teams Link</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -328,33 +421,41 @@ export const MeetingsTable = ({
                       </TableCell>
                       <TableCell className="font-medium">{meeting.title}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                          {formatted.date}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <div className="flex flex-col">
-                            <span>{formatted.time}</span>
-                            <span className="text-xs text-muted-foreground">{formatted.timezone}</span>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                            <span>{formatted.date}</span>
                           </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">{formatted.time}</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{formatted.timezone}</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-col gap-1">
-                          {meeting.participants.length > 0 ? meeting.participants.map((participant, index) => <span key={index} className="text-sm text-muted-foreground">
-                                {participant}
-                              </span>) : <span className="text-sm text-muted-foreground">No participants</span>}
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <div className="flex flex-col gap-1">
+                            {meeting.participants.length > 0 ? meeting.participants.slice(0, 2).map((participant, index) => <span key={index} className="text-sm text-muted-foreground">
+                                  {participant}
+                                </span>) : <span className="text-sm text-muted-foreground">No participants</span>}
+                            {meeting.participants.length > 2 && <span className="text-xs text-muted-foreground">+{meeting.participants.length - 2} more</span>}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(meeting.status)}</TableCell>
                       <TableCell>
-                        {meeting.teams_meeting_link ? <Button variant="outline" size="sm" onClick={() => window.open(meeting.teams_meeting_link, '_blank')} className="flex items-center gap-1 hover:bg-primary hover:text-primary-foreground">
-                            <ExternalLink className="h-3 w-3" />
-                            Join
-                          </Button> : <span className="text-muted-foreground text-sm">Not available</span>}
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">{meeting.organizer}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="outline" size="sm" onClick={() => meeting.teams_meeting_link && window.open(meeting.teams_meeting_link, '_blank')} disabled={!meeting.teams_meeting_link} className="flex items-center gap-1 hover:bg-primary hover:text-primary-foreground disabled:opacity-50">
+                          <ExternalLink className="h-3 w-3" />
+                          Join Meeting
+                        </Button>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -393,16 +494,16 @@ export const MeetingsTable = ({
                               </Tooltip>
                             </>}
 
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button size="icon" variant="ghost" onClick={() => handleDelete(meeting.id)} className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Delete Meeting</p>
-                            </TooltipContent>
-                          </Tooltip>
+                           <Tooltip>
+                             <TooltipTrigger asChild>
+                               <Button size="icon" variant="ghost" onClick={() => handleDeleteClick(meeting)} className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50">
+                                 <Trash2 className="w-4 h-4" />
+                               </Button>
+                             </TooltipTrigger>
+                             <TooltipContent>
+                               <p>Delete Meeting</p>
+                             </TooltipContent>
+                           </Tooltip>
                         </div>
                       </TableCell>
                     </TableRow>;
@@ -417,5 +518,7 @@ export const MeetingsTable = ({
           </TooltipProvider>
         </div>
       </CardContent>
+      
+      <MeetingDeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={handleDeleteConfirm} meetingTitle={meetingToDelete?.title} />
     </Card>;
 };
