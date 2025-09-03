@@ -7,14 +7,16 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { CalendarIcon, Clock, Users, ExternalLink, Edit, Trash2, CheckCircle, XCircle, Search } from 'lucide-react';
+import { CalendarIcon, Clock, Users, ExternalLink, Edit, Trash2, CheckCircle, XCircle, Search, ListTodo } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { BulkActionsBar } from '@/components/BulkActionsBar';
 import { MeetingDeleteConfirmDialog } from '@/components/MeetingDeleteConfirmDialog';
+import { MeetingActionItemsModal } from '@/components/MeetingActionItemsModal';
 import { useMeetingDeletion } from '@/hooks/useMeetingDeletion';
 import { getBrowserTimezone, convertUTCToLocal, formatDateTimeWithTimezone } from '@/utils/timezoneUtils';
+import { useUserDisplayNames } from '@/hooks/useUserDisplayNames';
 
 interface Meeting {
   id: string;
@@ -55,6 +57,8 @@ export const MeetingsTable = ({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [meetingToDelete, setMeetingToDelete] = useState<Meeting | null>(null);
+  const [showActionItemsModal, setShowActionItemsModal] = useState(false);
+  const [selectedMeetingForActions, setSelectedMeetingForActions] = useState<Meeting | null>(null);
   const {
     toast
   } = useToast();
@@ -62,6 +66,10 @@ export const MeetingsTable = ({
     user
   } = useAuth();
   const { deleteMeetings, isDeleting } = useMeetingDeletion();
+
+  // Get unique organizer IDs for display names
+  const organizerIds = [...new Set(meetings.map(meeting => meeting.organizer))];
+  const { displayNames } = useUserDisplayNames(organizerIds);
 
   const fetchMeetings = async () => {
     try {
@@ -331,6 +339,11 @@ export const MeetingsTable = ({
     }
   };
 
+  const handleActionItems = (meeting: Meeting) => {
+    setSelectedMeetingForActions(meeting);
+    setShowActionItemsModal(true);
+  };
+
   if (loading) {
     return <Card>
         <CardContent className="p-6">
@@ -388,7 +401,13 @@ export const MeetingsTable = ({
                   setSortField('start_datetime');
                   setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
                 }}>
-                    Date & Time ↕
+                    Date ↕
+                  </TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => {
+                  setSortField('start_datetime');
+                  setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                }}>
+                    Time ↕
                   </TableHead>
                   <TableHead className="cursor-pointer" onClick={() => {
                   setSortField('participants');
@@ -421,16 +440,16 @@ export const MeetingsTable = ({
                       </TableCell>
                       <TableCell className="font-medium">{meeting.title}</TableCell>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                            <span>{formatted.date}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">{formatted.time}</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">{formatted.timezone}</span>
+                        <div className="flex items-center gap-2">
+                          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                          <span>{formatted.date}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{formatted.timezone}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span>{formatted.time}</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -448,7 +467,9 @@ export const MeetingsTable = ({
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">{meeting.organizer}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {displayNames[meeting.organizer] || 'Unknown User'}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -494,16 +515,27 @@ export const MeetingsTable = ({
                               </Tooltip>
                             </>}
 
-                           <Tooltip>
-                             <TooltipTrigger asChild>
-                               <Button size="icon" variant="ghost" onClick={() => handleDeleteClick(meeting)} className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50">
-                                 <Trash2 className="w-4 h-4" />
-                               </Button>
-                             </TooltipTrigger>
-                             <TooltipContent>
-                               <p>Delete Meeting</p>
-                             </TooltipContent>
-                           </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button size="icon" variant="ghost" onClick={() => handleActionItems(meeting)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                                  <ListTodo className="w-4 h-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Action Items</p>
+                              </TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button size="icon" variant="ghost" onClick={() => handleDeleteClick(meeting)} className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Delete Meeting</p>
+                              </TooltipContent>
+                            </Tooltip>
                         </div>
                       </TableCell>
                     </TableRow>;
@@ -520,5 +552,11 @@ export const MeetingsTable = ({
       </CardContent>
       
       <MeetingDeleteConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} onConfirm={handleDeleteConfirm} meetingTitle={meetingToDelete?.title} />
+      
+      <MeetingActionItemsModal 
+        open={showActionItemsModal} 
+        onOpenChange={setShowActionItemsModal} 
+        meeting={selectedMeetingForActions} 
+      />
     </Card>;
 };
