@@ -214,7 +214,7 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
   useEffect(() => {
     if (watchedDate && watchedTimezone) {
       const availableSlots = getAvailableTimeSlots(watchedDate, watchedTimezone);
-      if (!availableSlots.includes(watchedTime)) {
+      if (availableSlots.length > 0 && !availableSlots.includes(watchedTime)) {
         const nextSlot = availableSlots[0] || getNextAvailableTimeSlot(watchedDate, watchedTimezone);
         form.setValue('startTime', nextSlot);
       }
@@ -664,9 +664,9 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
                           <SelectValue placeholder="Select time" />
                         </SelectTrigger>
                       </FormControl>
-                       <SelectContent className="max-h-[200px] min-h-[120px]">
+                       <SelectContent className="max-h-[200px]">
                          {availableTimeSlots.length === 0 ? (
-                           <div className="flex items-center justify-center h-20 text-muted-foreground text-sm">
+                           <div className="flex items-center justify-center py-6 text-muted-foreground text-sm">
                              No available time slots
                            </div>
                          ) : (
