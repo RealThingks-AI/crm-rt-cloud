@@ -214,12 +214,13 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
   useEffect(() => {
     if (watchedDate && watchedTimezone) {
       const availableSlots = getAvailableTimeSlots(watchedDate, watchedTimezone);
-      if (availableSlots.length > 0 && !availableSlots.includes(watchedTime)) {
+      // Only auto-select next slot if current time is not available and slots exist
+      if (availableSlots.length > 0 && watchedTime && !availableSlots.includes(watchedTime)) {
         const nextSlot = availableSlots[0] || getNextAvailableTimeSlot(watchedDate, watchedTimezone);
         form.setValue('startTime', nextSlot);
       }
     }
-  }, [watchedDate, watchedTimezone, watchedTime, form]);
+  }, [watchedDate, watchedTimezone, form]); // Removed watchedTime from dependencies to prevent loop
 
   const handleSuggestedSlotAccept = () => {
     if (suggestedSlot) {
