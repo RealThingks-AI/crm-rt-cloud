@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -507,9 +507,25 @@ export const MeetingForm = ({ open, onOpenChange, onSuccess, editingMeeting }: M
     }
   };
 
-  const availableTimeSlots = watchedDate && watchedTimezone 
-    ? getAvailableTimeSlots(watchedDate, watchedTimezone)
-    : [];
+  const availableTimeSlots = useMemo(() => {
+    if (!watchedDate || !watchedTimezone) return [];
+    
+    console.log('🔍 Calculating available slots:', {
+      watchedDate: watchedDate.toISOString(),
+      watchedTimezone,
+      dateSource: 'manual vs default selection'
+    });
+    
+    const slots = getAvailableTimeSlots(watchedDate, watchedTimezone);
+    
+    console.log('🔍 Available slots result:', {
+      slotsCount: slots.length,
+      firstFew: slots.slice(0, 5),
+      allSlots: slots
+    });
+    
+    return slots;
+  }, [watchedDate, watchedTimezone]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
